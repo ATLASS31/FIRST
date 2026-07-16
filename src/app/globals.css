@@ -191,6 +191,25 @@ body {
   opacity: 1;
 }
 
+/* La vague elle-même : plus un panneau de verre rempli, mais un simple trait
+   de lumière — teinté brume, comme le fond de la section suivante, pour que
+   la transition se fasse dans la même couleur plutôt que par contraste.
+   `filter: drop-shadow` (et non `box-shadow`, qui serait coupé net par le
+   clip-path) porte la lueur autour de la forme déjà découpée. */
+.wave-line {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brume) 92%, transparent) 0%,
+    color-mix(in srgb, var(--brume) 55%, transparent) 100%
+  );
+  backdrop-filter: blur(6px) saturate(160%);
+  -webkit-backdrop-filter: blur(6px) saturate(160%);
+  filter: drop-shadow(
+      0 0 16px color-mix(in srgb, var(--brume) 75%, transparent)
+    )
+    drop-shadow(0 0 42px color-mix(in srgb, var(--brume) 40%, transparent));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wave-shape {
     transform: none;

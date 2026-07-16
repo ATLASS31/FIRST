@@ -59,21 +59,36 @@ npm run dev
   slider custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
   (`AnimatedNumber.tsx`).
 - **Performance vidéo du hero** : le seek-par-scroll classique (forcer
-  `video.currentTime` à chaque frame) restait saccadé même throttlé et même
-  après un ré-encodage de la vidéo — un seek loin de la dernière image-clé
-  reste un redécodage coûteux quoi qu'on fasse. Changement de technique :
-  en scrollant vers l'avant (le cas normal, et de très loin le plus
-  fluide), la vidéo est pilotée par `video.play()` + un `playbackRate`
-  proportionnel au retard à rattraper — lecture séquentielle, que les
-  décodeurs gèrent nativement bien, plutôt que des sauts aléatoires. Le
-  scroll vers l'arrière retombe sur un seek (la vidéo ne sait pas jouer à
-  l'envers), throttlé et limité à un petit pas à chaque fois plutôt qu'un
-  saut direct — moins bon que l'avant mais nettement plus doux qu'un seek
-  brut. L'effet d'herbe qui montait en premier plan a été abandonné (trop
-  de complexité pour peu de valeur, et lié au chantier vidéo) ; à la place,
-  une vague en verre (`clip-path` + `.glass`) se révèle en douceur sur le
-  tout dernier bout du scroll pour adoucir la transition vers la section
-  suivante.
+  `video.currentTime` à chaque frame), même throttlé, même après un
+  ré-encodage de la vidéo, restait saccadé au scroll vers l'arrière — un
+  seek loin de la dernière image-clé reste un redécodage coûteux quoi qu'on
+  fasse. Le scroll vers l'avant utilise `video.play()` + un `playbackRate`
+  proportionnel au retard à rattraper (lecture séquentielle, fluide,
+  confirmée). Pour l'arrière, changement de technique : au chargement, la
+  vidéo est lue une fois en entier, cachée derrière le poster, en capturant
+  une image toutes les 0,2s via `createImageBitmap` dans un cache en
+  mémoire. Le scroll vers l'arrière n'a alors plus besoin de seeker du
+  tout : l'image en cache la plus proche est dessinée sur un `<canvas>`
+  superposé à la vidéo. Le scroll vers l'avant repasse sur la vraie vidéo
+  avec un seul seek de resynchronisation au changement de sens. Repli
+  (throttle + seek amorti) si `createImageBitmap` n'est pas disponible.
+  L'effet d'herbe qui montait en premier plan a été abandonné (trop de
+  complexité pour peu de valeur, et lié au chantier vidéo) ; à la place,
+  une vague se révèle en douceur sur le tout dernier bout du scroll pour
+  adoucir la transition vers la section suivante — ce n'est plus un
+  panneau de verre rempli mais un fin trait de lumière (`.wave-line`),
+  teinté brume comme le fond de la section des 3 piliers qui suit, pour
+  que la transition se fasse dans la continuité de couleur plutôt que par
+  contraste.
+- **Gammes : cadrage feuillage plutôt que taches de couleur** : le fond en
+  taches de couleur floutées (`GlowField`) jugé "cheap" pour la section des
+  3 gammes a été retiré ; à la place, une photo de feuillage générée
+  (`GAMMES_LEAF_FRAME_URL`) est posée en fond, masquée par un dégradé
+  radial pour ne rester visible qu'aux bords/coins (centre totalement
+  dégagé autour des cartes), révélée en douceur (fondu + léger zoom
+  arrière) quand la section entre dans le viewport plutôt que visible
+  d'entrée. `GlowField` reste utilisé ailleurs (3 piliers, tuiles
+  chiffres).
 
 ## À faire avant la mise en prod
 

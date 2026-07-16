@@ -3,9 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import GlowField from "./GlowField";
 import TiltCard from "./TiltCard";
 import { GAMMES } from "@/lib/gammes";
+import { GAMMES_LEAF_FRAME_URL } from "@/lib/media";
 
 function SparkleIcon() {
   return (
@@ -24,7 +24,27 @@ function SparkleIcon() {
 export default function GammesPreview() {
   return (
     <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
-      <GlowField tone="warm" />
+      {/* Feuillage en fond de cadre : concentré aux bords/coins, masqué au
+          centre pour laisser les cartes bien lisibles. Se révèle en douceur
+          au scroll plutôt que d'être visible d'entrée — jamais de boucle
+          permanente, juste une entrée. */}
+      <motion.div
+        aria-hidden
+        initial={{ opacity: 0, scale: 1.06 }}
+        whileInView={{ opacity: 0.65, scale: 1 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `url(${GAMMES_LEAF_FRAME_URL})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          maskImage:
+            "radial-gradient(120% 85% at 50% 50%, transparent 32%, black 88%)",
+          WebkitMaskImage:
+            "radial-gradient(120% 85% at 50% 50%, transparent 32%, black 88%)",
+        }}
+      />
       <div className="relative mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
