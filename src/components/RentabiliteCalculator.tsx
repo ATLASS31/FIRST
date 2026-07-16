@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import GlassPanel from "./GlassPanel";
 import PremiumSlider from "./PremiumSlider";
 import AnimatedNumber from "./AnimatedNumber";
 import TiltCard from "./TiltCard";
+import { CALCULATOR_BG_URL } from "@/lib/media";
 
 const REGIONS = [
   { id: "cote", label: "Côte", mult: 1 },
@@ -80,8 +82,17 @@ export default function RentabiliteCalculator() {
   }, [surface, regionId, typeId]);
 
   return (
-    <section className="px-6 py-28">
-      <TiltCard strength={1.5} className="mx-auto max-w-4xl">
+    <section className="relative overflow-hidden px-6 py-28">
+      <Image
+        src={CALCULATOR_BG_URL}
+        alt=""
+        fill
+        sizes="100vw"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-encre/35" />
+
+      <TiltCard strength={1.5} className="relative mx-auto max-w-4xl">
         <GlassPanel tone="graphite" sheen className="px-8 py-16 sm:px-14">
           <p className="eyebrow text-xs text-laiton/80">
             Votre projet, rentabilisé

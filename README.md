@@ -52,21 +52,28 @@ npm run dev
   sur les cartes interactives ; entrées animées au scroll et parallax léger
   au survol (`TiltCard.tsx`, Framer Motion) sur la quasi-totalité des
   cartes.
-- **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : "objet
-  premium" — verre semi-transparent sur noir mat chaud (`glass-graphite`),
+- **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : vrai
+  liquid glass — flotte sur une photo plein cadre (coucher de soleil sur
+  montagnes, `CALCULATOR_BG_URL`), assez transparent pour que le blur
+  révèle vraiment la scène derrière, halo doré autour (`glass-graphite`),
   slider custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
   (`AnimatedNumber.tsx`).
 - **Performance vidéo du hero** : le seek-par-scroll classique (forcer
   `video.currentTime` à chaque frame) restait saccadé même throttlé et même
   après un ré-encodage de la vidéo — un seek loin de la dernière image-clé
   reste un redécodage coûteux quoi qu'on fasse. Changement de technique :
-  en scrollant vers l'avant (le cas normal), la vidéo est pilotée par
-  `video.play()` + un `playbackRate` proportionnel au retard à rattraper —
-  lecture séquentielle, que les décodeurs gèrent nativement bien, plutôt que
-  des sauts aléatoires. Seul le scroll vers l'arrière retombe sur un seek
-  classique (throttlé), la vidéo ne sachant pas jouer à l'envers. L'effet
-  d'herbe qui montait en premier plan a été abandonné (trop de complexité
-  pour peu de valeur, et lié au chantier vidéo).
+  en scrollant vers l'avant (le cas normal, et de très loin le plus
+  fluide), la vidéo est pilotée par `video.play()` + un `playbackRate`
+  proportionnel au retard à rattraper — lecture séquentielle, que les
+  décodeurs gèrent nativement bien, plutôt que des sauts aléatoires. Le
+  scroll vers l'arrière retombe sur un seek (la vidéo ne sait pas jouer à
+  l'envers), throttlé et limité à un petit pas à chaque fois plutôt qu'un
+  saut direct — moins bon que l'avant mais nettement plus doux qu'un seek
+  brut. L'effet d'herbe qui montait en premier plan a été abandonné (trop
+  de complexité pour peu de valeur, et lié au chantier vidéo) ; à la place,
+  une vague en verre (`clip-path` + `.glass`) se révèle en douceur sur le
+  tout dernier bout du scroll pour adoucir la transition vers la section
+  suivante.
 
 ## À faire avant la mise en prod
 

@@ -10,3 +10,6 @@ export const HERO_MEDIA = {
   videoUrl:
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090851_5b77ab20-5792-4ea6-8787-b8e9d668de3c.mp4",
 };
+
+export const CALCULATOR_BG_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_194819_a439f461-058d-4895-b0fb-07345b4b1f94.png";

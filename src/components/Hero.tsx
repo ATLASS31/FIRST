@@ -16,13 +16,16 @@ import { HERO_MEDIA } from "@/lib/media";
  * En scrollant vers l'avant, on appelle video.play() avec un playbackRate
  * proportionnel au retard à rattraper (le décodeur avance frame par frame,
  * ce qu'il fait nativement bien) puis on pause dès que la cible est
- * atteinte. Seul le scroll vers l'arrière retombe sur un seek classique
- * (la vidéo ne sait pas jouer à l'envers) — throttlé, et rare en pratique
- * sur un hero qu'on traverse une fois en descendant.
+ * atteinte. Le scroll vers l'arrière ne peut pas jouer la vidéo à l'envers
+ * — il retombe sur des seeks, mais throttlés ET limités à un petit pas à
+ * chaque fois (jamais un saut direct vers la cible), pour rester dans le
+ * même esprit que l'avant : des mouvements courts et rapprochés plutôt que
+ * des sauts coûteux.
  */
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const waveRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function Hero() {
     let ready = false;
     let lastSeekAt = 0;
     let playPending = false;
+    let waveRevealed = false;
 
     const checkReady = () => {
       duration = video.duration || 0;
@@ -71,12 +75,26 @@ export default function Hero() {
 
     const tick = () => {
       rafRef.current = null;
+      const progress = getProgress();
+
+      // La vague se révèle une seule fois, en douceur, sur le tout dernier
+      // bout du scroll — indépendant de l'état de la vidéo (transition CSS
+      // pure sur un simple toggle de classe).
+      if (waveRef.current) {
+        if (!waveRevealed && progress > 0.92) {
+          waveRevealed = true;
+          waveRef.current.classList.add("wave-revealed");
+        } else if (waveRevealed && progress < 0.88) {
+          waveRevealed = false;
+          waveRef.current.classList.remove("wave-revealed");
+        }
+      }
+
       if (!ready) {
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
 
-      const progress = getProgress();
       const targetTime = Math.min(progress * duration, duration - 0.05);
       const diff = targetTime - video.currentTime;
 
@@ -87,14 +105,18 @@ export default function Hero() {
         video.playbackRate = Math.min(Math.max(diff / 0.4, 1), 6);
         safePlay();
       } else {
-        // Scroll vers l'arrière : pas de lecture inversée possible, on seek
-        // (throttlé — rare, donc le coût est acceptable ici).
+        // Scroll vers l'arrière : pas de lecture inversée possible. Seek
+        // throttlé ET limité à un petit pas à chaque fois (jamais un saut
+        // direct vers la cible, qui peut être loin et donc coûteux) — la
+        // vidéo rattrape le scroll arrière par petites étapes rapprochées.
         if (!video.paused) video.pause();
         const now = performance.now();
-        if (now - lastSeekAt >= 150) {
+        if (now - lastSeekAt >= 120) {
           lastSeekAt = now;
+          const step = Math.max(diff, -0.25);
+          const nextTime = Math.max(0, video.currentTime + step);
           try {
-            video.currentTime = targetTime;
+            video.currentTime = nextTime;
           } catch {
             // Pas encore seekable — on retentera au prochain tick.
           }
@@ -151,6 +173,23 @@ export default function Hero() {
         <div
           aria-hidden
           className="absolute bottom-10 left-1/2 z-10 h-12 w-px -translate-x-1/2 bg-gradient-to-b from-brume/70 to-transparent"
+        />
+
+        {/* Vague en verre : transition entre le hero et la section
+            suivante, pour ne jamais couper net le visuel. Se révèle en
+            douceur sur le dernier bout du scroll (cf. tick()). */}
+        <svg aria-hidden className="absolute h-0 w-0">
+          <defs>
+            <clipPath id="hero-wave-clip" clipPathUnits="objectBoundingBox">
+              <path d="M0,0.55 C0.22,0.85 0.38,0.15 0.58,0.45 C0.72,0.65 0.88,0.25 1,0.5 L1,1 L0,1 Z" />
+            </clipPath>
+          </defs>
+        </svg>
+        <div
+          ref={waveRef}
+          aria-hidden
+          className="glass wave-shape pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-24 sm:h-32"
+          style={{ clipPath: "url(#hero-wave-clip)" }}
         />
       </div>
     </section>

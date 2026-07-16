@@ -81,27 +81,27 @@ body {
   -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 
-/* Verre "objet premium" : noir mat chaud (pas un noir plein), pour les
-   pièces qui doivent se sentir comme un vrai objet (calculateur) plutôt
-   qu'un panneau de contenu. Semi-transparent — la version précédente était
-   un dégradé 100% opaque, donc le blur n'avait rien à réfracter et ça
-   lisait comme un bloc solide plutôt que du verre. */
+/* Verre "objet premium" : pensé pour flotter sur une vraie photo (le
+   calculateur a un fond image plein cadre) — assez transparent pour que le
+   blur révèle vraiment la scène derrière, avec un halo doré chaud autour,
+   pas juste un panneau sombre posé dessus. */
 .glass-graphite {
   background:
     radial-gradient(
       140% 120% at 15% 0%,
-      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.16) 0%,
       transparent 55%
     ),
-    rgba(33, 30, 27, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-top-color: rgba(255, 255, 255, 0.32);
+    rgba(28, 24, 20, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.4);
   box-shadow:
-    0 32px 64px -16px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
+    0 32px 64px -16px rgba(0, 0, 0, 0.5),
+    0 0 140px rgba(203, 166, 93, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
 }
 
 @supports (backdrop-filter: url(#glass-distortion)) {
@@ -112,7 +112,7 @@ body {
     backdrop-filter: url(#glass-distortion) blur(8px) saturate(160%);
   }
   .glass-graphite {
-    backdrop-filter: url(#glass-distortion) blur(16px) saturate(160%);
+    backdrop-filter: url(#glass-distortion) blur(20px) saturate(170%);
   }
 }
 
@@ -171,6 +171,30 @@ body {
   .glass-sheen::before,
   .glass-sheen-hover::before {
     animation: none;
+    transition: none;
+  }
+}
+
+/* Vague en verre entre le hero et la section suivante : se révèle une
+   seule fois, en douceur, quand on approche de la fin du scroll du hero —
+   un mouvement qui s'installe puis s'arrête, jamais un va-et-vient. */
+.wave-shape {
+  transform: translateY(28px);
+  opacity: 0;
+  transition:
+    transform 1.1s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 1.1s ease-out;
+}
+
+.wave-shape.wave-revealed {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-shape {
+    transform: none;
+    opacity: 1;
     transition: none;
   }
 }
