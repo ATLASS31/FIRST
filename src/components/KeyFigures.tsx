@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
-import LeafFrame from "./LeafFrame";
 import TiltCard from "./TiltCard";
-import { KEY_FIGURES_BG_URL, LEAF_BRANCH_BOTTOM_LEFT_URL, LEAF_BRANCH_TOP_RIGHT_URL } from "@/lib/media";
 
 function ShieldIcon() {
   return (
@@ -65,23 +62,7 @@ const FIGURES = [
 export default function KeyFigures() {
   return (
     <section className="relative overflow-hidden px-6 py-28">
-      <Image
-        src={KEY_FIGURES_BG_URL}
-        alt=""
-        fill
-        sizes="100vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-encre/10" />
-
-      <LeafFrame
-        leaves={[
-          { src: LEAF_BRANCH_TOP_RIGHT_URL, corner: "top-right" },
-          { src: LEAF_BRANCH_BOTTOM_LEFT_URL, corner: "bottom-left" },
-        ]}
-      />
-
-      <div className="relative z-20 mx-auto max-w-6xl">
+      <div className="relative mx-auto max-w-6xl">
         <div className="grid gap-6 sm:grid-cols-3">
           {FIGURES.map((figure, i) => (
             <motion.div

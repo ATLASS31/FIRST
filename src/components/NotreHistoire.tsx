@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 import TiltCard from "./TiltCard";
-import LeafFrame from "./LeafFrame";
-import { LEAF_BRANCH_BOTTOM_RIGHT_URL, LEAF_BRANCH_TOP_LEFT_URL, NOTRE_HISTOIRE_BG_URL } from "@/lib/media";
 
 function SapinIcon() {
   return (
@@ -26,29 +23,13 @@ function SapinIcon() {
 
 export default function NotreHistoire() {
   return (
-    <section className="relative overflow-hidden px-6 py-28">
-      <Image
-        src={NOTRE_HISTOIRE_BG_URL}
-        alt=""
-        fill
-        sizes="100vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-encre/10" />
-
-      <LeafFrame
-        leaves={[
-          { src: LEAF_BRANCH_TOP_LEFT_URL, corner: "top-left" },
-          { src: LEAF_BRANCH_BOTTOM_RIGHT_URL, corner: "bottom-right" },
-        ]}
-      />
-
+    <section className="bg-brume-2 px-6 py-28">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.7, ease: "easeOut" }}
-        className="relative z-20 mx-auto max-w-2xl"
+        className="mx-auto max-w-2xl"
       >
         <TiltCard strength={1.5}>
           <GlassPanel sheen className="px-8 py-14 text-center sm:px-14 sm:py-16">

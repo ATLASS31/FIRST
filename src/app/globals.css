@@ -183,19 +183,22 @@ body {
   fill: var(--brume);
 }
 
-/* Contour lumineux : juste le tracé de la courbe, sans remplissage. Le glow
-   passe par `filter: drop-shadow` (jamais coupé par un clip-path, ici il
-   n'y en a même plus besoin) plutôt que `box-shadow`. `vector-effect:
+/* Contour lumineux : juste le tracé de la courbe, sans remplissage — une
+   vraie ligne de lumière, pas juste un léger liseré. Coeur presque blanc,
+   halo chaud en laiton plus loin (touche liquid glass premium plutôt qu'un
+   blanc générique). Le glow passe par `filter: drop-shadow` (jamais coupé
+   par un clip-path) plutôt que `box-shadow`. `vector-effect:
    non-scaling-stroke` garde une épaisseur de trait constante en pixels
    écran quel que soit l'étirement du viewBox par le ratio du conteneur. */
 .wave-rim {
   fill: none;
-  stroke: color-mix(in srgb, var(--brume) 100%, white 45%);
-  stroke-width: 2.5px;
+  stroke: color-mix(in srgb, var(--brume) 55%, white 45%);
+  stroke-width: 3.5px;
   filter: drop-shadow(
-      0 0 8px color-mix(in srgb, var(--brume) 90%, transparent)
+      0 0 6px color-mix(in srgb, var(--brume) 20%, white 80%)
     )
-    drop-shadow(0 0 24px color-mix(in srgb, var(--brume) 55%, transparent));
+    drop-shadow(0 0 20px color-mix(in srgb, var(--brume) 40%, white 60%))
+    drop-shadow(0 0 44px color-mix(in srgb, var(--laiton) 55%, transparent));
 }
 
 /* La révélation de la vague est pilotée en JS via clip-path/transform sur

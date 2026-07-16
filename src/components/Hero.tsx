@@ -9,35 +9,26 @@ import { HERO_MEDIA } from "@/lib/media";
  *
  * Le scroll vers l'avant pilote video.play() + un playbackRate proportionnel
  * au retard à rattraper : lecture séquentielle, que les décodeurs gèrent
- * nativement bien. C'est fluide, mais ça ne marche que dans un sens — une
- * vidéo ne sait pas jouer à l'envers, donc le scroll vers l'arrière devait
- * jusqu'ici retomber sur des seeks, coûteux quelle que soit la façon dont on
- * les throttle (un seek loin de la dernière image-clé force un redécodage).
+ * nativement bien — confirmé fluide. Le scroll vers l'arrière retombe sur un
+ * seek direct, throttlé et limité à un petit pas à chaque fois : moins bon
+ * que l'avant (une vidéo ne sait pas jouer à l'envers, un seek loin de la
+ * dernière image-clé reste un redécodage coûteux), mais toujours réactif.
  *
- * Solution : au chargement, on lit la vidéo une fois en entier, cachée
- * (recouverte par le poster), en capturant une image toutes les 0.2s via
- * createImageBitmap. Le scroll vers l'arrière n'a alors plus besoin de
- * seeker la vidéo du tout : on affiche l'image mise en cache la plus proche
- * sur un <canvas> superposé. Le scroll vers l'avant repasse sur la vraie
- * vidéo (un seul seek de resynchronisation au moment du changement de sens).
+ * Une tentative précédente ajoutait un cache de frames (canvas +
+ * createImageBitmap, warmup complet de la vidéo caché derrière le poster
+ * avant d'activer le scroll) pour un rendu plus fluide en arrière. Abandonnée :
+ * le warmup pouvait prendre plusieurs secondes selon la longueur de la
+ * vidéo, pendant lesquelles le hero restait entièrement figé au scroll —
+ * un compromis pire que le problème qu'il cherchait à résoudre.
  */
-const CACHE_BUCKET = 0.2;
-
-// Fenêtre de scroll sur laquelle la vague se révèle : liée en continu à la
-// progression du scroll (pas à un seuil + une transition CSS à durée fixe)
-// pour que ça ne puisse jamais "manquer de temps" avant la fin du hero, et
-// pour que ça se scrub dans les deux sens comme le reste du hero. Se termine
-// pile à la fin du scroll (1) plutôt qu'avant : sinon la vague finit son
-// mouvement puis reste figée pendant le reste du scroll avant le vrai
-// changement de section — ce "temps mort" est ce qui donnait l'impression
-// d'une séparation, pas premium.
 const WAVE_REVEAL_START = 0.68;
 const WAVE_REVEAL_END = 1;
+const SEEK_THROTTLE_MS = 110;
+const SEEK_STEP_CAP = 0.22;
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const posterRef = useRef<HTMLImageElement>(null);
   const waveRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -45,131 +36,31 @@ export default function Hero() {
   useEffect(() => {
     const section = sectionRef.current;
     const video = videoRef.current;
-    const canvas = canvasRef.current;
     const posterEl = posterRef.current;
-    if (!section || !video || !canvas) return;
+    if (!section || !video) return;
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (prefersReducedMotion) return;
 
-    const ctx = canvas.getContext("2d");
-    const applySmoothing = () => {
-      if (!ctx) return;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-    };
-    applySmoothing();
-    const frameCache = new Map<number, ImageBitmap>();
-    const canUseCache = typeof window.createImageBitmap === "function";
-
-    let cancelled = false;
     let duration = 0;
     let ready = false;
-    let warmedUp = false;
-    let displayedTime = 0;
-    let showingCanvas = false;
     let lastSeekAt = 0;
     let playPending = false;
 
-    const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
-
-    // La résolution interne du canvas est calée sur sa taille d'affichage
-    // réelle (× devicePixelRatio), pas sur la résolution native de la
-    // vidéo — sinon le navigateur agrandit un bitmap 720p à la taille de
-    // l'écran via un simple scale CSS et le résultat pixellise. On calcule
-    // nous-mêmes le recadrage "object-cover" dans drawCachedFrame pour que
-    // l'image, une fois dessinée, n'ait plus besoin d'être réétirée.
-    const resizeCanvas = () => {
-      // Le conteneur sticky fait toujours exactement un écran (h-screen).
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.round(window.innerWidth * dpr);
-      const h = Math.round(window.innerHeight * dpr);
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-        applySmoothing();
-      }
-    };
-
-    let warmupStarted = false;
     const checkReady = () => {
       duration = video.duration || 0;
       ready =
         Number.isFinite(duration) &&
         duration > 0 &&
         video.readyState >= video.HAVE_FUTURE_DATA;
-      if (ready && canvas.width === 0) {
-        resizeCanvas();
-      }
-      if (ready && !warmupStarted) {
-        warmupStarted = true;
-        runWarmup();
-      }
     };
 
     video.addEventListener("loadedmetadata", checkReady);
     video.addEventListener("canplay", checkReady);
     video.addEventListener("progress", checkReady);
-    window.addEventListener("resize", resizeCanvas);
     checkReady();
-
-    const seekTo = (time: number) =>
-      new Promise<void>((resolve) => {
-        const onSeeked = () => {
-          video.removeEventListener("seeked", onSeeked);
-          resolve();
-        };
-        video.addEventListener("seeked", onSeeked);
-        try {
-          video.currentTime = time;
-        } catch {
-          video.removeEventListener("seeked", onSeeked);
-          resolve();
-        }
-      });
-
-    const captureFrame = async (bucket: number) => {
-      if (frameCache.has(bucket)) return;
-      try {
-        const bitmap = await createImageBitmap(video);
-        if (!cancelled) frameCache.set(bucket, bitmap);
-      } catch {
-        // Pas grave : ce bucket restera absent du cache, le scroll arrière
-        // retombera sur le repli seek plus bas s'il tombe pile dessus.
-      }
-    };
-
-    // Déclaration de fonction (hoisted), pas une const fléchée : checkReady
-    // (définie plus haut) l'appelle, et son tout premier appel est
-    // synchrone — si la vidéo est déjà prête à ce moment (cache navigateur,
-    // chargement très rapide), une const arrow function ici serait encore
-    // dans sa zone morte temporelle et ferait planter le composant.
-    async function runWarmup() {
-      // Déclaration de fonction hoisted : TypeScript ne peut pas reporter
-      // le narrowing du early-return plus haut (`if (!video) return;`)
-      // jusqu'ici, donc on le refait localement.
-      if (!video || !canUseCache) {
-        warmedUp = true;
-        return;
-      }
-      const totalBuckets = Math.min(Math.ceil(duration / CACHE_BUCKET), 60);
-      for (let b = 0; b <= totalBuckets && !cancelled; b++) {
-        const t = Math.min(b * CACHE_BUCKET, Math.max(duration - 0.05, 0));
-        await seekTo(t);
-        if (cancelled) return;
-        await captureFrame(b);
-      }
-      if (cancelled) return;
-      video.pause();
-      try {
-        video.currentTime = 0;
-      } catch {
-        // ignore
-      }
-      warmedUp = true;
-    }
 
     const getProgress = () => {
       const rect = section.getBoundingClientRect();
@@ -190,53 +81,13 @@ export default function Hero() {
         });
     };
 
-    const showVideoLayer = () => {
-      if (!showingCanvas) return;
-      showingCanvas = false;
-      canvas.style.opacity = "0";
-      video.style.opacity = "1";
-    };
-
-    const showCanvasLayer = () => {
-      if (showingCanvas) return;
-      showingCanvas = true;
-      video.style.opacity = "0";
-      canvas.style.opacity = "1";
-    };
-
-    const drawCachedFrame = (time: number) => {
-      if (!ctx) return false;
-      const bucket = bucketOf(time);
-      let bitmap = frameCache.get(bucket);
-      for (let d = 1; d <= 5 && !bitmap; d++) {
-        bitmap = frameCache.get(bucket - d) || frameCache.get(bucket + d);
-      }
-      if (!bitmap) return false;
-      // Recadrage "object-cover" manuel : la vidéo source (720p, 16:9) et le
-      // canvas (résolution écran) n'ont pas forcément le même ratio, et un
-      // <canvas> ne connaît pas object-fit. Sans ça le bitmap serait étiré
-      // plutôt que recadré, en plus d'être flou.
-      const scale = Math.max(
-        canvas.width / bitmap.width,
-        canvas.height / bitmap.height
-      );
-      const sw = canvas.width / scale;
-      const sh = canvas.height / scale;
-      const sx = (bitmap.width - sw) / 2;
-      const sy = (bitmap.height - sh) / 2;
-      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-      displayedTime = time;
-      return true;
-    };
-
     const tick = () => {
       rafRef.current = null;
       const progress = getProgress();
 
       // La vague : un vrai mouvement (balayage par clip-path), lié en continu
       // à la progression du scroll — indépendant de l'état de la vidéo, et
-      // scrubbable dans les deux sens comme le reste du hero. Pas de seuil +
-      // transition à durée fixe qui pourrait ne pas avoir le temps de finir.
+      // scrubbable dans les deux sens comme le reste du hero.
       if (waveRef.current) {
         const waveProgress = Math.min(
           Math.max(
@@ -250,7 +101,7 @@ export default function Hero() {
         waveRef.current.style.transform = `translateY(${(1 - waveProgress) * 14}px)`;
       }
 
-      if (!ready || !warmedUp) {
+      if (!ready) {
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -259,48 +110,25 @@ export default function Hero() {
         posterEl.style.opacity = "0";
       }
 
-      if (!showingCanvas) {
-        displayedTime = video.currentTime;
-      }
-
       const targetTime = Math.min(progress * duration, duration - 0.05);
-      const diff = targetTime - displayedTime;
+      const diff = targetTime - video.currentTime;
 
       if (Math.abs(diff) < 0.06) {
         if (!video.paused) video.pause();
       } else if (diff > 0) {
-        // Avant : on repasse sur la vraie vidéo (un seul seek de sync si on
-        // venait du canvas), puis lecture séquentielle accélérée.
-        if (showingCanvas) {
-          try {
-            video.currentTime = displayedTime;
-          } catch {
-            // ignore
-          }
-          showVideoLayer();
-        }
         video.playbackRate = Math.min(Math.max(diff / 0.4, 1), 6);
         safePlay();
       } else {
-        // Arrière : on affiche l'image en cache la plus proche, aucun seek.
         if (!video.paused) video.pause();
-        const drew = drawCachedFrame(Math.max(0, targetTime));
-        if (drew) {
-          showCanvasLayer();
-        } else {
-          // Repli si le cache n'a rien pour cette position (navigateur sans
-          // createImageBitmap, par exemple) : seek throttlé et amorti.
-          showVideoLayer();
-          const now = performance.now();
-          if (now - lastSeekAt >= 120) {
-            lastSeekAt = now;
-            const step = Math.max(diff, -0.25);
-            const nextTime = Math.max(0, video.currentTime + step);
-            try {
-              video.currentTime = nextTime;
-            } catch {
-              // ignore
-            }
+        const now = performance.now();
+        if (now - lastSeekAt >= SEEK_THROTTLE_MS) {
+          lastSeekAt = now;
+          const step = Math.max(diff, -SEEK_STEP_CAP);
+          const nextTime = Math.max(0, video.currentTime + step);
+          try {
+            video.currentTime = nextTime;
+          } catch {
+            // ignore
           }
         }
       }
@@ -308,25 +136,14 @@ export default function Hero() {
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    // La boucle démarre immédiatement, indépendamment du chargement de la
-    // vidéo : la vague (et plus généralement le scroll) ne doit jamais
-    // rester figée en attendant que la vidéo soit prête. Le warmup du cache
-    // de frames, lui, ne démarre que quand la vidéo est vraiment prête
-    // (déclenché depuis checkReady ci-dessus).
-    if (!cancelled) {
-      rafRef.current = requestAnimationFrame(tick);
-    }
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
-      cancelled = true;
       video.removeEventListener("loadedmetadata", checkReady);
       video.removeEventListener("canplay", checkReady);
       video.removeEventListener("progress", checkReady);
-      window.removeEventListener("resize", resizeCanvas);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       video.pause();
-      frameCache.forEach((bitmap) => bitmap.close());
-      frameCache.clear();
     };
   }, []);
 
@@ -335,21 +152,15 @@ export default function Hero() {
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-encre">
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-200"
+          className="absolute inset-0 h-full w-full object-cover"
           src={HERO_MEDIA.videoUrl}
           poster={HERO_MEDIA.posterUrl}
           muted
           playsInline
           preload="auto"
         />
-        <canvas
-          ref={canvasRef}
-          aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-200"
-        />
-        {/* Recouvre la vidéo pendant la pré-lecture cachée qui remplit le
-            cache de frames (sinon on verrait défiler la vidéo en accéléré
-            avant que l'utilisateur n'ait même scrollé). */}
+        {/* Recouvre la vidéo jusqu'à ce qu'elle soit prête à être pilotée par
+            le scroll (évite de voir la première frame brute avant coup). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={posterRef}
@@ -388,9 +199,7 @@ export default function Hero() {
             section suivante) avec un contour lumineux en liquid glass —
             pas toute la forme en verre, seulement son bord. Balayée par un
             clip-path lié en continu à la progression du scroll (cf.
-            tick()) : un vrai mouvement de vague, jamais un fondu, et ça ne
-            peut jamais arriver "en retard" sur la fin du scroll puisque ce
-            n'est pas basé sur une durée mais sur la position de scroll. */}
+            tick()) : un vrai mouvement de vague, jamais un fondu. */}
         <div
           ref={waveRef}
           aria-hidden

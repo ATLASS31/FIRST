@@ -57,69 +57,54 @@ npm run dev
   révèle vraiment la scène derrière, halo doré autour (`glass-graphite`),
   slider custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
   (`AnimatedNumber.tsx`).
-- **Performance vidéo du hero** : le seek-par-scroll classique (forcer
-  `video.currentTime` à chaque frame), même throttlé, même après un
-  ré-encodage de la vidéo, restait saccadé au scroll vers l'arrière — un
-  seek loin de la dernière image-clé reste un redécodage coûteux quoi qu'on
-  fasse. Le scroll vers l'avant utilise `video.play()` + un `playbackRate`
-  proportionnel au retard à rattraper (lecture séquentielle, fluide,
-  confirmée). Pour l'arrière : au chargement, la vidéo est lue une fois en
-  entier, cachée derrière le poster, en capturant une image toutes les
-  0,2s via `createImageBitmap` dans un cache en mémoire ; le scroll vers
-  l'arrière n'a alors plus besoin de seeker du tout, il dessine l'image en
-  cache la plus proche sur un `<canvas>` superposé à la vidéo (fluide,
-  confirmé). Le canvas est dimensionné sur la taille d'affichage réelle
-  (× `devicePixelRatio`, recadrage "object-cover" calculé à la main dans
-  `drawImage`, `imageSmoothingQuality: "high"`) plutôt que sur la
-  résolution native 720p de la vidéo — sinon le navigateur agrandit un
-  petit bitmap à la taille de l'écran par un simple scale CSS et le
-  résultat pixellise en plus d'être flou. Un filtre `contrast/saturate` au
-  dessin canvas a été essayé pour compenser le flou résiduel puis retiré
-  (dénaturait le rendu par rapport à la vraie vidéo — jugé pire que le
-  flou lui-même). **Reste flou au scroll arrière** : la source est en
-  720p, un ré-encodage a déjà été tenté et a empiré les choses (cf.
-  section "à faire") — accepté comme limite connue plutôt que de
-  continuer à bricoler autour. Repli (throttle + seek amorti) si
-  `createImageBitmap` n'est pas disponible.
+- **Performance vidéo du hero** : le scroll vers l'avant utilise
+  `video.play()` + un `playbackRate` proportionnel au retard à rattraper
+  (lecture séquentielle, que les décodeurs gèrent nativement bien) —
+  confirmé fluide. Le scroll vers l'arrière retombe sur un seek direct,
+  throttlé (~110ms) et limité à un petit pas à chaque fois plutôt qu'un
+  saut brut — moins bon que l'avant (une vidéo ne sait pas jouer à
+  l'envers, un seek loin de la dernière image-clé reste un redécodage
+  coûteux quoi qu'on fasse) mais toujours réactif dès le premier scroll.
+  **Une tentative plus ambitieuse a été essayée et abandonnée** : un cache
+  de frames (`<canvas>` + `createImageBitmap`, capturées via un warmup qui
+  lisait toute la vidéo une fois, caché derrière le poster, avant
+  d'activer le scroll). Ça rendait le scroll arrière bien plus fluide une
+  fois le warmup terminé, mais le warmup lui-même pouvait prendre
+  plusieurs secondes selon la longueur de la vidéo — pendant ce temps le
+  hero restait entièrement figé au scroll (aucune animation, avant comme
+  arrière), ce qui est pire que le problème que ça cherchait à résoudre.
+  Retour à la technique simple, réactive dès le premier frame. La netteté
+  au scroll arrière reste une limite connue de la vidéo source 720p (cf.
+  section "à faire").
 - **Hero : texte et CTA alignés à gauche** (`items-start text-left`),
   plutôt que centrés, pour rester dans la zone basse-gauche de la vidéo
   comme sur la maquette de référence.
 - **Vague hero → 3 piliers** : l'effet d'herbe qui montait en premier plan
   a été abandonné (trop de complexité pour peu de valeur, et lié au
   chantier vidéo) ; à la place, une vague — un aplat plein (SVG) teinté
-  brume comme le fond de la section des 3 piliers qui suit, avec seulement
-  son contour traité en liquid glass lumineux (`.wave-rim`, `filter:
-  drop-shadow`) — se balaie par un `clip-path` lié en continu à la
-  progression du scroll (pas un seuil + une transition CSS à durée fixe).
-  La fenêtre de révélation va jusqu'à la toute fin du scroll du hero
-  (`WAVE_REVEAL_END = 1`) : avant, elle finissait son mouvement puis
-  restait figée pendant le reste du scroll avant le vrai changement de
-  section, ce qui donnait une impression de séparation. **Bug réel
-  corrigé au passage** : toute la boucle de scroll (`tick()`, y compris la
-  vague) ne démarrait qu'une fois la vidéo prête (`start()` attendait
-  `ready` avant le tout premier appel à `tick()`) — si la vidéo mettait du
-  temps à charger (ou ne chargeait jamais), la vague restait figée à l'état
-  initial pendant tout ce temps, ce qui pouvait très bien être la cause du
-  désync perçu. La boucle démarre maintenant immédiatement au montage ; le
-  warmup du cache de frames, lui, ne démarre que quand la vidéo est
-  vraiment prête (déclenché depuis `checkReady`).
-- **Notre histoire / Chiffres clés** : ces deux sections (fond plat avant)
-  ont été refaites façon photo — une photo de forêt embrumée dorée
-  (`NOTRE_HISTOIRE_BG_URL`, `KEY_FIGURES_BG_URL`) en plein cadre, un
-  cadrage de branches détourées aux coins (`LeafFrame.tsx`, révélées avec
-  un léger ressort au scroll), et le contenu posé dans de vrais panneaux
-  liquid glass (`GlassPanel`, ton clair, `sheen`) plutôt que sur un fond
-  uni. Notre histoire a un petit repère (icône sapin) + une ligne dorée
-  sous l'eyebrow ; les 3 chiffres clés ont chacun une icône dorée
-  (bouclier/camion/hexagone — la France comme "l'Hexagone") au-dessus de
-  la valeur. Contenu textuel inchangé.
-- **Gammes : retour à un fond simple** : un cadrage feuillage (fond flou
-  plein cadre, puis des branches détourées à 2 puis 4 coins) a été essayé
-  pour cette section mais jugé "cheap" dans ce contexte précis (pas assez
-  de matière derrière pour porter l'effet) ; la section est revenue à un
-  fond `bg-ciel` uni, sans décoration. Les assets de branches détourées
-  n'ont pas été perdus : ils sont réutilisés pour Notre histoire / Chiffres
-  clés ci-dessus, où ils sont posés sur une vraie photo.
+  brume comme le fond de la section des 3 piliers qui suit (transition
+  dans la continuité de la couleur, pas de séparation visible), avec son
+  contour traité en une vraie ligne de lumière liquid glass (`.wave-rim` —
+  cœur quasi blanc, halo chaud en laiton, `filter: drop-shadow`) — se
+  balaie par un `clip-path` lié en continu à la progression du scroll
+  jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
+  changement de section).
+- **Notre histoire / Chiffres clés** : un habillage photo (forêt embrumée
+  en fond + cadrage de branches détourées) a été essayé pour ces deux
+  sections puis annulé — jugé "cheap", pas assez soft. Retour aux fonds
+  plats d'origine (`bg-brume-2` / brume), le contenu reste posé dans de
+  vrais panneaux liquid glass (`GlassPanel`, ton clair, `sheen`) —
+  l'habillage glass en lui-même était apprécié, seule la photo derrière ne
+  fonctionnait pas. Notre histoire garde son petit repère (icône sapin) +
+  ligne dorée sous l'eyebrow ; les 3 chiffres clés gardent chacun leur
+  icône dorée (bouclier/camion/hexagone — la France comme "l'Hexagone")
+  au-dessus de la valeur. Contenu textuel identique à l'original dans les
+  deux cas.
+- **Gammes : fond simple** : un cadrage feuillage (fond flou plein cadre,
+  puis des branches détourées à 2 puis 4 coins) a été essayé pour cette
+  section mais jugé "cheap" dans ce contexte précis (pas assez de matière
+  derrière pour porter l'effet) ; la section est restée sur un fond
+  `bg-ciel` uni, sans décoration.
 
 ## À faire avant la mise en prod
 
