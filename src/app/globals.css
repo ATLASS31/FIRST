@@ -81,27 +81,25 @@ body {
   -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 
-/* Verre "objet premium" : vraiment transparent, gros blur, plusieurs
-   couches (ombre → verre → reflet → contenu) et un glow laiton très
-   discret autour — pour que ça se sente comme un objet physique en verre
-   posé sur la page, pas un panneau de contenu sombre. */
+/* Verre "objet premium" : noir mat chaud (pas un noir plein), pour les
+   pièces qui doivent se sentir comme un vrai objet (calculateur) plutôt
+   qu'un panneau de contenu — plus de contraste, un highlight plus marqué. */
 .glass-graphite {
   background:
     radial-gradient(
       140% 120% at 15% 0%,
-      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.1) 0%,
       transparent 55%
     ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.03)),
-    rgba(33, 30, 27, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top-color: rgba(255, 255, 255, 0.28);
+    linear-gradient(160deg, #3a352c 0%, #211d18 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.32);
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.35),
-    0 0 120px rgba(203, 166, 93, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(50px) saturate(160%);
-  -webkit-backdrop-filter: blur(50px) saturate(160%);
+    0 32px 64px -16px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
 @supports (backdrop-filter: url(#glass-distortion)) {
@@ -112,7 +110,7 @@ body {
     backdrop-filter: url(#glass-distortion) blur(8px) saturate(160%);
   }
   .glass-graphite {
-    backdrop-filter: url(#glass-distortion) blur(36px) saturate(160%);
+    backdrop-filter: url(#glass-distortion) blur(10px) saturate(150%);
   }
 }
 

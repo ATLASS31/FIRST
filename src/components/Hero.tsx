@@ -178,9 +178,10 @@ export default function Hero() {
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[32vh] min-h-[180px] overflow-hidden will-change-transform"
           style={{
             transform: "translateY(100%)",
-            maskImage: "linear-gradient(to top, black 55%, transparent 100%)",
+            maskImage:
+              "radial-gradient(ellipse 80% 100% at 50% 100%, black 45%, transparent 100%)",
             WebkitMaskImage:
-              "linear-gradient(to top, black 55%, transparent 100%)",
+              "radial-gradient(ellipse 80% 100% at 50% 100%, black 45%, transparent 100%)",
           }}
         >
           <Image

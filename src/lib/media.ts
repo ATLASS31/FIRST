@@ -10,7 +10,7 @@ export const HERO_MEDIA = {
   videoUrl:
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090851_5b77ab20-5792-4ea6-8787-b8e9d668de3c.mp4",
   grassUrl:
-    "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_175746_85e2c938-1629-4ce8-8d4c-465047f79427.png",
+    "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_185338_279bf365-f5cb-4fc6-b931-9e18e6333ee1.png",
 };
 
 export const FOLIAGE_URL =

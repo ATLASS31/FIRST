@@ -7,15 +7,17 @@ import GlowField from "./GlowField";
 import TiltCard from "./TiltCard";
 import { GAMMES } from "@/lib/gammes";
 
-function SparkleIcon({ className = "" }: { className?: string }) {
+function SparkleIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={`scale-50 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:rotate-45 group-hover:opacity-100 group-focus-within:scale-100 group-focus-within:opacity-100 group-active:scale-100 group-active:opacity-100 ${className}`}
-    >
-      <path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" />
-    </svg>
+    <span className="inline-flex w-0 shrink-0 items-center overflow-hidden transition-[width,margin-right] duration-300 group-hover:w-3 group-hover:mr-1.5 group-focus-within:w-3 group-focus-within:mr-1.5 group-active:w-3 group-active:mr-1.5">
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="h-3 w-3 shrink-0 -rotate-45 transition-transform duration-300 group-hover:rotate-0"
+      >
+        <path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" />
+      </svg>
+    </span>
   );
 }
 
@@ -51,9 +53,9 @@ export default function GammesPreview() {
                     <div className="absolute inset-0 bg-gradient-to-t from-encre/85 via-encre/20 to-transparent" />
 
                     <span
-                      className={`glass absolute left-5 top-5 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold text-${gamme.accent}`}
+                      className={`glass absolute left-5 top-5 flex items-center rounded-full px-4 py-1.5 text-xs font-semibold text-${gamme.accent}`}
                     >
-                      <SparkleIcon className="h-3 w-3" />
+                      <SparkleIcon />
                       {gamme.name}
                     </span>
 
