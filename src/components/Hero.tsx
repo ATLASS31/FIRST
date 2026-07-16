@@ -2,7 +2,22 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { HERO_MEDIA } from "@/lib/media";
+
+// Courbe "ease-out-expo" : un départ franc qui ralentit en douceur vers la
+// fin, la même utilisée ailleurs sur le site pour les mouvements d'entrée
+// premium (cohérence de la signature de mouvement).
+const PREMIUM_EASE = [0.16, 1, 0.3, 1] as const;
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 22 },
+  visible: { opacity: 1, y: 0 },
+};
+
+// Le texte s'efface en douceur sur le tout début du scroll (pas de zone
+// morte : dès qu'on scrolle, la vidéo prend le relais visuellement).
+const TEXT_FADE_OUT_RANGE = 0.1;
 
 /**
  * Hero avec vidéo pilotée par le scroll, jamais lue en autoplay.
@@ -30,7 +45,9 @@ export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const waveRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -97,11 +114,24 @@ export default function Hero() {
           ),
           1
         );
-        const opacity = Math.min(waveProgress / 0.28, 1);
+        // Le fondu se termine vite (12% de la fenêtre) : un vrai flash
+        // d'apparition net, distinct de la montée/du glissement qui
+        // continuent ensuite pendant que la forme est déjà pleinement
+        // opaque.
+        const opacity = Math.min(waveProgress / 0.12, 1);
         const riseY = (1 - Math.min(waveProgress / 0.55, 1)) * 100;
         const driftX = -(1 - waveProgress) * 6;
         waveRef.current.style.opacity = String(opacity);
         waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
+      }
+
+      // Le bloc texte du hero s'efface en douceur dès les tout premiers
+      // pourcents de scroll — la vidéo prend alors visuellement le relais,
+      // plutôt que le texte qui reste plaqué dessus pendant tout le scrub.
+      if (textRef.current) {
+        const fadeOut = Math.min(progress / TEXT_FADE_OUT_RANGE, 1);
+        textRef.current.style.opacity = String(1 - fadeOut);
+        textRef.current.style.transform = `translateY(${-fadeOut * 32}px)`;
       }
 
       if (!ready) {
@@ -166,21 +196,49 @@ export default function Hero() {
         {/* Voile très léger, uniquement pour garantir la lisibilité du texte — jamais un dégradé de couleur plat en remplacement de la photo. */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-encre/15 via-transparent to-transparent" />
 
-        <div className="relative z-10 flex h-full w-full flex-col items-start justify-center px-6 text-left sm:px-12 lg:px-20">
-          <p className="eyebrow mb-6 text-xs text-brume sm:text-sm">
+        {/* Deux calques distincts et sans conflit : le wrapper (ref, JS
+            vanille) pilote l'effacement au scroll (opacity/translateY,
+            cf. tick()) ; chaque élément à l'intérieur pilote sa propre
+            entrée en cascade au chargement (Framer Motion) — deux
+            systèmes d'animation différents, mais sur des noeuds DOM
+            différents, donc ils se composent proprement. */}
+        <div
+          ref={textRef}
+          className="relative z-10 flex h-full w-full flex-col items-start justify-center px-6 text-left sm:px-12 lg:px-20"
+        >
+          <motion.p
+            initial={prefersReducedMotion ? false : "hidden"}
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.7, delay: 0.15, ease: PREMIUM_EASE }}
+            className="eyebrow mb-6 text-xs text-brume sm:text-sm"
+          >
             Bellora
-          </p>
-          <h1 className="max-w-2xl text-[11vw] leading-[1.05] font-semibold text-brume sm:text-[6.5vw] lg:text-[72px]">
+          </motion.p>
+          <motion.h1
+            initial={prefersReducedMotion ? false : "hidden"}
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.85, delay: 0.32, ease: PREMIUM_EASE }}
+            className="max-w-2xl text-[11vw] leading-[1.05] font-semibold text-brume sm:text-[6.5vw] lg:text-[72px]"
+          >
             Une qualité aussi <span className="text-laiton">noble</span> que
             notre engagement.
-          </h1>
+          </motion.h1>
 
-          <Link
-            href="/#gammes"
-            className="glass-dark mt-10 rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+          <motion.div
+            initial={prefersReducedMotion ? false : "hidden"}
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.7, delay: 0.55, ease: PREMIUM_EASE }}
           >
-            Découvrir nos gammes
-          </Link>
+            <Link
+              href="/#gammes"
+              className="glass-dark mt-10 rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+            >
+              Découvrir nos gammes
+            </Link>
+          </motion.div>
         </div>
 
         <div

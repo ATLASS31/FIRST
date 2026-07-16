@@ -100,11 +100,24 @@ npm run dev
   version actuelle ne révèle jamais la forme progressivement — elle existe
   toujours entière, plus large que l'écran (24% de largeur en plus, cachée
   par l'`overflow-hidden` du conteneur sticky) — et arrive par un fondu
-  rapide + une montée depuis hors-champ + un glissement horizontal
-  continu vers la droite en même temps, pour simuler une vague qui bouge.
-  Liée en continu à la progression du scroll jusqu'à la toute fin
-  (`WAVE_REVEAL_END = 1`, pas de temps mort avant le changement de
-  section), scrubbable dans les deux sens.
+  rapide (12% de la fenêtre de révélation — un vrai flash net, terminé
+  bien avant la fin de la montée) + une montée depuis hors-champ + un
+  glissement horizontal continu vers la droite en même temps, pour
+  simuler une vague qui bouge. Liée en continu à la progression du scroll
+  jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
+  changement de section), scrubbable dans les deux sens.
+- **Hero : entrée du texte en cascade + effacement au scroll** : le bloc
+  eyebrow/titre/CTA n'avait jusqu'ici aucune animation propre. Il entre
+  maintenant en cascade au chargement (Framer Motion, fondu + léger
+  glissement vers le haut, décalé par élément — eyebrow puis titre puis
+  bouton — courbe "ease-out-expo" cohérente avec le reste du site), puis
+  s'efface en douceur (fondu + translation) dès les tout premiers pourcents
+  du scroll pour laisser la vidéo prendre visuellement le relais plutôt
+  que de rester plaqué dessus pendant tout le scrub. Deux systèmes
+  d'animation distincts sur des nœuds DOM différents (le wrapper piloté en
+  JS vanille pour le scroll, chaque enfant piloté par Framer Motion pour
+  l'entrée) : pas de conflit entre eux. Respecte `prefers-reduced-motion`
+  (élements affichés directement, sans animation).
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
