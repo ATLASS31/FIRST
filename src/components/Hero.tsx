@@ -44,6 +44,10 @@ export default function Hero() {
     if (prefersReducedMotion) return;
 
     const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+    }
     const frameCache = new Map<number, ImageBitmap>();
     const canUseCache = typeof window.createImageBitmap === "function";
 
@@ -59,6 +63,27 @@ export default function Hero() {
 
     const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
 
+    // La résolution interne du canvas est calée sur sa taille d'affichage
+    // réelle (× devicePixelRatio), pas sur la résolution native de la
+    // vidéo — sinon le navigateur agrandit un bitmap 720p à la taille de
+    // l'écran via un simple scale CSS et le résultat pixellise. On calcule
+    // nous-mêmes le recadrage "object-cover" dans drawCachedFrame pour que
+    // l'image, une fois dessinée, n'ait plus besoin d'être réétirée.
+    const resizeCanvas = () => {
+      // Le conteneur sticky fait toujours exactement un écran (h-screen).
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.round(window.innerWidth * dpr);
+      const h = Math.round(window.innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+        }
+      }
+    };
+
     const checkReady = () => {
       duration = video.duration || 0;
       ready =
@@ -66,14 +91,14 @@ export default function Hero() {
         duration > 0 &&
         video.readyState >= video.HAVE_FUTURE_DATA;
       if (ready && canvas.width === 0) {
-        canvas.width = video.videoWidth || 1280;
-        canvas.height = video.videoHeight || 720;
+        resizeCanvas();
       }
     };
 
     video.addEventListener("loadedmetadata", checkReady);
     video.addEventListener("canplay", checkReady);
     video.addEventListener("progress", checkReady);
+    window.addEventListener("resize", resizeCanvas);
     checkReady();
 
     const seekTo = (time: number) =>
@@ -165,7 +190,19 @@ export default function Hero() {
         bitmap = frameCache.get(bucket - d) || frameCache.get(bucket + d);
       }
       if (!bitmap) return false;
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      // Recadrage "object-cover" manuel : la vidéo source (720p, 16:9) et le
+      // canvas (résolution écran) n'ont pas forcément le même ratio, et un
+      // <canvas> ne connaît pas object-fit. Sans ça le bitmap serait étiré
+      // plutôt que recadré, en plus d'être flou.
+      const scale = Math.max(
+        canvas.width / bitmap.width,
+        canvas.height / bitmap.height
+      );
+      const sw = canvas.width / scale;
+      const sh = canvas.height / scale;
+      const sx = (bitmap.width - sw) / 2;
+      const sy = (bitmap.height - sh) / 2;
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       displayedTime = time;
       return true;
     };
@@ -261,6 +298,7 @@ export default function Hero() {
       video.removeEventListener("loadedmetadata", checkReady);
       video.removeEventListener("canplay", checkReady);
       video.removeEventListener("progress", checkReady);
+      window.removeEventListener("resize", resizeCanvas);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       video.pause();
       frameCache.forEach((bitmap) => bitmap.close());
@@ -322,23 +360,31 @@ export default function Hero() {
           className="absolute bottom-10 left-1/2 z-10 h-12 w-px -translate-x-1/2 bg-gradient-to-b from-brume/70 to-transparent"
         />
 
-        {/* Vague : une fine ligne de lumière liquid glass qui trace le bord
-            entre le hero et la section suivante, teintée comme le fond de
-            la catégorie qui suit (brume). Se révèle en douceur sur le tout
-            dernier bout du scroll (cf. tick()). */}
-        <svg aria-hidden className="absolute h-0 w-0">
-          <defs>
-            <clipPath id="hero-wave-clip" clipPathUnits="objectBoundingBox">
-              <path d="M0,0.55 C0.22,0.85 0.38,0.15 0.58,0.45 C0.72,0.65 0.88,0.25 1,0.5 L1,0.62 C0.88,0.37 0.72,0.77 0.58,0.57 C0.38,0.27 0.22,0.97 0,0.67 Z" />
-            </clipPath>
-          </defs>
-        </svg>
+        {/* Vague : un aplat plein teinté brume (couleur du fond de la
+            section suivante) avec un contour lumineux en liquid glass —
+            pas toute la forme en verre, seulement son bord. Se révèle en
+            douceur sur le tout dernier bout du scroll (cf. tick()). */}
         <div
           ref={waveRef}
           aria-hidden
-          className="wave-shape wave-line pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-24 sm:h-32"
-          style={{ clipPath: "url(#hero-wave-clip)" }}
-        />
+          className="wave-shape pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-32 sm:h-48"
+        >
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="h-full w-full overflow-visible"
+          >
+            <path
+              className="wave-fill"
+              d="M0,52 C22,80 38,16 58,46 C72,66 88,24 100,50 L100,100 L0,100 Z"
+            />
+            <path
+              className="wave-rim"
+              vectorEffect="non-scaling-stroke"
+              d="M0,52 C22,80 38,16 58,46 C72,66 88,24 100,50"
+            />
+          </svg>
+        </div>
       </div>
     </section>
   );

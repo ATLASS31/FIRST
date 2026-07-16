@@ -5,7 +5,10 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import TiltCard from "./TiltCard";
 import { GAMMES } from "@/lib/gammes";
-import { GAMMES_LEAF_FRAME_URL } from "@/lib/media";
+import {
+  GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL,
+  GAMMES_LEAF_BRANCH_TOP_LEFT_URL,
+} from "@/lib/media";
 
 function SparkleIcon() {
   return (
@@ -24,27 +27,6 @@ function SparkleIcon() {
 export default function GammesPreview() {
   return (
     <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
-      {/* Feuillage en fond de cadre : concentré aux bords/coins, masqué au
-          centre pour laisser les cartes bien lisibles. Se révèle en douceur
-          au scroll plutôt que d'être visible d'entrée — jamais de boucle
-          permanente, juste une entrée. */}
-      <motion.div
-        aria-hidden
-        initial={{ opacity: 0, scale: 1.06 }}
-        whileInView={{ opacity: 0.65, scale: 1 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 1.6, ease: "easeOut" }}
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: `url(${GAMMES_LEAF_FRAME_URL})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          maskImage:
-            "radial-gradient(120% 85% at 50% 50%, transparent 32%, black 88%)",
-          WebkitMaskImage:
-            "radial-gradient(120% 85% at 50% 50%, transparent 32%, black 88%)",
-        }}
-      />
       <div className="relative mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
@@ -96,6 +78,45 @@ export default function GammesPreview() {
             </motion.div>
           ))}
         </div>
+      </div>
+
+      {/* Feuilles détourées en premier plan, comme des branches qui
+          entrent dans le cadre — pas un fond flou plein cadre. En dernier
+          dans le markup pour rester au-dessus des cartes ; pointer-events
+          désactivés pour ne jamais gêner un clic. Révélées en douceur (une
+          seule fois) quand la section entre dans le viewport. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-20">
+        <motion.div
+          initial={{ opacity: 0, x: -28, y: -28 }}
+          whileInView={{ opacity: 1, x: 0, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className="absolute -left-8 -top-10 h-56 w-44 sm:-left-10 sm:-top-14 sm:h-72 sm:w-56"
+        >
+          <Image
+            src={GAMMES_LEAF_BRANCH_TOP_LEFT_URL}
+            alt=""
+            fill
+            sizes="240px"
+            className="object-contain object-left-top"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 28, y: 28 }}
+          whileInView={{ opacity: 1, x: 0, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 1.2, delay: 0.15, ease: "easeOut" }}
+          className="absolute -bottom-10 -right-8 h-52 w-40 sm:-bottom-12 sm:-right-10 sm:h-64 sm:w-48"
+        >
+          <Image
+            src={GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL}
+            alt=""
+            fill
+            sizes="220px"
+            className="object-contain object-right-bottom"
+          />
+        </motion.div>
       </div>
     </section>
   );

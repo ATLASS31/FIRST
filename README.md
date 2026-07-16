@@ -44,14 +44,13 @@ npm run dev
   matériaux qui montent en gamme), utilisés sur la preview accueil et le
   hero de chaque page de gamme — à remplacer par un vrai shooting.
 - **Glass étendu + micro-interactions** : tuiles chiffres clés, badges
-  savoir-faire, CTA finale, bouton du hero, calculateur ; taches de couleur
-  floutées (`GlowField.tsx`) derrière les tuiles/gammes/3-piliers pour que
-  le blur ait quelque chose à réfracter (photos en fond direct essayées et
-  abandonnées — contraste trop dur avec les sections voisines) ; reflet
-  ambiant lent sur le chrome permanent (nav) vs reflet au survol uniquement
-  sur les cartes interactives ; entrées animées au scroll et parallax léger
-  au survol (`TiltCard.tsx`, Framer Motion) sur la quasi-totalité des
-  cartes.
+  savoir-faire, CTA finale, bouton du hero, calculateur ; reflet ambiant
+  lent sur le chrome permanent (nav) vs reflet au survol uniquement sur les
+  cartes interactives ; entrées animées au scroll et parallax léger au
+  survol (`TiltCard.tsx`, Framer Motion) sur la quasi-totalité des cartes.
+  Les taches de couleur floutées (`GlowField.tsx`) utilisées un temps
+  derrière les tuiles/gammes/3-piliers ont été jugées trop décoratives et
+  pas assez premium ("cheap") — le composant a été retiré du site entier.
 - **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : vrai
   liquid glass — flotte sur une photo plein cadre (coucher de soleil sur
   montagnes, `CALCULATOR_BG_URL`), assez transparent pour que le blur
@@ -64,31 +63,36 @@ npm run dev
   seek loin de la dernière image-clé reste un redécodage coûteux quoi qu'on
   fasse. Le scroll vers l'avant utilise `video.play()` + un `playbackRate`
   proportionnel au retard à rattraper (lecture séquentielle, fluide,
-  confirmée). Pour l'arrière, changement de technique : au chargement, la
-  vidéo est lue une fois en entier, cachée derrière le poster, en capturant
-  une image toutes les 0,2s via `createImageBitmap` dans un cache en
-  mémoire. Le scroll vers l'arrière n'a alors plus besoin de seeker du
-  tout : l'image en cache la plus proche est dessinée sur un `<canvas>`
-  superposé à la vidéo. Le scroll vers l'avant repasse sur la vraie vidéo
-  avec un seul seek de resynchronisation au changement de sens. Repli
-  (throttle + seek amorti) si `createImageBitmap` n'est pas disponible.
-  L'effet d'herbe qui montait en premier plan a été abandonné (trop de
-  complexité pour peu de valeur, et lié au chantier vidéo) ; à la place,
-  une vague se révèle en douceur sur le tout dernier bout du scroll pour
-  adoucir la transition vers la section suivante — ce n'est plus un
-  panneau de verre rempli mais un fin trait de lumière (`.wave-line`),
-  teinté brume comme le fond de la section des 3 piliers qui suit, pour
-  que la transition se fasse dans la continuité de couleur plutôt que par
-  contraste.
-- **Gammes : cadrage feuillage plutôt que taches de couleur** : le fond en
-  taches de couleur floutées (`GlowField`) jugé "cheap" pour la section des
-  3 gammes a été retiré ; à la place, une photo de feuillage générée
-  (`GAMMES_LEAF_FRAME_URL`) est posée en fond, masquée par un dégradé
-  radial pour ne rester visible qu'aux bords/coins (centre totalement
-  dégagé autour des cartes), révélée en douceur (fondu + léger zoom
-  arrière) quand la section entre dans le viewport plutôt que visible
-  d'entrée. `GlowField` reste utilisé ailleurs (3 piliers, tuiles
-  chiffres).
+  confirmée). Pour l'arrière : au chargement, la vidéo est lue une fois en
+  entier, cachée derrière le poster, en capturant une image toutes les
+  0,2s via `createImageBitmap` dans un cache en mémoire ; le scroll vers
+  l'arrière n'a alors plus besoin de seeker du tout, il dessine l'image en
+  cache la plus proche sur un `<canvas>` superposé à la vidéo (fluide,
+  confirmé). Le canvas est dimensionné sur la taille d'affichage réelle
+  (× `devicePixelRatio`, recadrage "object-cover" calculé à la main dans
+  `drawImage`, `imageSmoothingQuality: "high"`) plutôt que sur la
+  résolution native 720p de la vidéo — sinon le navigateur agrandit un
+  petit bitmap à la taille de l'écran par un simple scale CSS et le
+  résultat pixellise (bien que fluide). Repli (throttle + seek amorti) si
+  `createImageBitmap` n'est pas disponible. L'effet d'herbe qui montait en
+  premier plan a été abandonné (trop de complexité pour peu de valeur, et
+  lié au chantier vidéo) ; à la place, une vague se révèle en douceur sur
+  le tout dernier bout du scroll pour adoucir la transition vers la
+  section suivante — un aplat plein (SVG), teinté brume comme le fond de
+  la section des 3 piliers qui suit pour que la transition se fasse dans
+  la continuité de couleur plutôt que par contraste, avec seulement son
+  contour traité en liquid glass lumineux (`.wave-rim`, `filter:
+  drop-shadow`) — pas toute la forme réduite à un simple trait, comme un
+  essai précédent l'avait fait par erreur.
+- **Gammes : feuilles détourées en premier plan** : le fond en taches de
+  couleur floutées (`GlowField`) et, avant ça, un fond photo feuillage
+  plein cadre (jugés "cheap"/trop flous) ont été retirés ; à la place,
+  deux branches détourées (fond transparent, générées puis passées au
+  détourage Higgsfield — `GAMMES_LEAF_BRANCH_TOP_LEFT_URL` et
+  `..._BOTTOM_RIGHT_URL`) sont posées en dernier dans le markup (donc au
+  premier plan, au-dessus des cartes), calées aux deux coins opposés de la
+  section, révélées en douceur (fondu + léger glissement depuis le coin)
+  quand la section entre dans le viewport plutôt que visibles d'entrée.
 
 ## À faire avant la mise en prod
 

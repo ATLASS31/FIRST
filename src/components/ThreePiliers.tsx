@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
-import GlowField from "./GlowField";
 import TiltCard from "./TiltCard";
 
 const PILIERS = [
@@ -26,8 +25,6 @@ const PILIERS = [
 export default function ThreePiliers() {
   return (
     <section id="concept" className="relative overflow-hidden py-28">
-      <GlowField tone="green" />
-
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid gap-6 md:grid-cols-3">
           {PILIERS.map((pilier, i) => (

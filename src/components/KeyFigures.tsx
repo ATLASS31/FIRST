@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
-import GlowField from "./GlowField";
 import TiltCard from "./TiltCard";
 
 const FIGURES = [
@@ -14,7 +13,6 @@ const FIGURES = [
 export default function KeyFigures() {
   return (
     <section className="relative overflow-hidden px-6 py-28">
-      <GlowField tone="cool" />
       <div className="relative mx-auto max-w-6xl">
         <div className="grid gap-6 sm:grid-cols-3">
           {FIGURES.map((figure, i) => (

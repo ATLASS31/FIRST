@@ -14,5 +14,13 @@ export const HERO_MEDIA = {
 export const CALCULATOR_BG_URL =
   "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_194819_a439f461-058d-4895-b0fb-07345b4b1f94.png";
 
-export const GAMMES_LEAF_FRAME_URL =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_201202_af9825c5-6e56-4186-8744-c835eb176a21.png";
+/**
+ * Branches détourées (fond transparent) pour le cadrage feuillage de la
+ * section Gammes — posées en premier plan aux coins, pas un fond flou
+ * plein cadre.
+ */
+export const GAMMES_LEAF_BRANCH_TOP_LEFT_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_204710_a7d184f1-0f85-4a45-a09f-ee280e7f737b.png";
+
+export const GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_204715_3e6c7f45-6daa-485d-a621-e6ccf8676637.png";

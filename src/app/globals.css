@@ -191,23 +191,27 @@ body {
   opacity: 1;
 }
 
-/* La vague elle-même : plus un panneau de verre rempli, mais un simple trait
-   de lumière — teinté brume, comme le fond de la section suivante, pour que
-   la transition se fasse dans la même couleur plutôt que par contraste.
-   `filter: drop-shadow` (et non `box-shadow`, qui serait coupé net par le
-   clip-path) porte la lueur autour de la forme déjà découpée. */
-.wave-line {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--brume) 92%, transparent) 0%,
-    color-mix(in srgb, var(--brume) 55%, transparent) 100%
-  );
-  backdrop-filter: blur(6px) saturate(160%);
-  -webkit-backdrop-filter: blur(6px) saturate(160%);
+/* La vague elle-même : un aplat plein, teinté brume comme le fond de la
+   section suivante (transition dans la continuité de la couleur plutôt que
+   par contraste) — le liquid glass est réservé au seul contour (`.wave-rim`),
+   pas à toute la forme. */
+.wave-fill {
+  fill: var(--brume);
+}
+
+/* Contour lumineux : juste le tracé de la courbe, sans remplissage. Le glow
+   passe par `filter: drop-shadow` (jamais coupé par un clip-path, ici il
+   n'y en a même plus besoin) plutôt que `box-shadow`. `vector-effect:
+   non-scaling-stroke` garde une épaisseur de trait constante en pixels
+   écran quel que soit l'étirement du viewBox par le ratio du conteneur. */
+.wave-rim {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brume) 100%, white 45%);
+  stroke-width: 2.5px;
   filter: drop-shadow(
-      0 0 16px color-mix(in srgb, var(--brume) 75%, transparent)
+      0 0 8px color-mix(in srgb, var(--brume) 90%, transparent)
     )
-    drop-shadow(0 0 42px color-mix(in srgb, var(--brume) 40%, transparent));
+    drop-shadow(0 0 24px color-mix(in srgb, var(--brume) 55%, transparent));
 }
 
 @media (prefers-reduced-motion: reduce) {
