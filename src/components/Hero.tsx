@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { HERO_MEDIA } from "@/lib/media";
 
 /**
@@ -118,6 +119,13 @@ export default function Hero() {
             Une qualité aussi <span className="text-laiton">noble</span> que
             notre engagement.
           </h1>
+
+          <Link
+            href="/#gammes"
+            className="glass-dark mt-10 rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+          >
+            Découvrir nos gammes
+          </Link>
         </div>
 
         <div

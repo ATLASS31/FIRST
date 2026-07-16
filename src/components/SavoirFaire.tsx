@@ -27,7 +27,7 @@ export default function SavoirFaire() {
           {LABELS.map((label) => (
             <span
               key={label}
-              className="rounded-full border border-foret/20 px-4 py-1.5 text-xs font-medium text-foret"
+              className="glass rounded-full px-4 py-1.5 text-xs font-medium text-foret"
             >
               {label}
             </span>
