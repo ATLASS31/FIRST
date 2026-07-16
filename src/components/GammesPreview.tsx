@@ -34,6 +34,40 @@ function PlantShadow({ className }: { className?: string }) {
   );
 }
 
+// Tailles responsive : les tailles fixes en rem devenaient énormes et
+// illisibles (juste un aplat flou pixelisé) sur un petit viewport mobile —
+// chaque silhouette grandit par palier avec le viewport plutôt que de
+// garder une taille absolue pensée pour desktop.
+const PLANT_SHADOWS = [
+  {
+    position: "-left-10 -top-14 sm:-left-14 sm:-top-20 lg:-left-16 lg:-top-24",
+    size: "h-52 w-52 sm:h-72 sm:w-72 lg:h-[28rem] lg:w-[28rem]",
+    rotate: "",
+    opacity: 0.32,
+  },
+  {
+    position:
+      "-right-12 -top-10 sm:-right-16 sm:-top-14 lg:-right-20 lg:-top-16",
+    size: "h-44 w-44 sm:h-60 sm:w-60 lg:h-[22rem] lg:w-[22rem]",
+    rotate: "rotate-[95deg]",
+    opacity: 0.26,
+  },
+  {
+    position:
+      "-bottom-16 -right-10 sm:-bottom-20 sm:-right-12 lg:-bottom-28 lg:-right-14",
+    size: "h-48 w-48 sm:h-64 sm:w-64 lg:h-[26rem] lg:w-[26rem]",
+    rotate: "rotate-[155deg]",
+    opacity: 0.3,
+  },
+  {
+    position:
+      "-bottom-10 -left-12 sm:-bottom-14 sm:-left-16 lg:-bottom-16 lg:-left-20",
+    size: "h-40 w-40 sm:h-56 sm:w-56 lg:h-[20rem] lg:w-[20rem]",
+    rotate: "rotate-[-70deg]",
+    opacity: 0.24,
+  },
+] as const;
+
 function SparkleIcon() {
   return (
     <span className="inline-flex w-0 shrink-0 items-center overflow-hidden transition-[width,margin-right] duration-300 group-hover:w-3 group-hover:mr-1.5 group-focus-within:w-3 group-focus-within:mr-1.5 group-active:w-3 group-active:mr-1.5">
@@ -53,24 +87,28 @@ export default function GammesPreview() {
     <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
       {/* Ombres de plantes en fond de section : pas des photos (jugées
           cheap dans ce contexte), juste des silhouettes floutées, comme une
-          ombre portée sur un mur. Moins de flou et plus d'opacité que le
-          premier essai (trop discret, à peine visible) ; 4 silhouettes
-          (un coin chacune) plutôt que 2 pour une couverture plus généreuse.
-          Révélées en douceur (une fois) quand la section entre dans le
+          ombre portée sur un mur. Tailles responsive (une taille fixe
+          pensée pour desktop devenait un aplat flou illisible sur mobile).
+          Chacune sa propre animation décalée dans le temps — une par une,
+          pas toutes en même temps — quand la section entre dans le
           viewport. */}
-      <motion.div
+      <div
         aria-hidden
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 1.4, ease: "easeOut" }}
         className="pointer-events-none absolute inset-0 overflow-hidden text-encre"
       >
-        <PlantShadow className="absolute -left-16 -top-24 h-[28rem] w-[28rem] opacity-[0.32] blur-md" />
-        <PlantShadow className="absolute -right-20 -top-16 h-[22rem] w-[22rem] rotate-[95deg] opacity-[0.26] blur-md" />
-        <PlantShadow className="absolute -bottom-28 -right-14 h-[26rem] w-[26rem] rotate-[155deg] opacity-[0.3] blur-md" />
-        <PlantShadow className="absolute -bottom-16 -left-20 h-[20rem] w-[20rem] rotate-[-70deg] opacity-[0.24] blur-md" />
-      </motion.div>
+        {PLANT_SHADOWS.map((shadow, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: shadow.opacity }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 1, ease: "easeOut", delay: i * 0.35 }}
+            className={`absolute ${shadow.position} ${shadow.size} ${shadow.rotate}`}
+          >
+            <PlantShadow className="h-full w-full blur-md" />
+          </motion.div>
+        ))}
+      </div>
 
       <div className="relative mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>

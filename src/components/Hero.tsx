@@ -367,13 +367,12 @@ export default function Hero() {
             animate="visible"
             variants={fadeUp}
             transition={{ duration: 0.7, delay: 1.05, ease: PREMIUM_EASE }}
-            className="mt-14"
+            className="mt-11"
           >
             <GlassPanel
               as={Link}
               href="/#gammes"
               tone="dark"
-              sheen
               rounded="rounded-full"
               className="hero-cta px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
             >

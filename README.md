@@ -129,12 +129,28 @@ npm run dev
   `prefers-reduced-motion` (texte affiché directement, sans animation).
   Au passage, l'espacement entre le titre et le bouton (`mt-10`) était
   trop court pour la taille du titre et laissait le bouton chevaucher le
-  jambage du "g" de "engagement." — corrigé (`mt-14`). Le bouton lui-même
-  passe par `GlassPanel` (`tone="dark"`, `sheen`) plutôt qu'un `.glass-dark`
-  posé à la main, pour hériter du reflet ambiant déjà utilisé sur le
-  chrome permanent du site, plus un halo doré dédié (`.hero-cta`, en
-  `filter: drop-shadow` pour ne pas toucher au `.glass-dark` partagé
-  ailleurs) — plus premium et lumineux qu'un simple panneau sombre.
+  jambage du "g" de "engagement." — passé à `mt-14`, jugé ensuite trop
+  loin ("espacement pas premium") — recalibré à `mt-11`.
+- **Hero : halo du bouton CTA, bug "boule" corrigé** : le bouton passe par
+  `GlassPanel` (`tone="dark"`) avec un halo doré dédié (`.hero-cta`) pour
+  être plus lumineux qu'un simple `.glass-dark`. Deux itérations rejetées
+  avant la version actuelle, un vrai bug de rendu et pas une erreur de
+  classe : (1) le halo en `filter: drop-shadow` recalcule l'ombre à partir
+  du contenu réellement rendu à chaque frame — combiné au reflet ambiant
+  du bouton (`.glass-sheen`, un `::before` animé qui balaie en boucle),
+  l'ombre "suivait" ce reflet en mouvement, vue comme une grosse tache
+  floue qui traverse le bouton ("on voit littéralement une boule passer") ;
+  (2) passage à `box-shadow` (qui ne réagit qu'à la géométrie de la boîte,
+  jamais au contenu) a bien réglé la boule, mais le reflet `.glass-sheen`
+  lui-même débordait visuellement du bouton (barre diagonale dépassant
+  largement la pilule), malgré un `overflow: hidden` + `border-radius`
+  confirmés corrects sur l'élément (vérifié via `getComputedStyle`, puis
+  confirmé en retirant la classe `.glass-sheen` en direct dans le DOM du
+  navigateur — la barre disparaît instantanément). Solution retenue :
+  pas de reflet ambiant sur ce bouton précis, seulement le halo doré
+  statique en `box-shadow` (redéclarant au passage les valeurs de base de
+  `.glass-dark`, puisqu'un seul `box-shadow` peut s'appliquer par élément)
+  — déjà largement assez lumineux à lui seul, et sans aucun artefact.
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
@@ -158,7 +174,16 @@ npm run dev
   opacité 24-32%, et 4 silhouettes (un coin chacune) pour une couverture
   perceptible sans devenir une vraie photo. Aucune dépendance à une image
   générée (donc vérifiable et stable, contrairement aux tentatives
-  précédentes).
+  précédentes). Tailles ensuite rendues responsive : les valeurs fixes en
+  `rem` (pensées pour desktop) devenaient énormes et illisibles sur un
+  petit viewport mobile ("trop gros flou pixelisé, on comprend pas ce que
+  c'est") — chaque silhouette a maintenant une taille et une position par
+  palier de breakpoint (`PLANT_SHADOWS` dans `GammesPreview.tsx`, base
+  mobile → `sm:` → `lg:`) au lieu d'une taille absolue unique. La
+  révélation, qui faisait apparaître les 4 silhouettes en un seul fondu
+  groupé, a aussi été refaite : chaque silhouette a maintenant son propre
+  `motion.div` avec un délai croissant (`delay: i * 0.35`), pour un
+  apparaître une par une plutôt que toutes en même temps.
 
 ## À faire avant la mise en prod
 
