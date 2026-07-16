@@ -2,33 +2,27 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { HERO_MEDIA } from "@/lib/media";
 
 /**
- * Hero avec vidéo scrubée par le scroll (technique Apple), jamais lue en
- * autoplay. La progression du scroll (0→1) sur la hauteur de la section
- * pilote video.currentTime.
+ * Hero avec vidéo pilotée par le scroll, jamais lue en autoplay.
  *
- * La vidéo source (générée) n'a probablement une image-clé que toutes les
- * 1-2s : chaque seek loin d'une keyframe force un redécodage depuis celle-ci,
- * ce qui devient très coûteux si on seek à chaque frame de scroll (jusqu'à
- * 60×/s). On privilégie ici la fluidité sur la précision 1:1 scroll↔frame :
- * seeks espacés d'au moins MIN_SEEK_INTERVAL_MS, chacun limité à
- * MAX_STEP_SECONDS de déplacement. La vidéo "rattrape" son retard en douceur
- * plutôt que de suivre le scroll au pixel près — c'est un compromis
- * volontaire (mieux vaut un léger décalage perçu qu'une saccade), pas un
- * réglage définitif : si ça reste saccadé, la vraie correction est de
- * ré-encoder la vidéo avec une image-clé par frame (voir README).
+ * Technique : plutôt que de forcer video.currentTime à chaque frame de
+ * scroll (un seek aléatoire loin de la dernière image-clé force un
+ * redécodage coûteux — c'est ce qui saccadait, même en throttlant la
+ * fréquence des seeks), on laisse le décodeur travailler dans son mode le
+ * moins coûteux : la lecture séquentielle.
+ *
+ * En scrollant vers l'avant, on appelle video.play() avec un playbackRate
+ * proportionnel au retard à rattraper (le décodeur avance frame par frame,
+ * ce qu'il fait nativement bien) puis on pause dès que la cible est
+ * atteinte. Seul le scroll vers l'arrière retombe sur un seek classique
+ * (la vidéo ne sait pas jouer à l'envers) — throttlé, et rare en pratique
+ * sur un hero qu'on traverse une fois en descendant.
  */
-const MIN_SEEK_INTERVAL_MS = 180;
-const MAX_STEP_SECONDS = 0.18;
-const EASE = 0.3;
-
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const grassRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -43,8 +37,8 @@ export default function Hero() {
 
     let duration = 0;
     let ready = false;
-    let appliedTime = 0;
     let lastSeekAt = 0;
+    let playPending = false;
 
     const checkReady = () => {
       duration = video.duration || 0;
@@ -67,75 +61,57 @@ export default function Hero() {
         : 0;
     };
 
+    const safePlay = () => {
+      if (playPending || !video.paused) return;
+      playPending = true;
+      video.play().catch(() => {}).finally(() => {
+        playPending = false;
+      });
+    };
+
     const tick = () => {
       rafRef.current = null;
-      const progress = getProgress();
-
-      // L'herbe entre en scène sur le dernier quart du scroll, comme si le
-      // drone se posait au ras du sol. Transform CSS pur, indépendant de
-      // l'état de la vidéo.
-      if (grassRef.current) {
-        const grassProgress = Math.min(
-          Math.max((progress - 0.72) / 0.28, 0),
-          1
-        );
-        grassRef.current.style.transform = `translateY(${(1 - grassProgress) * 100}%)`;
+      if (!ready) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
       }
 
-      let settled = true;
+      const progress = getProgress();
+      const targetTime = Math.min(progress * duration, duration - 0.05);
+      const diff = targetTime - video.currentTime;
 
-      if (ready) {
-        const targetTime = Math.min(progress * duration, duration - 0.05);
-        const diff = targetTime - appliedTime;
-
-        if (Math.abs(diff) > 0.01) {
-          settled = false;
-          const now = performance.now();
-          if (now - lastSeekAt >= MIN_SEEK_INTERVAL_MS) {
-            const step =
-              Math.sign(diff) *
-              Math.min(Math.abs(diff) * EASE, MAX_STEP_SECONDS);
-            appliedTime = Math.max(0, Math.min(appliedTime + step, duration));
-            lastSeekAt = now;
-            try {
-              if (typeof video.fastSeek === "function") {
-                video.fastSeek(appliedTime);
-              } else {
-                video.currentTime = appliedTime;
-              }
-            } catch {
-              // Seek refusé (vidéo pas encore seekable) — on retentera au
-              // prochain tick, rien d'autre à faire ici.
-            }
+      if (Math.abs(diff) < 0.06) {
+        if (!video.paused) video.pause();
+      } else if (diff > 0) {
+        // Scroll vers l'avant : lecture séquentielle accélérée, jamais de seek.
+        video.playbackRate = Math.min(Math.max(diff / 0.4, 1), 6);
+        safePlay();
+      } else {
+        // Scroll vers l'arrière : pas de lecture inversée possible, on seek
+        // (throttlé — rare, donc le coût est acceptable ici).
+        if (!video.paused) video.pause();
+        const now = performance.now();
+        if (now - lastSeekAt >= 150) {
+          lastSeekAt = now;
+          try {
+            video.currentTime = targetTime;
+          } catch {
+            // Pas encore seekable — on retentera au prochain tick.
           }
         }
       }
 
-      // On continue de "tiquer" tant que la vidéo n'a pas rattrapé sa
-      // cible, même après la fin du scroll — l'effet de rattrapage doux
-      // est voulu, pas un bug.
-      if (!settled) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      rafRef.current = requestAnimationFrame(tick);
     };
 
-    const onScroll = () => {
-      if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    onScroll();
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
       video.removeEventListener("loadedmetadata", checkReady);
       video.removeEventListener("canplay", checkReady);
       video.removeEventListener("progress", checkReady);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      video.pause();
     };
   }, []);
 
@@ -170,28 +146,6 @@ export default function Hero() {
           >
             Découvrir nos gammes
           </Link>
-        </div>
-
-        <div
-          ref={grassRef}
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[32vh] min-h-[180px] overflow-hidden will-change-transform"
-          style={{
-            transform: "translateY(100%)",
-            maskImage:
-              "radial-gradient(ellipse 80% 100% at 50% 100%, black 45%, transparent 100%)",
-            WebkitMaskImage:
-              "radial-gradient(ellipse 80% 100% at 50% 100%, black 45%, transparent 100%)",
-          }}
-        >
-          <Image
-            src={HERO_MEDIA.grassUrl}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-bottom"
-          />
         </div>
 
         <div

@@ -6,7 +6,7 @@
 export default function GlowField({
   tone = "cool",
 }: {
-  tone?: "cool" | "warm";
+  tone?: "cool" | "warm" | "green";
 }) {
   if (tone === "warm") {
     return (
@@ -17,6 +17,20 @@ export default function GlowField({
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-laiton/30 blur-3xl" />
         <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-foret/20 blur-3xl" />
         <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-ciel/70 blur-3xl" />
+      </div>
+    );
+  }
+
+  if (tone === "green") {
+    return (
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -left-16 top-0 h-80 w-80 rounded-full bg-foret/35 blur-3xl" />
+        <div className="absolute right-0 top-10 h-96 w-96 rounded-full bg-foret/25 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-laiton/15 blur-3xl" />
+        <div className="absolute bottom-10 right-1/4 h-64 w-64 rounded-full bg-foret/20 blur-3xl" />
       </div>
     );
   }

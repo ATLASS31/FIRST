@@ -83,23 +83,25 @@ body {
 
 /* Verre "objet premium" : noir mat chaud (pas un noir plein), pour les
    pièces qui doivent se sentir comme un vrai objet (calculateur) plutôt
-   qu'un panneau de contenu — plus de contraste, un highlight plus marqué. */
+   qu'un panneau de contenu. Semi-transparent — la version précédente était
+   un dégradé 100% opaque, donc le blur n'avait rien à réfracter et ça
+   lisait comme un bloc solide plutôt que du verre. */
 .glass-graphite {
   background:
     radial-gradient(
       140% 120% at 15% 0%,
-      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.12) 0%,
       transparent 55%
     ),
-    linear-gradient(160deg, #3a352c 0%, #211d18 100%);
+    rgba(33, 30, 27, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-top-color: rgba(255, 255, 255, 0.32);
   box-shadow:
     0 32px 64px -16px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     inset 0 -1px 0 rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
 }
 
 @supports (backdrop-filter: url(#glass-distortion)) {
@@ -110,7 +112,7 @@ body {
     backdrop-filter: url(#glass-distortion) blur(8px) saturate(160%);
   }
   .glass-graphite {
-    backdrop-filter: url(#glass-distortion) blur(10px) saturate(150%);
+    backdrop-filter: url(#glass-distortion) blur(16px) saturate(160%);
   }
 }
 

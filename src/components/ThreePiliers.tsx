@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
+import GlowField from "./GlowField";
 import TiltCard from "./TiltCard";
-import { FOLIAGE_URL } from "@/lib/media";
 
 const PILIERS = [
   {
@@ -27,11 +26,7 @@ const PILIERS = [
 export default function ThreePiliers() {
   return (
     <section id="concept" className="relative overflow-hidden py-28">
-      <div className="absolute inset-0">
-        <Image src={FOLIAGE_URL} alt="" fill sizes="100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-brume/85" />
-        <div className="absolute inset-0 bg-gradient-to-b from-brume via-transparent to-brume" />
-      </div>
+      <GlowField tone="green" />
 
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid gap-6 md:grid-cols-3">

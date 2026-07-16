@@ -43,45 +43,43 @@ npm run dev
   rendus IA Higgsfield cohérents entre les 3 gammes (même univers lumineux,
   matériaux qui montent en gamme), utilisés sur la preview accueil et le
   hero de chaque page de gamme — à remplacer par un vrai shooting.
-- **Herbe en premier plan** (`Hero.tsx`) : vrai visuel photo (Higgsfield),
-  révélé sur le dernier quart du scroll du hero avec un fondu en masque CSS,
-  comme si le drone se posait au ras du sol — indépendant de l'état de la
-  vidéo (transform CSS pur).
 - **Glass étendu + micro-interactions** : tuiles chiffres clés, badges
   savoir-faire, CTA finale, bouton du hero, calculateur ; taches de couleur
-  floutées (`GlowField.tsx`) derrière les tuiles/gammes pour que le blur ait
-  quelque chose à réfracter ; reflet ambiant lent sur le chrome permanent
-  (nav) vs reflet au survol uniquement sur les cartes interactives ; entrées
-  animées au scroll et parallax léger au survol (`TiltCard.tsx`, Framer
-  Motion) sur la quasi-totalité des cartes.
-- **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : refonte en
-  "objet premium" — verre sur noir mat chaud (`glass-graphite`), slider
-  custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
+  floutées (`GlowField.tsx`) derrière les tuiles/gammes/3-piliers pour que
+  le blur ait quelque chose à réfracter (photos en fond direct essayées et
+  abandonnées — contraste trop dur avec les sections voisines) ; reflet
+  ambiant lent sur le chrome permanent (nav) vs reflet au survol uniquement
+  sur les cartes interactives ; entrées animées au scroll et parallax léger
+  au survol (`TiltCard.tsx`, Framer Motion) sur la quasi-totalité des
+  cartes.
+- **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : "objet
+  premium" — verre semi-transparent sur noir mat chaud (`glass-graphite`),
+  slider custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
   (`AnimatedNumber.tsx`).
-- **Performance vidéo du hero** : deux mesures combinées. (1) Le seek est
-  throttled côté JS (~180ms min entre deux seeks réels, 0,18s max par pas) —
-  la vidéo "rattrape" le scroll en douceur plutôt que de le suivre au pixel
-  près, un compromis volontaire pour la fluidité. (2) La vidéo elle-même a
-  été repassée dans le pipeline d'upscale Higgsfield (ByteDance, 1080p,
-  30fps) — un vrai ré-encodage côté serveur (pas juste plus de throttle),
-  tenté parce que la vidéo générée d'origine n'a probablement une image-clé
-  que toutes les 1-2s, ce qui rend coûteux tout seek loin d'une keyframe.
-  Je n'ai pas pu vérifier moi-même si le nouvel export a des keyframes plus
-  denses (impossible de lire/inspecter la vidéo depuis ce sandbox) — à
-  confirmer en testant en local.
+- **Performance vidéo du hero** : le seek-par-scroll classique (forcer
+  `video.currentTime` à chaque frame) restait saccadé même throttlé et même
+  après un ré-encodage de la vidéo — un seek loin de la dernière image-clé
+  reste un redécodage coûteux quoi qu'on fasse. Changement de technique :
+  en scrollant vers l'avant (le cas normal), la vidéo est pilotée par
+  `video.play()` + un `playbackRate` proportionnel au retard à rattraper —
+  lecture séquentielle, que les décodeurs gèrent nativement bien, plutôt que
+  des sauts aléatoires. Seul le scroll vers l'arrière retombe sur un seek
+  classique (throttlé), la vidéo ne sachant pas jouer à l'envers. L'effet
+  d'herbe qui montait en premier plan a été abandonné (trop de complexité
+  pour peu de valeur, et lié au chantier vidéo).
 
 ## À faire avant la mise en prod
 
-- **Si la vidéo du hero est toujours saccadée** malgré le re-encodage et le
-  throttle : passer à une séquence d'images (frames extraites, swap sur
-  scroll) plutôt qu'un `<video>` scrubé — c'est la technique la plus fiable
+- **Si la vidéo du hero est toujours saccadée** malgré le changement de
+  technique : passer à une séquence d'images (frames extraites, swap sur
+  scroll) plutôt qu'un `<video>` — c'est la technique la plus fiable
   cross-navigateur pour du scroll-scrub, mais demande d'extraire des frames
   (ffmpeg) que je ne peux pas faire depuis cet environnement.
-- **Rapatrier les médias** (hero, herbe, feuillage, visuels de gammes) :
-  `src/lib/media.ts` et `src/lib/gammes.ts` référencent des images/vidéo
-  générées (Higgsfield CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des
-  liens de génération, pas un stockage permanent. À télécharger et héberger
-  dans `public/` (ou le futur CMS) avant lancement.
+- **Rapatrier les médias** (hero, visuels de gammes) : `src/lib/media.ts`
+  et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
+  CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération,
+  pas un stockage permanent. À télécharger et héberger dans `public/` (ou
+  le futur CMS) avant lancement.
 - **Formulaire de contact non branché** : `ContactClient.tsx` affiche une
   confirmation mais n'envoie rien nulle part (pas d'endpoint email/CRM). Les
   demandes ne sont pas capturées tant que ce n'est pas câblé.
