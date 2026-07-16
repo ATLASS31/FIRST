@@ -27,9 +27,12 @@ const CACHE_BUCKET = 0.2;
 // progression du scroll (pas à un seuil + une transition CSS à durée fixe)
 // pour que ça ne puisse jamais "manquer de temps" avant la fin du hero, et
 // pour que ça se scrub dans les deux sens comme le reste du hero. Se termine
-// à 0.82 plutôt que 1 pour laisser de la marge une fois pleinement révélée.
-const WAVE_REVEAL_START = 0.58;
-const WAVE_REVEAL_END = 0.82;
+// pile à la fin du scroll (1) plutôt qu'avant : sinon la vague finit son
+// mouvement puis reste figée pendant le reste du scroll avant le vrai
+// changement de section — ce "temps mort" est ce qui donnait l'impression
+// d'une séparation, pas premium.
+const WAVE_REVEAL_START = 0.68;
+const WAVE_REVEAL_END = 1;
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -56,10 +59,6 @@ export default function Hero() {
       if (!ctx) return;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      // Petit boost de contraste/saturation au dessin : la source (720p)
-      // upscalée à la taille de l'écran perd un peu de piqué même avec un
-      // lissage haute qualité, ce filtre compense en partie perceptuellement.
-      ctx.filter = "contrast(1.06) saturate(1.08)";
     };
     applySmoothing();
     const frameCache = new Map<number, ImageBitmap>();
@@ -94,6 +93,7 @@ export default function Hero() {
       }
     };
 
+    let warmupStarted = false;
     const checkReady = () => {
       duration = video.duration || 0;
       ready =
@@ -102,6 +102,10 @@ export default function Hero() {
         video.readyState >= video.HAVE_FUTURE_DATA;
       if (ready && canvas.width === 0) {
         resizeCanvas();
+      }
+      if (ready && !warmupStarted) {
+        warmupStarted = true;
+        runWarmup();
       }
     };
 
@@ -296,17 +300,14 @@ export default function Hero() {
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    const start = () => {
-      if (cancelled) return;
-      if (!ready) {
-        rafRef.current = requestAnimationFrame(start);
-        return;
-      }
-      runWarmup();
+    // La boucle démarre immédiatement, indépendamment du chargement de la
+    // vidéo : la vague (et plus généralement le scroll) ne doit jamais
+    // rester figée en attendant que la vidéo soit prête. Le warmup du cache
+    // de frames, lui, ne démarre que quand la vidéo est vraiment prête
+    // (déclenché depuis checkReady ci-dessus).
+    if (!cancelled) {
       rafRef.current = requestAnimationFrame(tick);
-    };
-
-    start();
+    }
 
     return () => {
       cancelled = true;

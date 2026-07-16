@@ -70,39 +70,56 @@ npm run dev
   cache la plus proche sur un `<canvas>` superposé à la vidéo (fluide,
   confirmé). Le canvas est dimensionné sur la taille d'affichage réelle
   (× `devicePixelRatio`, recadrage "object-cover" calculé à la main dans
-  `drawImage`, `imageSmoothingQuality: "high"`, léger boost de
-  contraste/saturation au dessin) plutôt que sur la résolution native
-  720p de la vidéo — sinon le navigateur agrandit un petit bitmap à la
-  taille de l'écran par un simple scale CSS et le résultat pixellise en
-  plus d'être flou. **Reste flou malgré ça** : la source est en 720p, un
-  ré-encodage a déjà été tenté et a empiré les choses (cf. section
-  "à faire") — sans un tournage/rendu en plus haute résolution, il y a un
-  plafond de netteté qu'aucune technique de lecture ne peut dépasser.
-  Repli (throttle + seek amorti) si `createImageBitmap` n'est pas
-  disponible. L'effet d'herbe qui montait en premier plan a été abandonné
-  (trop de complexité pour peu de valeur, et lié au chantier vidéo) ; à la
-  place, une vague — un aplat plein (SVG) teinté brume comme le fond de la
-  section des 3 piliers qui suit, avec seulement son contour traité en
-  liquid glass lumineux (`.wave-rim`, `filter: drop-shadow`) — se balaie
-  par un `clip-path` lié en continu à la progression du scroll (pas un
-  seuil + une transition CSS à durée fixe, qui pouvait ne pas avoir fini
-  avant la fin du scroll) : un vrai mouvement de vague, jamais un fondu,
-  et scrubbable dans les deux sens comme le reste du hero.
+  `drawImage`, `imageSmoothingQuality: "high"`) plutôt que sur la
+  résolution native 720p de la vidéo — sinon le navigateur agrandit un
+  petit bitmap à la taille de l'écran par un simple scale CSS et le
+  résultat pixellise en plus d'être flou. Un filtre `contrast/saturate` au
+  dessin canvas a été essayé pour compenser le flou résiduel puis retiré
+  (dénaturait le rendu par rapport à la vraie vidéo — jugé pire que le
+  flou lui-même). **Reste flou au scroll arrière** : la source est en
+  720p, un ré-encodage a déjà été tenté et a empiré les choses (cf.
+  section "à faire") — accepté comme limite connue plutôt que de
+  continuer à bricoler autour. Repli (throttle + seek amorti) si
+  `createImageBitmap` n'est pas disponible.
 - **Hero : texte et CTA alignés à gauche** (`items-start text-left`),
   plutôt que centrés, pour rester dans la zone basse-gauche de la vidéo
   comme sur la maquette de référence.
-- **Gammes : feuilles détourées en premier plan aux 4 coins** : le fond en
-  taches de couleur floutées (`GlowField`) et, avant ça, un fond photo
-  feuillage plein cadre (jugés "cheap"/trop flous), puis une version à 2
-  coins seulement (jugée trop clairsemée, "bizarre") ont été abandonnés ;
-  la version actuelle pose 4 branches détourées (fond transparent,
-  générées puis passées au détourage Higgsfield —
-  `GAMMES_LEAF_BRANCH_TOP_LEFT_URL`/`TOP_RIGHT_URL`/`BOTTOM_LEFT_URL`/
-  `BOTTOM_RIGHT_URL`) en dernier dans le markup (donc au premier plan,
-  au-dessus des cartes), une à chaque coin de la section, chacune
-  s'installant avec un léger ressort (Framer Motion `type: "spring"`,
-  décalé par coin) plutôt qu'un simple fondu, quand la section entre dans
-  le viewport.
+- **Vague hero → 3 piliers** : l'effet d'herbe qui montait en premier plan
+  a été abandonné (trop de complexité pour peu de valeur, et lié au
+  chantier vidéo) ; à la place, une vague — un aplat plein (SVG) teinté
+  brume comme le fond de la section des 3 piliers qui suit, avec seulement
+  son contour traité en liquid glass lumineux (`.wave-rim`, `filter:
+  drop-shadow`) — se balaie par un `clip-path` lié en continu à la
+  progression du scroll (pas un seuil + une transition CSS à durée fixe).
+  La fenêtre de révélation va jusqu'à la toute fin du scroll du hero
+  (`WAVE_REVEAL_END = 1`) : avant, elle finissait son mouvement puis
+  restait figée pendant le reste du scroll avant le vrai changement de
+  section, ce qui donnait une impression de séparation. **Bug réel
+  corrigé au passage** : toute la boucle de scroll (`tick()`, y compris la
+  vague) ne démarrait qu'une fois la vidéo prête (`start()` attendait
+  `ready` avant le tout premier appel à `tick()`) — si la vidéo mettait du
+  temps à charger (ou ne chargeait jamais), la vague restait figée à l'état
+  initial pendant tout ce temps, ce qui pouvait très bien être la cause du
+  désync perçu. La boucle démarre maintenant immédiatement au montage ; le
+  warmup du cache de frames, lui, ne démarre que quand la vidéo est
+  vraiment prête (déclenché depuis `checkReady`).
+- **Notre histoire / Chiffres clés** : ces deux sections (fond plat avant)
+  ont été refaites façon photo — une photo de forêt embrumée dorée
+  (`NOTRE_HISTOIRE_BG_URL`, `KEY_FIGURES_BG_URL`) en plein cadre, un
+  cadrage de branches détourées aux coins (`LeafFrame.tsx`, révélées avec
+  un léger ressort au scroll), et le contenu posé dans de vrais panneaux
+  liquid glass (`GlassPanel`, ton clair, `sheen`) plutôt que sur un fond
+  uni. Notre histoire a un petit repère (icône sapin) + une ligne dorée
+  sous l'eyebrow ; les 3 chiffres clés ont chacun une icône dorée
+  (bouclier/camion/hexagone — la France comme "l'Hexagone") au-dessus de
+  la valeur. Contenu textuel inchangé.
+- **Gammes : retour à un fond simple** : un cadrage feuillage (fond flou
+  plein cadre, puis des branches détourées à 2 puis 4 coins) a été essayé
+  pour cette section mais jugé "cheap" dans ce contexte précis (pas assez
+  de matière derrière pour porter l'effet) ; la section est revenue à un
+  fond `bg-ciel` uni, sans décoration. Les assets de branches détourées
+  n'ont pas été perdus : ils sont réutilisés pour Notre histoire / Chiffres
+  clés ci-dessus, où ils sont posés sur une vraie photo.
 
 ## À faire avant la mise en prod
 

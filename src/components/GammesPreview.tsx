@@ -5,39 +5,6 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import TiltCard from "./TiltCard";
 import { GAMMES } from "@/lib/gammes";
-import {
-  GAMMES_LEAF_BRANCH_BOTTOM_LEFT_URL,
-  GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL,
-  GAMMES_LEAF_BRANCH_TOP_LEFT_URL,
-  GAMMES_LEAF_BRANCH_TOP_RIGHT_URL,
-} from "@/lib/media";
-
-const LEAF_CORNERS = [
-  {
-    src: GAMMES_LEAF_BRANCH_TOP_LEFT_URL,
-    position: "-left-8 -top-10 h-56 w-44 sm:-left-10 sm:-top-14 sm:h-72 sm:w-56",
-    objectPosition: "object-left-top",
-    from: { x: -32, y: -22, rotate: -7 },
-  },
-  {
-    src: GAMMES_LEAF_BRANCH_TOP_RIGHT_URL,
-    position: "-right-8 -top-8 h-48 w-36 sm:-right-10 sm:-top-10 sm:h-60 sm:w-44",
-    objectPosition: "object-right-top",
-    from: { x: 32, y: -22, rotate: 7 },
-  },
-  {
-    src: GAMMES_LEAF_BRANCH_BOTTOM_LEFT_URL,
-    position: "-bottom-8 -left-6 h-48 w-36 sm:-bottom-10 sm:-left-8 sm:h-60 sm:w-44",
-    objectPosition: "object-left-bottom",
-    from: { x: -32, y: 22, rotate: 7 },
-  },
-  {
-    src: GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL,
-    position: "-bottom-10 -right-8 h-56 w-44 sm:-bottom-14 sm:-right-10 sm:h-72 sm:w-56",
-    objectPosition: "object-right-bottom",
-    from: { x: 32, y: 22, rotate: -7 },
-  },
-] as const;
 
 function SparkleIcon() {
   return (
@@ -107,45 +74,6 @@ export default function GammesPreview() {
             </motion.div>
           ))}
         </div>
-      </div>
-
-      {/* Feuilles détourées en premier plan aux 4 coins, comme des branches
-          qui entrent dans le cadre — pas un fond flou plein cadre. En
-          dernier dans le markup pour rester au-dessus des cartes ;
-          pointer-events désactivés pour ne jamais gêner un clic. Chaque
-          branche s'installe avec un léger ressort (spring) plutôt qu'un
-          simple fondu — un settle plus organique, plus premium — quand la
-          section entre dans le viewport. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-20">
-        {LEAF_CORNERS.map((leaf, i) => (
-          <motion.div
-            key={leaf.src}
-            initial={{
-              opacity: 0,
-              x: leaf.from.x,
-              y: leaf.from.y,
-              rotate: leaf.from.rotate,
-              scale: 0.92,
-            }}
-            whileInView={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{
-              type: "spring",
-              stiffness: 70,
-              damping: 15,
-              delay: i * 0.1,
-            }}
-            className={`absolute ${leaf.position}`}
-          >
-            <Image
-              src={leaf.src}
-              alt=""
-              fill
-              sizes="240px"
-              className={`object-contain ${leaf.objectPosition}`}
-            />
-          </motion.div>
-        ))}
       </div>
     </section>
   );
