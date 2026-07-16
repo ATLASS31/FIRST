@@ -23,6 +23,14 @@ import { HERO_MEDIA } from "@/lib/media";
  */
 const CACHE_BUCKET = 0.2;
 
+// Fenêtre de scroll sur laquelle la vague se révèle : liée en continu à la
+// progression du scroll (pas à un seuil + une transition CSS à durée fixe)
+// pour que ça ne puisse jamais "manquer de temps" avant la fin du hero, et
+// pour que ça se scrub dans les deux sens comme le reste du hero. Se termine
+// à 0.82 plutôt que 1 pour laisser de la marge une fois pleinement révélée.
+const WAVE_REVEAL_START = 0.58;
+const WAVE_REVEAL_END = 0.82;
+
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -44,10 +52,16 @@ export default function Hero() {
     if (prefersReducedMotion) return;
 
     const ctx = canvas.getContext("2d");
-    if (ctx) {
+    const applySmoothing = () => {
+      if (!ctx) return;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-    }
+      // Petit boost de contraste/saturation au dessin : la source (720p)
+      // upscalée à la taille de l'écran perd un peu de piqué même avec un
+      // lissage haute qualité, ce filtre compense en partie perceptuellement.
+      ctx.filter = "contrast(1.06) saturate(1.08)";
+    };
+    applySmoothing();
     const frameCache = new Map<number, ImageBitmap>();
     const canUseCache = typeof window.createImageBitmap === "function";
 
@@ -59,7 +73,6 @@ export default function Hero() {
     let showingCanvas = false;
     let lastSeekAt = 0;
     let playPending = false;
-    let waveRevealed = false;
 
     const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
 
@@ -77,10 +90,7 @@ export default function Hero() {
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
-        }
+        applySmoothing();
       }
     };
 
@@ -211,16 +221,21 @@ export default function Hero() {
       rafRef.current = null;
       const progress = getProgress();
 
-      // La vague se révèle une seule fois, en douceur, sur le tout dernier
-      // bout du scroll — indépendant de l'état de la vidéo.
+      // La vague : un vrai mouvement (balayage par clip-path), lié en continu
+      // à la progression du scroll — indépendant de l'état de la vidéo, et
+      // scrubbable dans les deux sens comme le reste du hero. Pas de seuil +
+      // transition à durée fixe qui pourrait ne pas avoir le temps de finir.
       if (waveRef.current) {
-        if (!waveRevealed && progress > 0.92) {
-          waveRevealed = true;
-          waveRef.current.classList.add("wave-revealed");
-        } else if (waveRevealed && progress < 0.88) {
-          waveRevealed = false;
-          waveRef.current.classList.remove("wave-revealed");
-        }
+        const waveProgress = Math.min(
+          Math.max(
+            (progress - WAVE_REVEAL_START) /
+              (WAVE_REVEAL_END - WAVE_REVEAL_START),
+            0
+          ),
+          1
+        );
+        waveRef.current.style.clipPath = `inset(0 ${(1 - waveProgress) * 100}% 0 0)`;
+        waveRef.current.style.transform = `translateY(${(1 - waveProgress) * 14}px)`;
       }
 
       if (!ready || !warmedUp) {
@@ -338,11 +353,11 @@ export default function Hero() {
         {/* Voile très léger, uniquement pour garantir la lisibilité du texte — jamais un dégradé de couleur plat en remplacement de la photo. */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-encre/15 via-transparent to-transparent" />
 
-        <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-6 text-center">
+        <div className="relative z-10 flex h-full w-full flex-col items-start justify-center px-6 text-left sm:px-12 lg:px-20">
           <p className="eyebrow mb-6 text-xs text-brume sm:text-sm">
             Bellora
           </p>
-          <h1 className="max-w-5xl text-[12vw] leading-[1.02] font-semibold text-brume sm:text-[8vw] lg:text-[96px]">
+          <h1 className="max-w-2xl text-[11vw] leading-[1.05] font-semibold text-brume sm:text-[6.5vw] lg:text-[72px]">
             Une qualité aussi <span className="text-laiton">noble</span> que
             notre engagement.
           </h1>
@@ -362,12 +377,16 @@ export default function Hero() {
 
         {/* Vague : un aplat plein teinté brume (couleur du fond de la
             section suivante) avec un contour lumineux en liquid glass —
-            pas toute la forme en verre, seulement son bord. Se révèle en
-            douceur sur le tout dernier bout du scroll (cf. tick()). */}
+            pas toute la forme en verre, seulement son bord. Balayée par un
+            clip-path lié en continu à la progression du scroll (cf.
+            tick()) : un vrai mouvement de vague, jamais un fondu, et ça ne
+            peut jamais arriver "en retard" sur la fin du scroll puisque ce
+            n'est pas basé sur une durée mais sur la position de scroll. */}
         <div
           ref={waveRef}
           aria-hidden
-          className="wave-shape pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-32 sm:h-48"
+          className="wave-reveal pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-32 sm:h-48"
+          style={{ clipPath: "inset(0 100% 0 0)" }}
         >
           <svg
             viewBox="0 0 100 100"

@@ -175,22 +175,6 @@ body {
   }
 }
 
-/* Vague en verre entre le hero et la section suivante : se révèle une
-   seule fois, en douceur, quand on approche de la fin du scroll du hero —
-   un mouvement qui s'installe puis s'arrête, jamais un va-et-vient. */
-.wave-shape {
-  transform: translateY(28px);
-  opacity: 0;
-  transition:
-    transform 1.1s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 1.1s ease-out;
-}
-
-.wave-shape.wave-revealed {
-  transform: translateY(0);
-  opacity: 1;
-}
-
 /* La vague elle-même : un aplat plein, teinté brume comme le fond de la
    section suivante (transition dans la continuité de la couleur plutôt que
    par contraste) — le liquid glass est réservé au seul contour (`.wave-rim`),
@@ -214,11 +198,14 @@ body {
     drop-shadow(0 0 24px color-mix(in srgb, var(--brume) 55%, transparent));
 }
 
+/* La révélation de la vague est pilotée en JS via clip-path/transform sur
+   chaque frame de scroll (cf. Hero.tsx) — sans motion, cette boucle ne
+   tourne jamais, donc on force ici l'état "pleinement révélée" en écrasant
+   le clip-path initial posé en inline style. */
 @media (prefers-reduced-motion: reduce) {
-  .wave-shape {
-    transform: none;
-    opacity: 1;
-    transition: none;
+  .wave-reveal {
+    clip-path: none !important;
+    transform: none !important;
   }
 }
 

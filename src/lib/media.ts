@@ -24,3 +24,9 @@ export const GAMMES_LEAF_BRANCH_TOP_LEFT_URL =
 
 export const GAMMES_LEAF_BRANCH_BOTTOM_RIGHT_URL =
   "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_204715_3e6c7f45-6daa-485d-a621-e6ccf8676637.png";
+
+export const GAMMES_LEAF_BRANCH_TOP_RIGHT_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_210557_0ad35957-2f60-4cb1-bc8c-3b82272e2efd.png";
+
+export const GAMMES_LEAF_BRANCH_BOTTOM_LEFT_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_210601_6f99c143-7039-4158-98d6-654cdc2a71a4.png";

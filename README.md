@@ -70,29 +70,39 @@ npm run dev
   cache la plus proche sur un `<canvas>` superposé à la vidéo (fluide,
   confirmé). Le canvas est dimensionné sur la taille d'affichage réelle
   (× `devicePixelRatio`, recadrage "object-cover" calculé à la main dans
-  `drawImage`, `imageSmoothingQuality: "high"`) plutôt que sur la
-  résolution native 720p de la vidéo — sinon le navigateur agrandit un
-  petit bitmap à la taille de l'écran par un simple scale CSS et le
-  résultat pixellise (bien que fluide). Repli (throttle + seek amorti) si
-  `createImageBitmap` n'est pas disponible. L'effet d'herbe qui montait en
-  premier plan a été abandonné (trop de complexité pour peu de valeur, et
-  lié au chantier vidéo) ; à la place, une vague se révèle en douceur sur
-  le tout dernier bout du scroll pour adoucir la transition vers la
-  section suivante — un aplat plein (SVG), teinté brume comme le fond de
-  la section des 3 piliers qui suit pour que la transition se fasse dans
-  la continuité de couleur plutôt que par contraste, avec seulement son
-  contour traité en liquid glass lumineux (`.wave-rim`, `filter:
-  drop-shadow`) — pas toute la forme réduite à un simple trait, comme un
-  essai précédent l'avait fait par erreur.
-- **Gammes : feuilles détourées en premier plan** : le fond en taches de
-  couleur floutées (`GlowField`) et, avant ça, un fond photo feuillage
-  plein cadre (jugés "cheap"/trop flous) ont été retirés ; à la place,
-  deux branches détourées (fond transparent, générées puis passées au
-  détourage Higgsfield — `GAMMES_LEAF_BRANCH_TOP_LEFT_URL` et
-  `..._BOTTOM_RIGHT_URL`) sont posées en dernier dans le markup (donc au
-  premier plan, au-dessus des cartes), calées aux deux coins opposés de la
-  section, révélées en douceur (fondu + léger glissement depuis le coin)
-  quand la section entre dans le viewport plutôt que visibles d'entrée.
+  `drawImage`, `imageSmoothingQuality: "high"`, léger boost de
+  contraste/saturation au dessin) plutôt que sur la résolution native
+  720p de la vidéo — sinon le navigateur agrandit un petit bitmap à la
+  taille de l'écran par un simple scale CSS et le résultat pixellise en
+  plus d'être flou. **Reste flou malgré ça** : la source est en 720p, un
+  ré-encodage a déjà été tenté et a empiré les choses (cf. section
+  "à faire") — sans un tournage/rendu en plus haute résolution, il y a un
+  plafond de netteté qu'aucune technique de lecture ne peut dépasser.
+  Repli (throttle + seek amorti) si `createImageBitmap` n'est pas
+  disponible. L'effet d'herbe qui montait en premier plan a été abandonné
+  (trop de complexité pour peu de valeur, et lié au chantier vidéo) ; à la
+  place, une vague — un aplat plein (SVG) teinté brume comme le fond de la
+  section des 3 piliers qui suit, avec seulement son contour traité en
+  liquid glass lumineux (`.wave-rim`, `filter: drop-shadow`) — se balaie
+  par un `clip-path` lié en continu à la progression du scroll (pas un
+  seuil + une transition CSS à durée fixe, qui pouvait ne pas avoir fini
+  avant la fin du scroll) : un vrai mouvement de vague, jamais un fondu,
+  et scrubbable dans les deux sens comme le reste du hero.
+- **Hero : texte et CTA alignés à gauche** (`items-start text-left`),
+  plutôt que centrés, pour rester dans la zone basse-gauche de la vidéo
+  comme sur la maquette de référence.
+- **Gammes : feuilles détourées en premier plan aux 4 coins** : le fond en
+  taches de couleur floutées (`GlowField`) et, avant ça, un fond photo
+  feuillage plein cadre (jugés "cheap"/trop flous), puis une version à 2
+  coins seulement (jugée trop clairsemée, "bizarre") ont été abandonnés ;
+  la version actuelle pose 4 branches détourées (fond transparent,
+  générées puis passées au détourage Higgsfield —
+  `GAMMES_LEAF_BRANCH_TOP_LEFT_URL`/`TOP_RIGHT_URL`/`BOTTOM_LEFT_URL`/
+  `BOTTOM_RIGHT_URL`) en dernier dans le markup (donc au premier plan,
+  au-dessus des cartes), une à chaque coin de la section, chacune
+  s'installant avec un léger ressort (Framer Motion `type: "spring"`,
+  décalé par coin) plutôt qu'un simple fondu, quand la section entre dans
+  le viewport.
 
 ## À faire avant la mise en prod
 
@@ -101,6 +111,11 @@ npm run dev
   scroll) plutôt qu'un `<video>` — c'est la technique la plus fiable
   cross-navigateur pour du scroll-scrub, mais demande d'extraire des frames
   (ffmpeg) que je ne peux pas faire depuis cet environnement.
+- **Netteté du hero** : la vidéo source est en 720p ; à l'échelle d'un hero
+  plein écran, ça reste visiblement moins net qu'un contenu premium
+  l'exigerait, quelle que soit la technique de lecture/dessin utilisée. Un
+  ré-encodage/upscale IA a été tenté et a empiré le rendu — la vraie
+  solution est un nouveau tournage/rendu en plus haute résolution.
 - **Rapatrier les médias** (hero, visuels de gammes) : `src/lib/media.ts`
   et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
   CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération,
