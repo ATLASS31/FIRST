@@ -25,7 +25,7 @@ export default function KeyFigures() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
             >
-              <TiltCard strength={4}>
+              <TiltCard strength={2}>
                 <GlassPanel className="px-8 py-10 text-center">
                   <p className="text-4xl font-semibold text-foret sm:text-5xl">
                     {figure.value}

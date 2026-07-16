@@ -12,7 +12,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 export default function TiltCard({
   children,
   className = "",
-  strength = 6,
+  strength = 2.5,
 }: {
   children: ReactNode;
   className?: string;
@@ -21,7 +21,7 @@ export default function TiltCard({
   const ref = useRef<HTMLDivElement>(null);
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
-  const springConfig = { stiffness: 220, damping: 20, mass: 0.4 };
+  const springConfig = { stiffness: 300, damping: 30, mass: 0.4 };
   const sx = useSpring(px, springConfig);
   const sy = useSpring(py, springConfig);
 

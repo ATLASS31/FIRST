@@ -70,7 +70,7 @@ export default function GammeDetail({ slug }: { slug: GammeSlug }) {
         <p className="eyebrow text-xs text-encre-douce">Configurations</p>
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {gamme.configurations.map((config) => (
-            <TiltCard key={config.surface} strength={4}>
+            <TiltCard key={config.surface} strength={2}>
               <GlassPanel className="flex flex-col gap-3 p-6">
                 <p className="text-2xl font-semibold text-encre">
                   {config.surface} m²
@@ -91,7 +91,7 @@ export default function GammeDetail({ slug }: { slug: GammeSlug }) {
       </section>
 
       <section className="px-6 py-20">
-        <TiltCard strength={3} className="mx-auto max-w-2xl">
+        <TiltCard strength={1.5} className="mx-auto max-w-2xl">
           <GlassPanel className="px-8 py-12 text-center">
             <p className="text-lg italic text-encre">
               « {gamme.temoignage.quote} »

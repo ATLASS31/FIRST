@@ -81,7 +81,7 @@ export default function RentabiliteCalculator() {
 
   return (
     <section className="px-6 py-28">
-      <TiltCard strength={2} className="mx-auto max-w-4xl">
+      <TiltCard strength={1.5} className="mx-auto max-w-4xl">
         <GlassPanel tone="graphite" sheen className="px-8 py-16 sm:px-14">
           <p className="eyebrow text-xs text-laiton/80">
             Votre projet, rentabilisé

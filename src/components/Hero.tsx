@@ -13,14 +13,17 @@ import { HERO_MEDIA } from "@/lib/media";
  * La vidéo source (générée) n'a probablement une image-clé que toutes les
  * 1-2s : chaque seek loin d'une keyframe force un redécodage depuis celle-ci,
  * ce qui devient très coûteux si on seek à chaque frame de scroll (jusqu'à
- * 60×/s). On limite donc la fréquence réelle des seeks et on avance vers la
- * cible par petits pas plutôt que par sauts directs, pour que chaque seek
- * individuel reste proche de la position courante (donc rapide à décoder)
- * même quand le scroll va vite.
+ * 60×/s). On privilégie ici la fluidité sur la précision 1:1 scroll↔frame :
+ * seeks espacés d'au moins MIN_SEEK_INTERVAL_MS, chacun limité à
+ * MAX_STEP_SECONDS de déplacement. La vidéo "rattrape" son retard en douceur
+ * plutôt que de suivre le scroll au pixel près — c'est un compromis
+ * volontaire (mieux vaut un léger décalage perçu qu'une saccade), pas un
+ * réglage définitif : si ça reste saccadé, la vraie correction est de
+ * ré-encoder la vidéo avec une image-clé par frame (voir README).
  */
-const MIN_SEEK_INTERVAL_MS = 90;
-const MAX_STEP_SECONDS = 0.4;
-const EASE = 0.5;
+const MIN_SEEK_INTERVAL_MS = 180;
+const MAX_STEP_SECONDS = 0.18;
+const EASE = 0.3;
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);

@@ -12,7 +12,7 @@ function SparkleIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="currentColor"
-      className={`transition-transform duration-500 group-hover:rotate-45 group-hover:scale-110 ${className}`}
+      className={`scale-50 opacity-0 transition-all duration-300 group-hover:scale-100 group-hover:rotate-45 group-hover:opacity-100 group-focus-within:scale-100 group-focus-within:opacity-100 group-active:scale-100 group-active:opacity-100 ${className}`}
     >
       <path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" />
     </svg>
@@ -38,7 +38,7 @@ export default function GammesPreview() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
             >
-              <TiltCard strength={5}>
+              <TiltCard strength={2.5}>
                 <Link href={gamme.href} className="group relative block">
                   <div className="relative h-96 overflow-hidden rounded-2xl shadow-[0_20px_40px_-12px_rgba(26,22,20,0.25)] transition-transform duration-500 group-hover:-translate-y-1">
                     <Image

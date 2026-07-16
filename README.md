@@ -61,10 +61,11 @@ npm run dev
 - **Performance vidéo du hero** : la vidéo source (générée) n'a
   vraisemblablement une image-clé que toutes les 1-2s, donc un seek à
   chaque frame de scroll (jusqu'à 60×/s) devient très coûteux au fil du
-  scroll. Le seek est maintenant throttled (~90ms min) et avance vers sa
-  cible par petits pas plutôt que par sauts directs, pour rester fluide même
-  en scroll rapide — mitigation côté code, pas un ré-encodage de la vidéo
-  (voir ci-dessous).
+  scroll. Le seek est throttled (~180ms min entre deux seeks réels, 0,18s
+  max par pas) — la vidéo "rattrape" le scroll en douceur plutôt que de le
+  suivre au pixel près, un compromis volontaire pour la fluidité. Mitigation
+  côté code, pas un ré-encodage de la vidéo (voir ci-dessous) — si ça reste
+  saccadé, il n'y a plus grand-chose à gagner côté JS.
 
 ## À faire avant la mise en prod
 

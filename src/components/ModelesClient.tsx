@@ -107,7 +107,7 @@ export default function ModelesClient() {
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {configs.map((config) => (
-            <TiltCard key={`${config.gammeSlug}-${config.surface}`} strength={4}>
+            <TiltCard key={`${config.gammeSlug}-${config.surface}`} strength={2}>
               <Link href={config.gammeHref} className="group block">
                 <GlassPanel
                   className="glass-sheen-hover flex h-56 flex-col justify-between p-6 transition-transform group-hover:-translate-y-1"
