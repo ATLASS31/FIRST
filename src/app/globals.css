@@ -201,12 +201,13 @@ body {
     drop-shadow(0 0 44px color-mix(in srgb, var(--laiton) 55%, transparent));
 }
 
-/* La révélation de la vague est pilotée en JS via transform (translateY) sur
+/* La révélation de la vague est pilotée en JS via opacity/transform sur
    chaque frame de scroll (cf. Hero.tsx) — sans motion, cette boucle ne
    tourne jamais, donc on force ici l'état "pleinement révélée" en écrasant
-   le translateY initial posé en inline style. */
+   l'opacité et le transform initiaux posés en inline style. */
 @media (prefers-reduced-motion: reduce) {
   .wave-reveal {
+    opacity: 1 !important;
     transform: none !important;
   }
 }

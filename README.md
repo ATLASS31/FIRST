@@ -75,29 +75,36 @@ npm run dev
   arrière), ce qui est pire que le problème que ça cherchait à résoudre.
   Retour à la technique simple, réactive dès le premier frame. La netteté
   au scroll arrière reste une limite connue de la vidéo source 720p (cf.
-  section "à faire"). Le calque `<img>` séparé qui servait de poster (avec
-  son propre fondu JS) a aussi été retiré : il créait un "cut" visible
-  entre l'image de référence et la première frame de la vidéo. L'attribut
-  `poster` natif du `<video>` suffit — géré nativement par le navigateur,
-  sans calque ni transition à gérer nous-mêmes.
+  section "à faire"). **Pas d'attribut `poster`** sur le `<video>` : le
+  calque `<img>` séparé qui le montrait (avec son propre fondu JS) créait
+  un "cut" visible dès le premier mm de scroll, et il s'est avéré que le
+  problème n'était pas le fondu en lui-même mais les deux images —
+  l'image de référence générée et la première frame de la vidéo sont deux
+  plans différents (angle, cadrage). Aucune transition ne peut masquer un
+  changement de plan ; la seule vraie correction est de ne jamais montrer
+  que la vidéo, jamais une autre image à la place.
 - **Hero : texte et CTA alignés à gauche** (`items-start text-left`),
   plutôt que centrés, pour rester dans la zone basse-gauche de la vidéo
   comme sur la maquette de référence.
 - **Vague hero → 3 piliers** : l'effet d'herbe qui montait en premier plan
   a été abandonné (trop de complexité pour peu de valeur, et lié au
-  chantier vidéo) ; à la place, une vague — un aplat plein (SVG) teinté
-  brume comme le fond de la section des 3 piliers qui suit (transition
-  dans la continuité de la couleur, pas de séparation visible), avec son
-  contour traité en une vraie ligne de lumière liquid glass (`.wave-rim` —
-  cœur quasi blanc, halo chaud en laiton, `filter: drop-shadow`). Un
-  premier essai de révélation par balayage `clip-path` (gauche→droite)
-  lisait comme "apparaît petit bout par petit bout", pas comme une vague —
-  remplacé par une montée verticale (`translateY`, de hors-champ vers la
-  position de repos) : le bord ondulé de la forme émerge alors
-  naturellement au fil de la montée, comme de l'eau qui arrive, plutôt
-  qu'un front rectangulaire. Liée en continu à la progression du scroll
-  jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
-  changement de section), scrubbable dans les deux sens.
+  chantier vidéo) ; à la place, une vague — un aplat plein (SVG, forme à 3
+  bosses, plus dynamique qu'une simple sinusoïde à 2 bosses) teinté brume
+  comme le fond de la section des 3 piliers qui suit (transition dans la
+  continuité de la couleur, pas de séparation visible), avec son contour
+  traité en une vraie ligne de lumière liquid glass (`.wave-rim` — cœur
+  quasi blanc, halo chaud en laiton, `filter: drop-shadow`), collée au bas
+  du hero. Deux itérations de révélation ont été rejetées : un fondu à
+  seuil (temps mort avant la fin du scroll) puis un balayage `clip-path`
+  gauche→droite (lisait comme "apparaît petit bout par petit bout"). La
+  version actuelle ne révèle jamais la forme progressivement — elle existe
+  toujours entière, plus large que l'écran (24% de largeur en plus, cachée
+  par l'`overflow-hidden` du conteneur sticky) — et arrive par un fondu
+  rapide + une montée depuis hors-champ + un glissement horizontal
+  continu vers la droite en même temps, pour simuler une vague qui bouge.
+  Liée en continu à la progression du scroll jusqu'à la toute fin
+  (`WAVE_REVEAL_END = 1`, pas de temps mort avant le changement de
+  section), scrubbable dans les deux sens.
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette

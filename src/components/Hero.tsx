@@ -83,12 +83,11 @@ export default function Hero() {
       rafRef.current = null;
       const progress = getProgress();
 
-      // La vague : monte depuis hors-champ (sous le bord de l'écran) vers sa
-      // position de repos, liée en continu à la progression du scroll —
-      // indépendant de l'état de la vidéo, et scrubbable dans les deux sens.
-      // Un simple translateY (pas de clip-path) : le bord ondulé de la forme
-      // émerge donc naturellement au fil de la montée, comme de l'eau qui
-      // arrive, plutôt qu'un front rectangulaire qui balaie horizontalement.
+      // La vague : la forme entière existe toujours (jamais un reveal
+      // progressif type clip-path) — elle apparaît par un fondu rapide tout
+      // en montant depuis hors-champ, et glisse horizontalement vers la
+      // droite en même temps, pour simuler une vague qui bouge. Liée en
+      // continu à la progression du scroll, scrubbable dans les deux sens.
       if (waveRef.current) {
         const waveProgress = Math.min(
           Math.max(
@@ -98,7 +97,11 @@ export default function Hero() {
           ),
           1
         );
-        waveRef.current.style.transform = `translateY(${(1 - waveProgress) * 100}%)`;
+        const opacity = Math.min(waveProgress / 0.28, 1);
+        const riseY = (1 - Math.min(waveProgress / 0.55, 1)) * 100;
+        const driftX = -(1 - waveProgress) * 6;
+        waveRef.current.style.opacity = String(opacity);
+        waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
       }
 
       if (!ready) {
@@ -146,15 +149,15 @@ export default function Hero() {
   return (
     <section ref={sectionRef} className="relative h-[320vh]">
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-encre">
-        {/* L'attribut poster natif affiche l'image de référence jusqu'à ce
-            que la vidéo ait une première frame à montrer — géré nativement
-            par le navigateur, pas de calque <img> séparé avec son propre
-            fondu JS (qui créait un "cut" visible entre les deux). */}
+        {/* Pas d'attribut poster : l'image de référence et la première
+            frame de la vidéo sont deux plans différents (angle, cadrage) —
+            les montrer l'un après l'autre créait un cut visible au moindre
+            scroll. Seule la vidéo elle-même s'affiche, jamais une autre
+            image à la place. */}
         <video
           ref={videoRef}
           className="absolute inset-0 h-full w-full object-cover"
           src={HERO_MEDIA.videoUrl}
-          poster={HERO_MEDIA.posterUrl}
           muted
           playsInline
           preload="auto"
@@ -187,14 +190,23 @@ export default function Hero() {
 
         {/* Vague : un aplat plein teinté brume (couleur du fond de la
             section suivante) avec un contour lumineux en liquid glass —
-            pas toute la forme en verre, seulement son bord. Monte depuis
-            hors-champ (cf. tick()) plutôt que balayée par un clip-path :
-            un vrai mouvement de vague qui arrive, jamais un fondu. */}
+            pas toute la forme en verre, seulement son bord. Collée au bas
+            du hero (le haut de la section suivante). Plus large que
+            l'écran (bords cachés par l'overflow-hidden du conteneur
+            sticky) pour pouvoir glisser horizontalement sans jamais
+            découvrir de bord vide. Toujours entière : jamais un reveal
+            progressif, seulement un fondu + une montée + un glissement
+            (cf. tick()). */}
         <div
           ref={waveRef}
           aria-hidden
-          className="wave-reveal pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-32 sm:h-48"
-          style={{ transform: "translateY(100%)" }}
+          className="wave-reveal pointer-events-none absolute bottom-0 z-[6] h-32 sm:h-48"
+          style={{
+            left: "-12%",
+            right: "-12%",
+            opacity: 0,
+            transform: "translate(-6%, 100%)",
+          }}
         >
           <svg
             viewBox="0 0 100 100"
@@ -203,12 +215,12 @@ export default function Hero() {
           >
             <path
               className="wave-fill"
-              d="M0,52 C22,80 38,16 58,46 C72,66 88,24 100,50 L100,100 L0,100 Z"
+              d="M0,58 C14,86 26,22 42,50 C52,66 60,32 72,54 C80,68 88,36 100,52 L100,100 L0,100 Z"
             />
             <path
               className="wave-rim"
               vectorEffect="non-scaling-stroke"
-              d="M0,52 C22,80 38,16 58,46 C72,66 88,24 100,50"
+              d="M0,58 C14,86 26,22 42,50 C52,66 60,32 72,54 C80,68 88,36 100,52"
             />
           </svg>
         </div>
