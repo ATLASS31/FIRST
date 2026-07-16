@@ -75,7 +75,14 @@ npm run dev
   dans ce cache s'il a de quoi (dessiné sur le canvas, aucun seek) ; sinon
   repli sur le seek throttlé habituel — jamais pire qu'avant, potentiellement
   bien mieux une fois qu'une partie de la vidéo a déjà été vue en avançant
-  (le cas d'usage normal : on descend d'abord, on remonte ensuite). La
+  (le cas d'usage normal : on descend d'abord, on remonte ensuite).
+  **Bug réel corrigé au passage** : la première version de ce cache
+  recalculait la position "affichée" à partir de `progress` à chaque
+  frame dès qu'on montrait le canvas — ça annulait l'écart avec la cible
+  en continu et gelait tout le scroll arrière après la toute première
+  image affichée. Remplacé par une variable persistante, mise à jour
+  uniquement quand une nouvelle position est réellement affichée (vidéo
+  ou frame du cache), comme dans la version qui fonctionnait avant. La
   netteté au scroll arrière reste une limite connue de la vidéo source
   720p (cf. section "à faire"). **Pas d'attribut `poster`** sur le
   `<video>` : le
@@ -122,7 +129,12 @@ npm run dev
   `prefers-reduced-motion` (texte affiché directement, sans animation).
   Au passage, l'espacement entre le titre et le bouton (`mt-10`) était
   trop court pour la taille du titre et laissait le bouton chevaucher le
-  jambage du "g" de "engagement." — corrigé (`mt-14`).
+  jambage du "g" de "engagement." — corrigé (`mt-14`). Le bouton lui-même
+  passe par `GlassPanel` (`tone="dark"`, `sheen`) plutôt qu'un `.glass-dark`
+  posé à la main, pour hériter du reflet ambiant déjà utilisé sur le
+  chrome permanent du site, plus un halo doré dédié (`.hero-cta`, en
+  `filter: drop-shadow` pour ne pas toucher au `.glass-dark` partagé
+  ailleurs) — plus premium et lumineux qu'un simple panneau sombre.
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
@@ -139,12 +151,14 @@ npm run dev
   jugé "cheap" — trop littéral, pas assez discret. La version actuelle
   n'utilise plus aucune photo : une silhouette de plante abstraite dessinée
   en SVG (tige + feuilles en ellipses, `PlantShadow` dans
-  `GammesPreview.tsx`), posée à faible opacité et fortement floutée
-  (`blur-xl`) dans deux coins opposés — comme une ombre portée plutôt
-  qu'un feuillage détaillé. Le tracé n'a pas besoin d'être fin puisqu'il
-  disparaît dans le flou ; c'est justement ce qui le rend discret. Aucune
-  dépendance à une image générée (donc vérifiable et stable, contrairement
-  aux tentatives précédentes).
+  `GammesPreview.tsx`), comme une ombre portée plutôt qu'un feuillage
+  détaillé — le tracé n'a pas besoin d'être fin puisqu'il disparaît dans
+  le flou de toute façon. Premier calibrage trop discret (`blur-xl`,
+  opacité ~7%, seulement 2 coins) — quasi invisible ; resserré à `blur-md`,
+  opacité 24-32%, et 4 silhouettes (un coin chacune) pour une couverture
+  perceptible sans devenir une vraie photo. Aucune dépendance à une image
+  générée (donc vérifiable et stable, contrairement aux tentatives
+  précédentes).
 
 ## À faire avant la mise en prod
 

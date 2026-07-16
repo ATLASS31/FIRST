@@ -52,9 +52,12 @@ export default function GammesPreview() {
   return (
     <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
       {/* Ombres de plantes en fond de section : pas des photos (jugées
-          cheap dans ce contexte), juste des silhouettes floutées à très
-          faible opacité, comme une ombre portée sur un mur. Révélées en
-          douceur (une fois) quand la section entre dans le viewport. */}
+          cheap dans ce contexte), juste des silhouettes floutées, comme une
+          ombre portée sur un mur. Moins de flou et plus d'opacité que le
+          premier essai (trop discret, à peine visible) ; 4 silhouettes
+          (un coin chacune) plutôt que 2 pour une couverture plus généreuse.
+          Révélées en douceur (une fois) quand la section entre dans le
+          viewport. */}
       <motion.div
         aria-hidden
         initial={{ opacity: 0 }}
@@ -63,8 +66,10 @@ export default function GammesPreview() {
         transition={{ duration: 1.4, ease: "easeOut" }}
         className="pointer-events-none absolute inset-0 overflow-hidden text-encre"
       >
-        <PlantShadow className="absolute -left-16 -top-20 h-[26rem] w-[26rem] opacity-20 blur-xl" />
-        <PlantShadow className="absolute -bottom-24 -right-14 h-[24rem] w-[24rem] rotate-[155deg] opacity-[0.17] blur-xl" />
+        <PlantShadow className="absolute -left-16 -top-24 h-[28rem] w-[28rem] opacity-[0.32] blur-md" />
+        <PlantShadow className="absolute -right-20 -top-16 h-[22rem] w-[22rem] rotate-[95deg] opacity-[0.26] blur-md" />
+        <PlantShadow className="absolute -bottom-28 -right-14 h-[26rem] w-[26rem] rotate-[155deg] opacity-[0.3] blur-md" />
+        <PlantShadow className="absolute -bottom-16 -left-20 h-[20rem] w-[20rem] rotate-[-70deg] opacity-[0.24] blur-md" />
       </motion.div>
 
       <div className="relative mx-auto max-w-6xl">

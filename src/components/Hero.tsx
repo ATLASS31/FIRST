@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import GlassPanel from "./GlassPanel";
 import { HERO_MEDIA } from "@/lib/media";
 
 // Courbe "ease-out-expo" : un départ franc qui ralentit en douceur vers la
@@ -92,6 +93,11 @@ export default function Hero() {
     let playPending = false;
     let showingCanvas = false;
     let capturingFrame = false;
+    // Suit la position "affichée" d'une frame à l'autre — jamais recalculée
+    // à partir de `progress` directement (ça collapserait diff à ~0 en
+    // continu dès qu'on affiche le canvas et figerait tout : c'est le bug
+    // qui faisait geler le scroll arrière après la toute première image).
+    let displayedTime = 0;
 
     const checkReady = () => {
       duration = video.duration || 0;
@@ -199,6 +205,7 @@ export default function Hero() {
       const sx = (bitmap.width - sw) / 2;
       const sy = (bitmap.height - sh) / 2;
       ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      displayedTime = time;
       return true;
     };
 
@@ -236,7 +243,9 @@ export default function Hero() {
         return;
       }
 
-      const displayedTime = showingCanvas ? progress * duration : video.currentTime;
+      if (!showingCanvas) {
+        displayedTime = video.currentTime;
+      }
       const targetTime = Math.min(progress * duration, duration - 0.05);
       const diff = targetTime - displayedTime;
 
@@ -360,12 +369,16 @@ export default function Hero() {
             transition={{ duration: 0.7, delay: 1.05, ease: PREMIUM_EASE }}
             className="mt-14"
           >
-            <Link
+            <GlassPanel
+              as={Link}
               href="/#gammes"
-              className="glass-dark rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+              tone="dark"
+              sheen
+              rounded="rounded-full"
+              className="hero-cta px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
             >
               Découvrir nos gammes
-            </Link>
+            </GlassPanel>
           </motion.div>
         </div>
 

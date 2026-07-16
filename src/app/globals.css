@@ -104,6 +104,16 @@ body {
   -webkit-backdrop-filter: blur(26px) saturate(170%);
 }
 
+/* Halo doré pour le CTA principal du hero : le .glass-dark de base ne se
+   sent pas assez "premium et lumineux" tout seul sur un fond vidéo sombre.
+   `filter: drop-shadow` (pas `box-shadow`, pour ne jamais toucher au
+   .glass-dark partagé par ailleurs — nav mobile, autres GlassPanel tone
+   dark) se compose proprement en plus du box-shadow existant. */
+.hero-cta {
+  filter: drop-shadow(0 0 16px rgba(173, 138, 85, 0.45))
+    drop-shadow(0 0 38px rgba(173, 138, 85, 0.25));
+}
+
 @supports (backdrop-filter: url(#glass-distortion)) {
   .glass {
     backdrop-filter: url(#glass-distortion) blur(7px) saturate(180%);
