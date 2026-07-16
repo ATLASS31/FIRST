@@ -7,6 +7,11 @@ import { HERO_MEDIA } from "@/lib/media";
  * Hero avec vidéo scrubée par le scroll (technique Apple), jamais lue en
  * autoplay. La progression du scroll (0→1) sur la hauteur de la section
  * pilote directement video.currentTime.
+ *
+ * La vidéo n'est scrubée qu'une fois suffisamment bufferisée (readyState
+ * HAVE_FUTURE_DATA+) : chercher un currentTime sur une vidéo réseau pas
+ * encore prête provoque des sauts/gels visibles plutôt qu'un scrub fluide.
+ * Avant ce seuil, le poster reste affiché tel quel.
  */
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -24,15 +29,25 @@ export default function Hero() {
     if (prefersReducedMotion) return;
 
     let duration = 0;
-    const onLoadedMetadata = () => {
+    let ready = false;
+    let lastTarget = -1;
+
+    const checkReady = () => {
       duration = video.duration || 0;
+      ready =
+        Number.isFinite(duration) &&
+        duration > 0 &&
+        video.readyState >= video.HAVE_FUTURE_DATA;
     };
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
-    if (video.readyState >= 1) duration = video.duration || 0;
+
+    video.addEventListener("loadedmetadata", checkReady);
+    video.addEventListener("canplay", checkReady);
+    video.addEventListener("progress", checkReady);
+    checkReady();
 
     const updateFrame = () => {
       rafRef.current = null;
-      if (!duration) return;
+      if (!ready) return;
 
       const rect = section.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
@@ -41,7 +56,22 @@ export default function Hero() {
           ? Math.min(Math.max(-rect.top / scrollable, 0), 1)
           : 0;
 
-      video.currentTime = progress * duration;
+      // Marge de sécurité sous la durée totale : chercher pile la dernière
+      // frame fait planter le seek sur certains navigateurs.
+      const target = Math.min(progress * duration, duration - 0.05);
+      if (Math.abs(target - lastTarget) < 0.03) return;
+      lastTarget = target;
+
+      try {
+        if (typeof video.fastSeek === "function") {
+          video.fastSeek(target);
+        } else {
+          video.currentTime = target;
+        }
+      } catch {
+        // Seek refusé (vidéo pas encore seekable) — on retentera à la
+        // prochaine frame de scroll, rien d'autre à faire ici.
+      }
     };
 
     const onScroll = () => {
@@ -51,11 +81,15 @@ export default function Hero() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     onScroll();
 
     return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("loadedmetadata", checkReady);
+      video.removeEventListener("canplay", checkReady);
+      video.removeEventListener("progress", checkReady);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);

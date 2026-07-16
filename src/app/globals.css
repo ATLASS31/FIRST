@@ -41,17 +41,44 @@ body {
 }
 
 /* Liquid Glass : blur seul par défaut (support universel), réfraction SVG en amélioration
-   progressive là où le navigateur sait résoudre une référence de filtre dans backdrop-filter. */
+   progressive là où le navigateur sait résoudre une référence de filtre dans backdrop-filter.
+   La profondeur vient surtout du dégradé + du highlight + de l'ombre portée — pas du blur
+   seul, qui à plat sur un fond clair ne lit que comme un panneau gris-blanc terne. */
 .glass {
-  background: rgba(247, 245, 240, 0.55);
-  border: 0.75px solid rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.28) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-left-color: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 20px 40px -12px rgba(26, 22, 20, 0.18),
+    0 2px 8px rgba(26, 22, 20, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.05);
+  backdrop-filter: blur(13px) saturate(180%);
+  -webkit-backdrop-filter: blur(13px) saturate(180%);
 }
 
 .glass-dark {
-  background: rgba(26, 22, 20, 0.35);
-  border: 0.75px solid rgba(255, 255, 255, 0.18);
+  position: relative;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    rgba(26, 22, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.3);
+  border-left-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 24px 48px -12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
@@ -80,11 +107,11 @@ body {
   inset: -50%;
   background: linear-gradient(
     115deg,
-    transparent 40%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 60%
+    transparent 42%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 58%
   );
-  animation: sheen 7s ease-in-out infinite alternate;
+  animation: sheen 8s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
