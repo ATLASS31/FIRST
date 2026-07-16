@@ -141,8 +141,16 @@ export default function Hero() {
       }
     };
 
-    const runWarmup = async () => {
-      if (!canUseCache) {
+    // Déclaration de fonction (hoisted), pas une const fléchée : checkReady
+    // (définie plus haut) l'appelle, et son tout premier appel est
+    // synchrone — si la vidéo est déjà prête à ce moment (cache navigateur,
+    // chargement très rapide), une const arrow function ici serait encore
+    // dans sa zone morte temporelle et ferait planter le composant.
+    async function runWarmup() {
+      // Déclaration de fonction hoisted : TypeScript ne peut pas reporter
+      // le narrowing du early-return plus haut (`if (!video) return;`)
+      // jusqu'ici, donc on le refait localement.
+      if (!video || !canUseCache) {
         warmedUp = true;
         return;
       }
@@ -161,7 +169,7 @@ export default function Hero() {
         // ignore
       }
       warmedUp = true;
-    };
+    }
 
     const getProgress = () => {
       const rect = section.getBoundingClientRect();
