@@ -58,22 +58,25 @@ npm run dev
   "objet premium" — verre sur noir mat chaud (`glass-graphite`), slider
   custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
   (`AnimatedNumber.tsx`).
-- **Performance vidéo du hero** : la vidéo source (générée) n'a
-  vraisemblablement une image-clé que toutes les 1-2s, donc un seek à
-  chaque frame de scroll (jusqu'à 60×/s) devient très coûteux au fil du
-  scroll. Le seek est throttled (~180ms min entre deux seeks réels, 0,18s
-  max par pas) — la vidéo "rattrape" le scroll en douceur plutôt que de le
-  suivre au pixel près, un compromis volontaire pour la fluidité. Mitigation
-  côté code, pas un ré-encodage de la vidéo (voir ci-dessous) — si ça reste
-  saccadé, il n'y a plus grand-chose à gagner côté JS.
+- **Performance vidéo du hero** : deux mesures combinées. (1) Le seek est
+  throttled côté JS (~180ms min entre deux seeks réels, 0,18s max par pas) —
+  la vidéo "rattrape" le scroll en douceur plutôt que de le suivre au pixel
+  près, un compromis volontaire pour la fluidité. (2) La vidéo elle-même a
+  été repassée dans le pipeline d'upscale Higgsfield (ByteDance, 1080p,
+  30fps) — un vrai ré-encodage côté serveur (pas juste plus de throttle),
+  tenté parce que la vidéo générée d'origine n'a probablement une image-clé
+  que toutes les 1-2s, ce qui rend coûteux tout seek loin d'une keyframe.
+  Je n'ai pas pu vérifier moi-même si le nouvel export a des keyframes plus
+  denses (impossible de lire/inspecter la vidéo depuis ce sandbox) — à
+  confirmer en testant en local.
 
 ## À faire avant la mise en prod
 
-- **Ré-encoder la vidéo du hero avec une image-clé par frame** (ou passer à
-  une séquence d'images) si le throttling ne suffit pas à éliminer tout
-  saccadé — c'est la vraie correction structurelle pour du scroll-scrub
-  fluide sur toutes les machines ; je n'ai pas pu le faire moi-même (pas
-  d'accès pour télécharger/traiter la vidéo depuis mon environnement).
+- **Si la vidéo du hero est toujours saccadée** malgré le re-encodage et le
+  throttle : passer à une séquence d'images (frames extraites, swap sur
+  scroll) plutôt qu'un `<video>` scrubé — c'est la technique la plus fiable
+  cross-navigateur pour du scroll-scrub, mais demande d'extraire des frames
+  (ffmpeg) que je ne peux pas faire depuis cet environnement.
 - **Rapatrier les médias** (hero, herbe, feuillage, visuels de gammes) :
   `src/lib/media.ts` et `src/lib/gammes.ts` référencent des images/vidéo
   générées (Higgsfield CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des

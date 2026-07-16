@@ -8,7 +8,7 @@ export const HERO_MEDIA = {
   posterUrl:
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090051_e813814b-3a96-42f6-a98a-89137bf0a557.png",
   videoUrl:
-    "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090851_5b77ab20-5792-4ea6-8787-b8e9d668de3c.mp4",
+    "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_185939_0ee3a9a1-6645-4e83-8e50-98472d7a90ed.mp4",
   grassUrl:
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_185338_279bf365-f5cb-4fc6-b931-9e18e6333ee1.png",
 };
