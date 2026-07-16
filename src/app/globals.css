@@ -92,12 +92,17 @@ body {
   }
 }
 
+/* Reflet ambiant : fin, discret, lent — pour le chrome toujours visible
+   (nav, boutons persistants). Un trait large et opaque qui boucle vite lit
+   comme un gadget ; ici c'est un fil de lumière occasionnel. */
 @keyframes sheen {
-  0% {
-    transform: translateX(-60%) translateY(-60%) rotate(20deg);
+  0%,
+  15% {
+    transform: translateX(-70%) translateY(-70%) rotate(20deg);
   }
+  50%,
   100% {
-    transform: translateX(60%) translateY(60%) rotate(20deg);
+    transform: translateX(70%) translateY(70%) rotate(20deg);
   }
 }
 
@@ -107,16 +112,99 @@ body {
   inset: -50%;
   background: linear-gradient(
     115deg,
-    transparent 42%,
-    rgba(255, 255, 255, 0.55) 50%,
-    transparent 58%
+    transparent 47%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 53%
   );
-  animation: sheen 8s ease-in-out infinite alternate;
+  animation: sheen 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   pointer-events: none;
 }
 
+/* Reflet au survol : pour les cartes interactives (gammes, tuiles). Un seul
+   passage net au hover plutôt qu'une boucle permanente — plus premium,
+   plus intentionnel, et il ne distrait pas pendant le scroll. */
+.glass-sheen-hover::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 58%
+  );
+  transform: translateX(-120%) translateY(-120%) rotate(20deg);
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.glass-sheen-hover:hover::before,
+.glass-sheen-hover:focus-within::before {
+  transform: translateX(60%) translateY(60%) rotate(20deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .glass-sheen::before {
+  .glass-sheen::before,
+  .glass-sheen-hover::before {
     animation: none;
+    transition: none;
+  }
+}
+
+/* Sparkle au survol : petits éclats lumineux qui apparaissent aux coins,
+   décalés dans le temps pour un effet "explosion légère". Réservé aux
+   cartes cliquables — un accent, pas une décoration permanente. */
+@keyframes sparkle-pop {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1) rotate(45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.4) rotate(90deg);
+    opacity: 0;
+  }
+}
+
+.sparkle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sparkle::before,
+.sparkle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: currentColor;
+}
+
+.sparkle::before {
+  width: 100%;
+  height: 1.5px;
+}
+
+.sparkle::after {
+  width: 1.5px;
+  height: 100%;
+}
+
+.group:hover .sparkle,
+.group:focus-within .sparkle {
+  animation: sparkle-pop 0.9s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .sparkle,
+  .group:focus-within .sparkle {
+    animation: none;
+    opacity: 0;
   }
 }

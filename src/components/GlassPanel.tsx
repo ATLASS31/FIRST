@@ -4,6 +4,7 @@ type GlassPanelProps<T extends ElementType> = {
   as?: T;
   tone?: "light" | "dark";
   sheen?: boolean;
+  rounded?: string;
   children: ReactNode;
   className?: string;
 } & Omit<ComponentPropsWithoutRef<T>, "as" | "children" | "className">;
@@ -16,6 +17,7 @@ export default function GlassPanel<T extends ElementType = "div">({
   as,
   tone = "light",
   sheen = false,
+  rounded = "rounded-2xl",
   children,
   className = "",
   ...rest
@@ -25,7 +27,7 @@ export default function GlassPanel<T extends ElementType = "div">({
 
   return (
     <Component
-      className={`relative overflow-hidden rounded-2xl ${toneClass} ${
+      className={`relative overflow-hidden ${rounded} ${toneClass} ${
         sheen ? "glass-sheen" : ""
       } ${className}`}
       {...rest}

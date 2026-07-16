@@ -19,7 +19,8 @@ export default function Nav() {
       <GlassPanel
         as="nav"
         sheen
-        className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3"
+        rounded="rounded-full"
+        className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:px-7"
       >
         <Link href="/" className="flex flex-col leading-none">
           <span className="text-lg tracking-[0.04em] text-encre">
@@ -71,6 +72,7 @@ export default function Nav() {
 
       {open && (
         <GlassPanel
+          rounded="rounded-3xl"
           className="mx-auto mt-2 flex max-w-6xl flex-col gap-1 px-5 py-4 md:hidden"
         >
           {LINKS.map((link) => (
@@ -88,7 +90,7 @@ export default function Nav() {
             onClick={() => setOpen(false)}
             className="mt-2 rounded-full bg-foret px-5 py-2 text-center text-sm font-medium text-brume"
           >
-            Être rappelé
+            Demander un devis
           </Link>
         </GlassPanel>
       )}

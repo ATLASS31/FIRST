@@ -14,9 +14,13 @@ import { HERO_MEDIA } from "@/lib/media";
  * encore prête provoque des sauts/gels visibles plutôt qu'un scrub fluide.
  * Avant ce seuil, le poster reste affiché tel quel.
  */
+const GRASS_PATH =
+  "M0,220 L0,84 L20,159 L40,41 L60,148 L80,62 L100,149 L120,92 L140,181 L160,154 L180,176 L200,123 L220,130 L240,68 L260,150 L280,113 L300,175 L320,146 L340,136 L360,50 L380,140 L400,101 L420,173 L440,51 L460,187 L480,60 L500,132 L520,55 L540,183 L560,116 L580,151 L600,153 L620,174 L640,94 L660,144 L680,125 L700,159 L720,160 L740,155 L760,88 L780,151 L800,69 L820,139 L840,54 L860,176 L880,51 L900,164 L920,41 L940,182 L960,50 L980,173 L1000,158 L1020,161 L1040,157 L1060,181 L1080,38 L1100,176 L1120,118 L1140,153 L1160,65 L1180,155 L1200,55 L1220,154 L1240,79 L1260,185 L1280,125 L1300,185 L1320,43 L1340,131 L1360,129 L1380,141 L1400,131 L1420,165 L1440,151 L1440,220 Z";
+
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const grassRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -48,7 +52,6 @@ export default function Hero() {
 
     const updateFrame = () => {
       rafRef.current = null;
-      if (!ready) return;
 
       const rect = section.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
@@ -57,21 +60,36 @@ export default function Hero() {
           ? Math.min(Math.max(-rect.top / scrollable, 0), 1)
           : 0;
 
+      // L'herbe entre en scène sur le dernier quart du scroll, comme si le
+      // drone se posait au ras du sol — le pied de cadre se révèle juste
+      // avant que la section se détache. Indépendant de l'état de la vidéo :
+      // c'est un transform CSS pur, pas de raison de le bloquer si la
+      // vidéo tarde à charger.
+      if (grassRef.current) {
+        const grassProgress = Math.min(
+          Math.max((progress - 0.72) / 0.28, 0),
+          1
+        );
+        grassRef.current.style.transform = `translateY(${(1 - grassProgress) * 100}%)`;
+      }
+
+      if (!ready) return;
+
       // Marge de sécurité sous la durée totale : chercher pile la dernière
       // frame fait planter le seek sur certains navigateurs.
       const target = Math.min(progress * duration, duration - 0.05);
-      if (Math.abs(target - lastTarget) < 0.03) return;
-      lastTarget = target;
-
-      try {
-        if (typeof video.fastSeek === "function") {
-          video.fastSeek(target);
-        } else {
-          video.currentTime = target;
+      if (Math.abs(target - lastTarget) > 0.03) {
+        lastTarget = target;
+        try {
+          if (typeof video.fastSeek === "function") {
+            video.fastSeek(target);
+          } else {
+            video.currentTime = target;
+          }
+        } catch {
+          // Seek refusé (vidéo pas encore seekable) — on retentera à la
+          // prochaine frame de scroll, rien d'autre à faire ici.
         }
-      } catch {
-        // Seek refusé (vidéo pas encore seekable) — on retentera à la
-        // prochaine frame de scroll, rien d'autre à faire ici.
       }
     };
 
@@ -129,8 +147,23 @@ export default function Hero() {
         </div>
 
         <div
+          ref={grassRef}
           aria-hidden
-          className="absolute bottom-10 left-1/2 h-12 w-px -translate-x-1/2 bg-gradient-to-b from-brume/70 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[26vh] min-h-[140px] will-change-transform"
+          style={{ transform: "translateY(100%)" }}
+        >
+          <svg
+            viewBox="0 0 1440 220"
+            preserveAspectRatio="none"
+            className="h-full w-full"
+          >
+            <path d={GRASS_PATH} className="fill-foret" />
+          </svg>
+        </div>
+
+        <div
+          aria-hidden
+          className="absolute bottom-10 left-1/2 z-10 h-12 w-px -translate-x-1/2 bg-gradient-to-b from-brume/70 to-transparent"
         />
       </div>
     </section>

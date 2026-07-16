@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import GlassPanel from "./GlassPanel";
 import { getGamme, type GammeSlug } from "@/lib/gammes";
 
@@ -18,6 +19,19 @@ export default function GammeDetail({ slug }: { slug: GammeSlug }) {
         <p className="mt-6 text-lg font-semibold text-foret">
           {gamme.fromPrice}
         </p>
+      </section>
+
+      <section className="px-6">
+        <div className="relative mx-auto h-[50vh] max-w-6xl overflow-hidden rounded-3xl">
+          <Image
+            src={gamme.imageUrl}
+            alt={`Maison Bellora, gamme ${gamme.name}`}
+            fill
+            priority
+            sizes="(min-width: 1280px) 1152px, 100vw"
+            className="object-cover"
+          />
+        </div>
       </section>
 
       <section className="mx-auto max-w-3xl px-6 py-16">

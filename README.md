@@ -39,18 +39,32 @@ npm run dev
 - **Pages légales** : mentions légales, CGV, confidentialité — texte réel du
   site actuel ; SIRET/raison sociale/hébergeur restent des placeholders (le
   site actuel ne les indique pas non plus).
+- **Visuels produit par gamme** (`src/lib/gammes.ts`, champ `imageUrl`) :
+  rendus IA Higgsfield cohérents entre les 3 gammes (même univers lumineux,
+  matériaux qui montent en gamme), utilisés sur la preview accueil et le
+  hero de chaque page de gamme — à remplacer par un vrai shooting.
+- **Herbe en premier plan** (`Hero.tsx`) : silhouette SVG révélée sur le
+  dernier quart du scroll du hero, comme si le drone se posait au ras du
+  sol — indépendante de l'état de la vidéo (transform CSS pur).
+- **Glass étendu + micro-interactions** : tuiles chiffres clés, badges
+  savoir-faire, CTA finale, bouton du hero ; taches de couleur floutées
+  (`GlowField.tsx`) derrière les tuiles/gammes pour que le blur ait quelque
+  chose à réfracter ; sparkle au survol sur les cartes gammes ; entrées
+  animées au scroll (Framer Motion).
 
 ## À faire avant la mise en prod
 
-- **Rapatrier les médias du hero** : `src/lib/media.ts` référence l'image et
-  la vidéo générées (Higgsfield CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce
-  sont des liens de génération, pas un stockage permanent. À télécharger et
-  héberger dans `public/` (ou le futur CMS) avant lancement.
+- **Rapatrier les médias** (hero + visuels de gammes) : `src/lib/media.ts`
+  et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
+  CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération, pas
+  un stockage permanent. À télécharger et héberger dans `public/` (ou le
+  futur CMS) avant lancement.
 - **Formulaire de contact non branché** : `ContactClient.tsx` affiche une
   confirmation mais n'envoie rien nulle part (pas d'endpoint email/CRM). Les
   demandes ne sont pas capturées tant que ce n'est pas câblé.
-- **Photographie des 3 gammes** (Primaire, Premium, Prestige) — priorité
-  Prestige, qui n'a actuellement aucune image — et galerie de réalisations.
+- **Vrai shooting photo des 3 gammes** — les visuels actuels sont des rendus
+  IA de placement, cohérents mais pas des photos réelles des maisons
+  Bellora. Priorité Prestige.
 - **Tour 360° et matrice des gammes** (présents sur le site actuel) : pas
   reconstruits dans cette passe.
 - **Page Notre atelier** (`/atelier`) : stub, contenu à écrire — n'existe pas
