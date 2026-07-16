@@ -132,6 +132,25 @@ body {
     0 0 52px rgba(173, 138, 85, 0.22);
 }
 
+/* Le reflet ambiant animé étant écarté (bug ci-dessus), le bouton perdait
+   tout son éclat "verre" sur un fond vidéo clair (herbe, ciel) — il lisait
+   comme un simple pavé mat. Un reflet FIXE (jamais animé, donc aucune
+   promotion de calque liée à une transform qui bouge) redonne la brillance
+   sans réintroduire le bug de débordement : un highlight diagonal en haut
+   à gauche, comme la lumière fixe qu'on verrait sur un vrai verre bombé. */
+.hero-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    128deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.12) 22%,
+    transparent 48%
+  );
+  pointer-events: none;
+}
+
 @supports (backdrop-filter: url(#glass-distortion)) {
   .glass {
     backdrop-filter: url(#glass-distortion) blur(7px) saturate(180%);

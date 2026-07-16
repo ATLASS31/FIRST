@@ -4,69 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import TiltCard from "./TiltCard";
+import GlassPanel from "./GlassPanel";
 import { GAMMES } from "@/lib/gammes";
-
-/**
- * Ombre de plante abstraite (tige + feuilles en ellipses) — pas une photo :
- * une silhouette qu'on floute et qu'on pose à très faible opacité, comme une
- * ombre portée plutôt qu'un feuillage détaillé. Le flou fait le travail de
- * rendre ça discret et premium ; le détail du tracé n'a pas besoin d'être
- * fin puisqu'il disparaît dans le flou de toute façon.
- */
-function PlantShadow({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 200" aria-hidden className={className}>
-      <g fill="currentColor">
-        <path
-          d="M100 190 C96 145 92 95 68 42"
-          stroke="currentColor"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <ellipse cx="60" cy="72" rx="27" ry="10" transform="rotate(-35 60 72)" />
-        <ellipse cx="82" cy="50" rx="24" ry="9" transform="rotate(-12 82 50)" />
-        <ellipse cx="53" cy="112" rx="29" ry="11" transform="rotate(-52 53 112)" />
-        <ellipse cx="92" cy="132" rx="23" ry="9" transform="rotate(-18 92 132)" />
-        <ellipse cx="44" cy="152" rx="25" ry="10" transform="rotate(-62 44 152)" />
-      </g>
-    </svg>
-  );
-}
-
-// Tailles responsive : les tailles fixes en rem devenaient énormes et
-// illisibles (juste un aplat flou pixelisé) sur un petit viewport mobile —
-// chaque silhouette grandit par palier avec le viewport plutôt que de
-// garder une taille absolue pensée pour desktop.
-const PLANT_SHADOWS = [
-  {
-    position: "-left-10 -top-14 sm:-left-14 sm:-top-20 lg:-left-16 lg:-top-24",
-    size: "h-52 w-52 sm:h-72 sm:w-72 lg:h-[28rem] lg:w-[28rem]",
-    rotate: "",
-    opacity: 0.32,
-  },
-  {
-    position:
-      "-right-12 -top-10 sm:-right-16 sm:-top-14 lg:-right-20 lg:-top-16",
-    size: "h-44 w-44 sm:h-60 sm:w-60 lg:h-[22rem] lg:w-[22rem]",
-    rotate: "rotate-[95deg]",
-    opacity: 0.26,
-  },
-  {
-    position:
-      "-bottom-16 -right-10 sm:-bottom-20 sm:-right-12 lg:-bottom-28 lg:-right-14",
-    size: "h-48 w-48 sm:h-64 sm:w-64 lg:h-[26rem] lg:w-[26rem]",
-    rotate: "rotate-[155deg]",
-    opacity: 0.3,
-  },
-  {
-    position:
-      "-bottom-10 -left-12 sm:-bottom-14 sm:-left-16 lg:-bottom-16 lg:-left-20",
-    size: "h-40 w-40 sm:h-56 sm:w-56 lg:h-[20rem] lg:w-[20rem]",
-    rotate: "rotate-[-70deg]",
-    opacity: 0.24,
-  },
-] as const;
 
 function SparkleIcon() {
   return (
@@ -85,31 +24,6 @@ function SparkleIcon() {
 export default function GammesPreview() {
   return (
     <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
-      {/* Ombres de plantes en fond de section : pas des photos (jugées
-          cheap dans ce contexte), juste des silhouettes floutées, comme une
-          ombre portée sur un mur. Tailles responsive (une taille fixe
-          pensée pour desktop devenait un aplat flou illisible sur mobile).
-          Chacune sa propre animation décalée dans le temps — une par une,
-          pas toutes en même temps — quand la section entre dans le
-          viewport. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden text-encre"
-      >
-        {PLANT_SHADOWS.map((shadow, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: shadow.opacity }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 1, ease: "easeOut", delay: i * 0.35 }}
-            className={`absolute ${shadow.position} ${shadow.size} ${shadow.rotate}`}
-          >
-            <PlantShadow className="h-full w-full blur-md" />
-          </motion.div>
-        ))}
-      </div>
-
       <div className="relative mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
@@ -145,6 +59,24 @@ export default function GammesPreview() {
                     </span>
 
                     <div className="absolute inset-x-0 bottom-0 p-6">
+                      {/* Fiche technique réelle plutôt qu'un décor abstrait
+                          (ombres de plantes jugées gratuites, sans intérêt) :
+                          les deux équipements qui distinguent le plus
+                          concrètement cette gamme des deux autres, révélés
+                          au survol — une vraie plus-value informative, pas
+                          juste une animation. */}
+                      <div className="mb-3 flex max-h-0 flex-wrap gap-1.5 overflow-hidden opacity-0 transition-all duration-500 ease-out group-hover:max-h-16 group-hover:opacity-100 group-focus-within:max-h-16 group-focus-within:opacity-100">
+                        {gamme.highlights.map((highlight) => (
+                          <GlassPanel
+                            key={highlight}
+                            tone="dark"
+                            rounded="rounded-full"
+                            className="px-2.5 py-1 text-[11px] font-medium text-brume"
+                          >
+                            {highlight}
+                          </GlassPanel>
+                        ))}
+                      </div>
                       <p className="text-sm text-brume/85">
                         {gamme.cardTagline}
                       </p>

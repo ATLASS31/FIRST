@@ -57,7 +57,7 @@ const CACHE_BUCKET = 0.2;
  * (dessiné sur un <canvas>) ; sinon repli sur le seek throttlé habituel,
  * jamais pire qu'avant.
  */
-const WAVE_REVEAL_START = 0.68;
+const WAVE_REVEAL_START = 0.52;
 const WAVE_REVEAL_END = 1;
 const SEEK_THROTTLE_MS = 110;
 const SEEK_STEP_CAP = 0.22;
@@ -227,13 +227,16 @@ export default function Hero() {
           ),
           1
         );
-        // Le fondu se termine vite (12% de la fenêtre) : un vrai flash
-        // d'apparition net, distinct de la montée/du glissement qui
-        // continuent ensuite pendant que la forme est déjà pleinement
-        // opaque.
-        const opacity = Math.min(waveProgress / 0.12, 1);
-        const riseY = (1 - Math.min(waveProgress / 0.55, 1)) * 100;
-        const driftX = -(1 - waveProgress) * 6;
+        // Le fondu se termine vite (10% de la fenêtre) : un vrai flash
+        // d'apparition net. La montée et le glissement, eux, vont plus loin
+        // et plus vite qu'avant (distance doublée, complétée sur un tiers
+        // de la fenêtre au lieu de plus de la moitié) — un mouvement de
+        // vague plus franc et dynamique — tout en gardant une fenêtre de
+        // scroll plus longue (WAVE_REVEAL_START abaissé) pour que
+        // l'ensemble dure un peu plus.
+        const opacity = Math.min(waveProgress / 0.1, 1);
+        const riseY = (1 - Math.min(waveProgress / 0.35, 1)) * 100;
+        const driftX = -(1 - waveProgress) * 14;
         waveRef.current.style.opacity = String(opacity);
         waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
       }

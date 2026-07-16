@@ -115,7 +115,13 @@ npm run dev
   glissement horizontal continu vers la droite en même temps, pour
   simuler une vague qui bouge. Liée en continu à la progression du scroll
   jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
-  changement de section), scrubbable dans les deux sens.
+  changement de section), scrubbable dans les deux sens. Timing recalibré
+  ensuite : mouvement jugé pas assez franc mais l'ensemble trop court —
+  fenêtre de scroll allongée (`WAVE_REVEAL_START` abaissé de 0.68 à 0.52)
+  tout en faisant compléter la montée et le glissement plus tôt dans cette
+  fenêtre (un tiers au lieu de plus de la moitié) et en doublant
+  l'amplitude du glissement horizontal, pour un mouvement plus rapide et
+  plus dynamique sur une durée totale plus longue.
 - **Hero : entrée du titre mot par mot** : le bloc eyebrow/titre/CTA
   n'avait jusqu'ici aucune animation propre. Un premier essai faisait
   entrer chaque bloc (eyebrow, titre entier, bouton) en un seul morceau
@@ -150,7 +156,15 @@ npm run dev
   pas de reflet ambiant sur ce bouton précis, seulement le halo doré
   statique en `box-shadow` (redéclarant au passage les valeurs de base de
   `.glass-dark`, puisqu'un seul `box-shadow` peut s'appliquer par élément)
-  — déjà largement assez lumineux à lui seul, et sans aucun artefact.
+  — déjà largement assez lumineux à lui seul, et sans aucun artefact. Sur
+  le vrai fond vidéo (herbe/ciel clairs, pas le placeholder sombre), ce
+  halo seul ne suffisait plus : sans aucun reflet, le bouton lisait comme
+  un pavé mat "cheap". Ajout d'un reflet fixe (`::before`, dégradé blanc
+  diagonal statique, jamais animé) pour retrouver la brillance liquid
+  glass sans réintroduire le bug de débordement — une transform qui ne
+  bouge jamais n'est pas promue sur son propre calque de composition de
+  la même façon qu'une transform animée, donc `overflow: hidden` continue
+  de la clipper correctement.
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
@@ -161,29 +175,24 @@ npm run dev
   par statistique (bouclier/camion/hexagone — la France comme
   "l'Hexagone"), sur fond plat — non concerné par cette demande de retour
   en arrière. Contenu textuel des deux sections identique à l'original.
-- **Gammes : ombres de plantes en fond de section** : un cadrage feuillage
-  (fond flou plein cadre, puis des branches détourées à 2 puis 4 coins,
-  puis des photos réelles) a été essayé pour cette section mais toujours
-  jugé "cheap" — trop littéral, pas assez discret. La version actuelle
-  n'utilise plus aucune photo : une silhouette de plante abstraite dessinée
-  en SVG (tige + feuilles en ellipses, `PlantShadow` dans
-  `GammesPreview.tsx`), comme une ombre portée plutôt qu'un feuillage
-  détaillé — le tracé n'a pas besoin d'être fin puisqu'il disparaît dans
-  le flou de toute façon. Premier calibrage trop discret (`blur-xl`,
-  opacité ~7%, seulement 2 coins) — quasi invisible ; resserré à `blur-md`,
-  opacité 24-32%, et 4 silhouettes (un coin chacune) pour une couverture
-  perceptible sans devenir une vraie photo. Aucune dépendance à une image
-  générée (donc vérifiable et stable, contrairement aux tentatives
-  précédentes). Tailles ensuite rendues responsive : les valeurs fixes en
-  `rem` (pensées pour desktop) devenaient énormes et illisibles sur un
-  petit viewport mobile ("trop gros flou pixelisé, on comprend pas ce que
-  c'est") — chaque silhouette a maintenant une taille et une position par
-  palier de breakpoint (`PLANT_SHADOWS` dans `GammesPreview.tsx`, base
-  mobile → `sm:` → `lg:`) au lieu d'une taille absolue unique. La
-  révélation, qui faisait apparaître les 4 silhouettes en un seul fondu
-  groupé, a aussi été refaite : chaque silhouette a maintenant son propre
-  `motion.div` avec un délai croissant (`delay: i * 0.35`), pour un
-  apparaître une par une plutôt que toutes en même temps.
+- **Gammes : de la décoration de fond à une fiche technique réelle** : le
+  fond de section est passé par plusieurs itérations décoratives — cadrage
+  feuillage (fond flou, branches détourées, photos réelles), puis des
+  silhouettes de plantes abstraites en SVG (`PlantShadow`, ombre portée
+  floutée, calibrée en opacité/nombre puis rendue responsive et révélée
+  une par une) — jugées à chaque fois "cheap" ou, en bout de course,
+  gratuites : ça ne disait rien sur la gamme elle-même. Tout ce chantier a
+  été abandonné et remplacé par quelque chose de fonctionnel plutôt que
+  décoratif : au survol de chaque carte, deux pastilles liquid glass
+  apparaissent au-dessus du tarif, listant les deux équipements qui
+  distinguent le plus concrètement cette gamme des deux autres (cuisine et
+  salle de bain — les postes où le texte des pages gamme décrit déjà les
+  écarts les plus nets : "équipée de base" / "équipée premium" /
+  "sur-mesure haut de gamme"). Champ `highlights` ajouté à `Gamme`
+  (`src/lib/gammes.ts`), affiché via `GlassPanel` (`tone="dark"`) dans
+  `GammesPreview.tsx`. Une vraie plus-value informative — pas une
+  animation de plus — qui reste discrète (cachée jusqu'au survol/focus,
+  transition opacité + hauteur) pour ne pas alourdir la carte au repos.
 
 ## À faire avant la mise en prod
 

@@ -17,6 +17,7 @@ export type Gamme = {
   fromPrice: string;
   accent: string;
   imageUrl: string;
+  highlights: [string, string];
   pourquoi: { lead: string; paragraphs: string[] };
   inclus: string[];
   configurations: Configuration[];
@@ -36,6 +37,7 @@ export const GAMMES: Gamme[] = [
     accent: "foret",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165425_628ec5b8-4a0f-4477-b6b1-48a539871a8a.png",
+    highlights: ["Cuisine équipée de base", "Salle de bain complète"],
     pourquoi: {
       lead: "L'essentiel, en confiance.",
       paragraphs: [
@@ -86,6 +88,7 @@ export const GAMMES: Gamme[] = [
     accent: "encre-doux",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165434_7dd44834-9e43-4660-b77e-e90e61d5275a.png",
+    highlights: ["Cuisine équipée premium", "Salle de bain design"],
     pourquoi: {
       lead: "Le confort, sans concession.",
       paragraphs: [
@@ -142,6 +145,7 @@ export const GAMMES: Gamme[] = [
     accent: "laiton",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165443_0c82f2ed-5645-49fd-86ea-af77e9645b87.png",
+    highlights: ["Cuisine sur-mesure haut de gamme", "Salle de bain en pierre naturelle"],
     pourquoi: {
       lead: "L'exception, à votre mesure.",
       paragraphs: [
