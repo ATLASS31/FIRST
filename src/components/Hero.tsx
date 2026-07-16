@@ -2,20 +2,25 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { HERO_MEDIA } from "@/lib/media";
 
 /**
  * Hero avec vidéo scrubée par le scroll (technique Apple), jamais lue en
  * autoplay. La progression du scroll (0→1) sur la hauteur de la section
- * pilote directement video.currentTime.
+ * pilote video.currentTime.
  *
- * La vidéo n'est scrubée qu'une fois suffisamment bufferisée (readyState
- * HAVE_FUTURE_DATA+) : chercher un currentTime sur une vidéo réseau pas
- * encore prête provoque des sauts/gels visibles plutôt qu'un scrub fluide.
- * Avant ce seuil, le poster reste affiché tel quel.
+ * La vidéo source (générée) n'a probablement une image-clé que toutes les
+ * 1-2s : chaque seek loin d'une keyframe force un redécodage depuis celle-ci,
+ * ce qui devient très coûteux si on seek à chaque frame de scroll (jusqu'à
+ * 60×/s). On limite donc la fréquence réelle des seeks et on avance vers la
+ * cible par petits pas plutôt que par sauts directs, pour que chaque seek
+ * individuel reste proche de la position courante (donc rapide à décoder)
+ * même quand le scroll va vite.
  */
-const GRASS_PATH =
-  "M0,220 L0,84 L20,159 L40,41 L60,148 L80,62 L100,149 L120,92 L140,181 L160,154 L180,176 L200,123 L220,130 L240,68 L260,150 L280,113 L300,175 L320,146 L340,136 L360,50 L380,140 L400,101 L420,173 L440,51 L460,187 L480,60 L500,132 L520,55 L540,183 L560,116 L580,151 L600,153 L620,174 L640,94 L660,144 L680,125 L700,159 L720,160 L740,155 L760,88 L780,151 L800,69 L820,139 L840,54 L860,176 L880,51 L900,164 L920,41 L940,182 L960,50 L980,173 L1000,158 L1020,161 L1040,157 L1060,181 L1080,38 L1100,176 L1120,118 L1140,153 L1160,65 L1180,155 L1200,55 L1220,154 L1240,79 L1260,185 L1280,125 L1300,185 L1320,43 L1340,131 L1360,129 L1380,141 L1400,131 L1420,165 L1440,151 L1440,220 Z";
+const MIN_SEEK_INTERVAL_MS = 90;
+const MAX_STEP_SECONDS = 0.4;
+const EASE = 0.5;
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -35,7 +40,8 @@ export default function Hero() {
 
     let duration = 0;
     let ready = false;
-    let lastTarget = -1;
+    let appliedTime = 0;
+    let lastSeekAt = 0;
 
     const checkReady = () => {
       duration = video.duration || 0;
@@ -50,21 +56,21 @@ export default function Hero() {
     video.addEventListener("progress", checkReady);
     checkReady();
 
-    const updateFrame = () => {
-      rafRef.current = null;
-
+    const getProgress = () => {
       const rect = section.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
-      const progress =
-        scrollable > 0
-          ? Math.min(Math.max(-rect.top / scrollable, 0), 1)
-          : 0;
+      return scrollable > 0
+        ? Math.min(Math.max(-rect.top / scrollable, 0), 1)
+        : 0;
+    };
+
+    const tick = () => {
+      rafRef.current = null;
+      const progress = getProgress();
 
       // L'herbe entre en scène sur le dernier quart du scroll, comme si le
-      // drone se posait au ras du sol — le pied de cadre se révèle juste
-      // avant que la section se détache. Indépendant de l'état de la vidéo :
-      // c'est un transform CSS pur, pas de raison de le bloquer si la
-      // vidéo tarde à charger.
+      // drone se posait au ras du sol. Transform CSS pur, indépendant de
+      // l'état de la vidéo.
       if (grassRef.current) {
         const grassProgress = Math.min(
           Math.max((progress - 0.72) / 0.28, 0),
@@ -73,29 +79,46 @@ export default function Hero() {
         grassRef.current.style.transform = `translateY(${(1 - grassProgress) * 100}%)`;
       }
 
-      if (!ready) return;
+      let settled = true;
 
-      // Marge de sécurité sous la durée totale : chercher pile la dernière
-      // frame fait planter le seek sur certains navigateurs.
-      const target = Math.min(progress * duration, duration - 0.05);
-      if (Math.abs(target - lastTarget) > 0.03) {
-        lastTarget = target;
-        try {
-          if (typeof video.fastSeek === "function") {
-            video.fastSeek(target);
-          } else {
-            video.currentTime = target;
+      if (ready) {
+        const targetTime = Math.min(progress * duration, duration - 0.05);
+        const diff = targetTime - appliedTime;
+
+        if (Math.abs(diff) > 0.01) {
+          settled = false;
+          const now = performance.now();
+          if (now - lastSeekAt >= MIN_SEEK_INTERVAL_MS) {
+            const step =
+              Math.sign(diff) *
+              Math.min(Math.abs(diff) * EASE, MAX_STEP_SECONDS);
+            appliedTime = Math.max(0, Math.min(appliedTime + step, duration));
+            lastSeekAt = now;
+            try {
+              if (typeof video.fastSeek === "function") {
+                video.fastSeek(appliedTime);
+              } else {
+                video.currentTime = appliedTime;
+              }
+            } catch {
+              // Seek refusé (vidéo pas encore seekable) — on retentera au
+              // prochain tick, rien d'autre à faire ici.
+            }
           }
-        } catch {
-          // Seek refusé (vidéo pas encore seekable) — on retentera à la
-          // prochaine frame de scroll, rien d'autre à faire ici.
         }
+      }
+
+      // On continue de "tiquer" tant que la vidéo n'a pas rattrapé sa
+      // cible, même après la fin du scroll — l'effet de rattrapage doux
+      // est voulu, pas un bug.
+      if (!settled) {
+        rafRef.current = requestAnimationFrame(tick);
       }
     };
 
     const onScroll = () => {
       if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(updateFrame);
+        rafRef.current = requestAnimationFrame(tick);
       }
     };
 
@@ -149,16 +172,22 @@ export default function Hero() {
         <div
           ref={grassRef}
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[26vh] min-h-[140px] will-change-transform"
-          style={{ transform: "translateY(100%)" }}
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[32vh] min-h-[180px] overflow-hidden will-change-transform"
+          style={{
+            transform: "translateY(100%)",
+            maskImage: "linear-gradient(to top, black 55%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to top, black 55%, transparent 100%)",
+          }}
         >
-          <svg
-            viewBox="0 0 1440 220"
-            preserveAspectRatio="none"
-            className="h-full w-full"
-          >
-            <path d={GRASS_PATH} className="fill-foret" />
-          </svg>
+          <Image
+            src={HERO_MEDIA.grassUrl}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-bottom"
+          />
         </div>
 
         <div

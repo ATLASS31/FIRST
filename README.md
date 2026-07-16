@@ -43,22 +43,41 @@ npm run dev
   rendus IA Higgsfield cohérents entre les 3 gammes (même univers lumineux,
   matériaux qui montent en gamme), utilisés sur la preview accueil et le
   hero de chaque page de gamme — à remplacer par un vrai shooting.
-- **Herbe en premier plan** (`Hero.tsx`) : silhouette SVG révélée sur le
-  dernier quart du scroll du hero, comme si le drone se posait au ras du
-  sol — indépendante de l'état de la vidéo (transform CSS pur).
+- **Herbe en premier plan** (`Hero.tsx`) : vrai visuel photo (Higgsfield),
+  révélé sur le dernier quart du scroll du hero avec un fondu en masque CSS,
+  comme si le drone se posait au ras du sol — indépendant de l'état de la
+  vidéo (transform CSS pur).
 - **Glass étendu + micro-interactions** : tuiles chiffres clés, badges
-  savoir-faire, CTA finale, bouton du hero ; taches de couleur floutées
-  (`GlowField.tsx`) derrière les tuiles/gammes pour que le blur ait quelque
-  chose à réfracter ; sparkle au survol sur les cartes gammes ; entrées
-  animées au scroll (Framer Motion).
+  savoir-faire, CTA finale, bouton du hero, calculateur ; taches de couleur
+  floutées (`GlowField.tsx`) derrière les tuiles/gammes pour que le blur ait
+  quelque chose à réfracter ; reflet ambiant lent sur le chrome permanent
+  (nav) vs reflet au survol uniquement sur les cartes interactives ; entrées
+  animées au scroll et parallax léger au survol (`TiltCard.tsx`, Framer
+  Motion) sur la quasi-totalité des cartes.
+- **Calculateur de rentabilité** (`RentabiliteCalculator.tsx`) : refonte en
+  "objet premium" — verre sur noir mat chaud (`glass-graphite`), slider
+  custom (`PremiumSlider.tsx`), chiffres qui s'animent au changement
+  (`AnimatedNumber.tsx`).
+- **Performance vidéo du hero** : la vidéo source (générée) n'a
+  vraisemblablement une image-clé que toutes les 1-2s, donc un seek à
+  chaque frame de scroll (jusqu'à 60×/s) devient très coûteux au fil du
+  scroll. Le seek est maintenant throttled (~90ms min) et avance vers sa
+  cible par petits pas plutôt que par sauts directs, pour rester fluide même
+  en scroll rapide — mitigation côté code, pas un ré-encodage de la vidéo
+  (voir ci-dessous).
 
 ## À faire avant la mise en prod
 
-- **Rapatrier les médias** (hero + visuels de gammes) : `src/lib/media.ts`
-  et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
-  CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération, pas
-  un stockage permanent. À télécharger et héberger dans `public/` (ou le
-  futur CMS) avant lancement.
+- **Ré-encoder la vidéo du hero avec une image-clé par frame** (ou passer à
+  une séquence d'images) si le throttling ne suffit pas à éliminer tout
+  saccadé — c'est la vraie correction structurelle pour du scroll-scrub
+  fluide sur toutes les machines ; je n'ai pas pu le faire moi-même (pas
+  d'accès pour télécharger/traiter la vidéo depuis mon environnement).
+- **Rapatrier les médias** (hero, herbe, feuillage, visuels de gammes) :
+  `src/lib/media.ts` et `src/lib/gammes.ts` référencent des images/vidéo
+  générées (Higgsfield CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des
+  liens de génération, pas un stockage permanent. À télécharger et héberger
+  dans `public/` (ou le futur CMS) avant lancement.
 - **Formulaire de contact non branché** : `ContactClient.tsx` affiche une
   confirmation mais n'envoie rien nulle part (pas d'endpoint email/CRM). Les
   demandes ne sont pas capturées tant que ce n'est pas câblé.

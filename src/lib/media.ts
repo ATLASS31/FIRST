@@ -9,4 +9,9 @@ export const HERO_MEDIA = {
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090051_e813814b-3a96-42f6-a98a-89137bf0a557.png",
   videoUrl:
     "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_090851_5b77ab20-5792-4ea6-8787-b8e9d668de3c.mp4",
+  grassUrl:
+    "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_175746_85e2c938-1629-4ce8-8d4c-465047f79427.png",
 };
+
+export const FOLIAGE_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_175753_26757dc3-2661-4457-9531-8e0c865213b7.png";

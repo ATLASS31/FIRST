@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import GlassPanel from "./GlassPanel";
+import TiltCard from "./TiltCard";
 import { getGamme, type GammeSlug } from "@/lib/gammes";
 
 export default function GammeDetail({ slug }: { slug: GammeSlug }) {
@@ -69,34 +70,37 @@ export default function GammeDetail({ slug }: { slug: GammeSlug }) {
         <p className="eyebrow text-xs text-encre-douce">Configurations</p>
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {gamme.configurations.map((config) => (
-            <GlassPanel
-              key={config.surface}
-              className="flex flex-col gap-3 p-6"
-            >
-              <p className="text-2xl font-semibold text-encre">
-                {config.surface} m²
-              </p>
-              <h3 className="text-sm font-semibold text-encre">
-                {config.title}
-              </h3>
-              <p className="flex-1 text-sm text-encre-doux">{config.body}</p>
-              <p className="eyebrow text-[10px] text-foret">
-                {config.price ?? "Sur devis"}
-              </p>
-            </GlassPanel>
+            <TiltCard key={config.surface} strength={4}>
+              <GlassPanel className="flex flex-col gap-3 p-6">
+                <p className="text-2xl font-semibold text-encre">
+                  {config.surface} m²
+                </p>
+                <h3 className="text-sm font-semibold text-encre">
+                  {config.title}
+                </h3>
+                <p className="flex-1 text-sm text-encre-doux">
+                  {config.body}
+                </p>
+                <p className="eyebrow text-[10px] text-foret">
+                  {config.price ?? "Sur devis"}
+                </p>
+              </GlassPanel>
+            </TiltCard>
           ))}
         </div>
       </section>
 
       <section className="px-6 py-20">
-        <GlassPanel className="mx-auto max-w-2xl px-8 py-12 text-center">
-          <p className="text-lg italic text-encre">
-            « {gamme.temoignage.quote} »
-          </p>
-          <p className="eyebrow mt-4 text-xs text-encre-douce">
-            {gamme.temoignage.author}
-          </p>
-        </GlassPanel>
+        <TiltCard strength={3} className="mx-auto max-w-2xl">
+          <GlassPanel className="px-8 py-12 text-center">
+            <p className="text-lg italic text-encre">
+              « {gamme.temoignage.quote} »
+            </p>
+            <p className="eyebrow mt-4 text-xs text-encre-douce">
+              {gamme.temoignage.author}
+            </p>
+          </GlassPanel>
+        </TiltCard>
       </section>
 
       <section className="px-6 pb-28 text-center">

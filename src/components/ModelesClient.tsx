@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import GlassPanel from "@/components/GlassPanel";
+import TiltCard from "@/components/TiltCard";
 import { GAMMES, type GammeSlug } from "@/lib/gammes";
 
 const SURFACES = [40, 60, 80, 100] as const;
@@ -106,31 +107,28 @@ export default function ModelesClient() {
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {configs.map((config) => (
-            <Link
-              key={`${config.gammeSlug}-${config.surface}`}
-              href={config.gammeHref}
-              className="group block"
-            >
-              <GlassPanel
-                sheen
-                className="flex h-56 flex-col justify-between p-6 transition-transform group-hover:-translate-y-1"
-              >
-                <div>
-                  <p className="eyebrow text-[10px] text-foret">
-                    {config.gammeName} — {config.surface} m²
+            <TiltCard key={`${config.gammeSlug}-${config.surface}`} strength={4}>
+              <Link href={config.gammeHref} className="group block">
+                <GlassPanel
+                  className="glass-sheen-hover flex h-56 flex-col justify-between p-6 transition-transform group-hover:-translate-y-1"
+                >
+                  <div>
+                    <p className="eyebrow text-[10px] text-foret">
+                      {config.gammeName} — {config.surface} m²
+                    </p>
+                    <h3 className="mt-2 text-base font-semibold text-encre">
+                      {config.title}
+                    </h3>
+                    <p className="mt-2 text-sm text-encre-doux">
+                      {config.body}
+                    </p>
+                  </div>
+                  <p className="text-sm text-encre-douce">
+                    {config.price ?? "Sur devis"}
                   </p>
-                  <h3 className="mt-2 text-base font-semibold text-encre">
-                    {config.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-encre-doux">
-                    {config.body}
-                  </p>
-                </div>
-                <p className="text-sm text-encre-douce">
-                  {config.price ?? "Sur devis"}
-                </p>
-              </GlassPanel>
-            </Link>
+                </GlassPanel>
+              </Link>
+            </TiltCard>
           ))}
         </div>
 

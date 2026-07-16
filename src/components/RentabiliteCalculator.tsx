@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import GlassPanel from "./GlassPanel";
+import PremiumSlider from "./PremiumSlider";
+import AnimatedNumber from "./AnimatedNumber";
+import TiltCard from "./TiltCard";
 
 const REGIONS = [
   { id: "cote", label: "Côte", mult: 1 },
@@ -27,6 +30,35 @@ const formatEuro = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+function PillGroup<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-full border px-4 py-1.5 text-sm transition-colors duration-300 ${
+            value === opt.id
+              ? "border-laiton bg-laiton text-encre"
+              : "border-brume/20 text-brume/75 hover:border-brume/45"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function RentabiliteCalculator() {
   const [surface, setSurface] = useState(60);
   const [regionId, setRegionId] =
@@ -49,105 +81,97 @@ export default function RentabiliteCalculator() {
 
   return (
     <section className="px-6 py-28">
-      <GlassPanel
-        tone="dark"
-        sheen
-        className="mx-auto max-w-4xl px-8 py-16 sm:px-14"
-      >
-        <p className="eyebrow text-xs text-brume/70">Votre projet, rentabilisé</p>
-        <h2 className="mt-4 max-w-lg text-3xl font-semibold text-brume sm:text-4xl">
-          Combien votre maison peut-elle vous rapporter ?
-        </h2>
+      <TiltCard strength={2} className="mx-auto max-w-4xl">
+        <GlassPanel tone="graphite" sheen className="px-8 py-16 sm:px-14">
+          <p className="eyebrow text-xs text-laiton/80">
+            Votre projet, rentabilisé
+          </p>
+          <h2 className="mt-4 max-w-lg text-3xl font-semibold text-brume sm:text-4xl">
+            Combien votre maison peut-elle vous rapporter ?
+          </h2>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-2">
-          <label className="block">
-            <span className="eyebrow text-[10px] text-brume/60">
-              Surface du module — {surface} m²
-            </span>
-            <input
-              type="range"
-              min={20}
-              max={100}
-              step={5}
-              value={surface}
-              onChange={(e) => setSurface(Number(e.target.value))}
-              className="mt-3 w-full accent-laiton"
-            />
-          </label>
-
-          <label className="block">
-            <span className="eyebrow text-[10px] text-brume/60">Région</span>
-            <select
-              value={regionId}
-              onChange={(e) =>
-                setRegionId(e.target.value as typeof regionId)
-              }
-              className="mt-3 w-full rounded-lg border border-brume/20 bg-transparent px-3 py-2 text-sm text-brume [&>option]:text-encre"
-            >
-              {REGIONS.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block sm:col-span-2">
-            <span className="eyebrow text-[10px] text-brume/60">
-              Type de location
-            </span>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {TYPES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTypeId(t.id)}
-                  className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                    typeId === t.id
-                      ? "border-laiton bg-laiton text-encre"
-                      : "border-brume/25 text-brume/80 hover:border-brume/50"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+          <div className="mt-14 grid gap-10 sm:grid-cols-2">
+            <div>
+              <div className="flex items-baseline justify-between">
+                <span className="eyebrow text-[10px] text-brume/55">
+                  Surface du module
+                </span>
+                <AnimatedNumber
+                  value={`${surface} m²`}
+                  className="text-sm font-semibold text-laiton"
+                />
+              </div>
+              <div className="mt-4">
+                <PremiumSlider
+                  min={20}
+                  max={100}
+                  step={5}
+                  value={surface}
+                  onChange={setSurface}
+                />
+              </div>
             </div>
-          </label>
-        </div>
 
-        <div className="mt-14 grid gap-8 border-t border-brume/15 pt-10 sm:grid-cols-3">
-          <div>
-            <p className="text-2xl font-semibold text-brume sm:text-3xl">
-              {formatEuro(monthly)}
-            </p>
-            <p className="eyebrow mt-2 text-[10px] text-brume/60">
-              Revenu mensuel estimé
-            </p>
-          </div>
-          <div>
-            <p className="text-2xl font-semibold text-brume sm:text-3xl">
-              {formatEuro(annual)}
-            </p>
-            <p className="eyebrow mt-2 text-[10px] text-brume/60">
-              Revenu annuel (70% d&apos;occupation)
-            </p>
-          </div>
-          <div>
-            <p className="text-2xl font-semibold text-laiton sm:text-3xl">
-              {amortissement.toFixed(1)} ans
-            </p>
-            <p className="eyebrow mt-2 text-[10px] text-brume/60">
-              Amortissement estimé
-            </p>
-          </div>
-        </div>
+            <div>
+              <span className="eyebrow text-[10px] text-brume/55">
+                Région
+              </span>
+              <div className="mt-4">
+                <PillGroup
+                  options={REGIONS}
+                  value={regionId}
+                  onChange={setRegionId}
+                />
+              </div>
+            </div>
 
-        <p className="mt-10 text-xs leading-relaxed text-brume/50">
-          Sur la base de moyennes sectorielles. Bellora n&apos;est pas un
-          cabinet de gestion patrimoniale ; ces chiffres sont indicatifs et
-          varient selon l&apos;emplacement, les prestations et la gestion.
-        </p>
-      </GlassPanel>
+            <div className="sm:col-span-2">
+              <span className="eyebrow text-[10px] text-brume/55">
+                Type de location
+              </span>
+              <div className="mt-4">
+                <PillGroup options={TYPES} value={typeId} onChange={setTypeId} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-14 grid gap-8 border-t border-brume/10 pt-10 sm:grid-cols-3">
+            <div>
+              <AnimatedNumber
+                value={formatEuro(monthly)}
+                className="text-2xl font-semibold text-brume sm:text-3xl"
+              />
+              <p className="eyebrow mt-2 text-[10px] text-brume/55">
+                Revenu mensuel estimé
+              </p>
+            </div>
+            <div>
+              <AnimatedNumber
+                value={formatEuro(annual)}
+                className="text-2xl font-semibold text-brume sm:text-3xl"
+              />
+              <p className="eyebrow mt-2 text-[10px] text-brume/55">
+                Revenu annuel (70% d&apos;occupation)
+              </p>
+            </div>
+            <div>
+              <AnimatedNumber
+                value={`${amortissement.toFixed(1)} ans`}
+                className="text-2xl font-semibold text-laiton sm:text-3xl"
+              />
+              <p className="eyebrow mt-2 text-[10px] text-brume/55">
+                Amortissement estimé
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-10 text-xs leading-relaxed text-brume/45">
+            Sur la base de moyennes sectorielles. Bellora n&apos;est pas un
+            cabinet de gestion patrimoniale ; ces chiffres sont indicatifs et
+            varient selon l&apos;emplacement, les prestations et la gestion.
+          </p>
+        </GlassPanel>
+      </TiltCard>
     </section>
   );
 }

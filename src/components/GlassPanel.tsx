@@ -2,7 +2,7 @@ import type { ElementType, ComponentPropsWithoutRef, ReactNode } from "react";
 
 type GlassPanelProps<T extends ElementType> = {
   as?: T;
-  tone?: "light" | "dark";
+  tone?: "light" | "dark" | "graphite";
   sheen?: boolean;
   rounded?: string;
   children: ReactNode;
@@ -23,7 +23,8 @@ export default function GlassPanel<T extends ElementType = "div">({
   ...rest
 }: GlassPanelProps<T>) {
   const Component = as || "div";
-  const toneClass = tone === "dark" ? "glass-dark" : "glass";
+  const toneClass =
+    tone === "dark" ? "glass-dark" : tone === "graphite" ? "glass-graphite" : "glass";
 
   return (
     <Component

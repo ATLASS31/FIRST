@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 import GlowField from "./GlowField";
+import TiltCard from "./TiltCard";
 
 const FIGURES = [
   { value: "20 ans", label: "de garantie" },
@@ -24,14 +25,16 @@ export default function KeyFigures() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
             >
-              <GlassPanel className="px-8 py-10 text-center">
-                <p className="text-4xl font-semibold text-foret sm:text-5xl">
-                  {figure.value}
-                </p>
-                <p className="eyebrow mt-3 text-xs text-encre-douce">
-                  {figure.label}
-                </p>
-              </GlassPanel>
+              <TiltCard strength={4}>
+                <GlassPanel className="px-8 py-10 text-center">
+                  <p className="text-4xl font-semibold text-foret sm:text-5xl">
+                    {figure.value}
+                  </p>
+                  <p className="eyebrow mt-3 text-xs text-encre-douce">
+                    {figure.label}
+                  </p>
+                </GlassPanel>
+              </TiltCard>
             </motion.div>
           ))}
         </div>
