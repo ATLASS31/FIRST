@@ -6,13 +6,13 @@ const GAMMES = [
     href: "/gamme-primaire",
     name: "Primaire",
     tagline: "L'essentiel, à la main.",
-    from: "à partir de 38 900 €",
+    from: "[prix à confirmer]",
   },
   {
     href: "/gamme-premium",
     name: "Premium",
     tagline: "Le confort, sans concession.",
-    from: "à partir de 62 400 €",
+    from: "[prix à confirmer]",
   },
   {
     href: "/gamme-prestige",
