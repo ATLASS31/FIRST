@@ -15,26 +15,46 @@ const fadeUp = {
   visible: { opacity: 1, y: 0 },
 };
 
-// Le texte s'efface en douceur sur le tout début du scroll (pas de zone
-// morte : dès qu'on scrolle, la vidéo prend le relais visuellement).
-const TEXT_FADE_OUT_RANGE = 0.1;
+const wordContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.3 } },
+};
+
+const wordItem = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const TITLE_WORDS = [
+  { text: "Une" },
+  { text: "qualité" },
+  { text: "aussi" },
+  { text: "noble", accent: true },
+  { text: "que" },
+  { text: "notre" },
+  { text: "engagement." },
+];
+
+const CACHE_BUCKET = 0.2;
 
 /**
  * Hero avec vidéo pilotée par le scroll, jamais lue en autoplay.
  *
  * Le scroll vers l'avant pilote video.play() + un playbackRate proportionnel
  * au retard à rattraper : lecture séquentielle, que les décodeurs gèrent
- * nativement bien — confirmé fluide. Le scroll vers l'arrière retombe sur un
- * seek direct, throttlé et limité à un petit pas à chaque fois : moins bon
- * que l'avant (une vidéo ne sait pas jouer à l'envers, un seek loin de la
- * dernière image-clé reste un redécodage coûteux), mais toujours réactif.
+ * nativement bien — confirmé fluide.
  *
- * Une tentative précédente ajoutait un cache de frames (canvas +
- * createImageBitmap, warmup complet de la vidéo caché derrière le poster
- * avant d'activer le scroll) pour un rendu plus fluide en arrière. Abandonnée :
- * le warmup pouvait prendre plusieurs secondes selon la longueur de la
- * vidéo, pendant lesquelles le hero restait entièrement figé au scroll —
- * un compromis pire que le problème qu'il cherchait à résoudre.
+ * Le scroll vers l'arrière ne peut pas jouer la vidéo à l'envers, et un seek
+ * loin de la dernière image-clé reste un redécodage coûteux quel que soit le
+ * throttle. Plutôt qu'un warmup complet bloquant (essayé et abandonné : ça
+ * figeait le hero plusieurs secondes le temps de lire toute la vidéo avant
+ * d'activer le scroll), le cache se construit de façon opportuniste et non
+ * bloquante : chaque fois que la vidéo joue vers l'avant (le cas normal),
+ * on capture une image toutes les 0.2s via createImageBitmap — gratuit,
+ * puisque le décodeur a de toute façon déjà cette frame sous la main pour
+ * l'affichage. Le scroll vers l'arrière pioche dans ce cache s'il a de quoi
+ * (dessiné sur un <canvas>) ; sinon repli sur le seek throttlé habituel,
+ * jamais pire qu'avant.
  */
 const WAVE_REVEAL_START = 0.68;
 const WAVE_REVEAL_END = 1;
@@ -44,25 +64,34 @@ const SEEK_STEP_CAP = 0.22;
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const section = sectionRef.current;
     const video = videoRef.current;
-    if (!section || !video) return;
+    const canvas = canvasRef.current;
+    if (!section || !video || !canvas) return;
 
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (prefersReducedMotion) return;
 
+    const ctx = canvas.getContext("2d");
+    const canUseCache = typeof window.createImageBitmap === "function";
+    const frameCache = new Map<number, ImageBitmap>();
+    const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
+
+    let cancelled = false;
     let duration = 0;
     let ready = false;
     let lastSeekAt = 0;
     let playPending = false;
+    let showingCanvas = false;
+    let capturingFrame = false;
 
     const checkReady = () => {
       duration = video.duration || 0;
@@ -76,6 +105,49 @@ export default function Hero() {
     video.addEventListener("canplay", checkReady);
     video.addEventListener("progress", checkReady);
     checkReady();
+
+    // Capture opportuniste : ne bloque jamais rien, se contente de garnir le
+    // cache pendant que la vidéo joue déjà normalement vers l'avant.
+    const maybeCaptureFrame = () => {
+      if (!canUseCache || capturingFrame || video.paused || video.seeking) {
+        return;
+      }
+      const bucket = bucketOf(video.currentTime);
+      if (frameCache.has(bucket)) return;
+      capturingFrame = true;
+      createImageBitmap(video)
+        .then((bitmap) => {
+          if (cancelled || frameCache.has(bucket)) {
+            bitmap.close();
+            return;
+          }
+          frameCache.set(bucket, bitmap);
+        })
+        .catch(() => {
+          // Pas grave : ce bucket restera absent, le scroll arrière
+          // retombera sur le seek s'il tombe pile dessus.
+        })
+        .finally(() => {
+          capturingFrame = false;
+        });
+    };
+    video.addEventListener("timeupdate", maybeCaptureFrame);
+
+    const resizeCanvas = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.round(window.innerWidth * dpr);
+      const h = Math.round(window.innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+        }
+      }
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
 
     const getProgress = () => {
       const rect = section.getBoundingClientRect();
@@ -94,6 +166,40 @@ export default function Hero() {
         .finally(() => {
           playPending = false;
         });
+    };
+
+    const showVideoLayer = () => {
+      if (!showingCanvas) return;
+      showingCanvas = false;
+      canvas.style.opacity = "0";
+      video.style.opacity = "1";
+    };
+
+    const showCanvasLayer = () => {
+      if (showingCanvas) return;
+      showingCanvas = true;
+      video.style.opacity = "0";
+      canvas.style.opacity = "1";
+    };
+
+    const drawCachedFrame = (time: number) => {
+      if (!ctx) return false;
+      const bucket = bucketOf(time);
+      let bitmap = frameCache.get(bucket);
+      for (let d = 1; d <= 3 && !bitmap; d++) {
+        bitmap = frameCache.get(bucket - d) || frameCache.get(bucket + d);
+      }
+      if (!bitmap) return false;
+      const scale = Math.max(
+        canvas.width / bitmap.width,
+        canvas.height / bitmap.height
+      );
+      const sw = canvas.width / scale;
+      const sh = canvas.height / scale;
+      const sx = (bitmap.width - sw) / 2;
+      const sy = (bitmap.height - sh) / 2;
+      ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      return true;
     };
 
     const tick = () => {
@@ -125,39 +231,48 @@ export default function Hero() {
         waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
       }
 
-      // Le bloc texte du hero s'efface en douceur dès les tout premiers
-      // pourcents de scroll — la vidéo prend alors visuellement le relais,
-      // plutôt que le texte qui reste plaqué dessus pendant tout le scrub.
-      if (textRef.current) {
-        const fadeOut = Math.min(progress / TEXT_FADE_OUT_RANGE, 1);
-        textRef.current.style.opacity = String(1 - fadeOut);
-        textRef.current.style.transform = `translateY(${-fadeOut * 32}px)`;
-      }
-
       if (!ready) {
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
 
+      const displayedTime = showingCanvas ? progress * duration : video.currentTime;
       const targetTime = Math.min(progress * duration, duration - 0.05);
-      const diff = targetTime - video.currentTime;
+      const diff = targetTime - displayedTime;
 
       if (Math.abs(diff) < 0.06) {
         if (!video.paused) video.pause();
       } else if (diff > 0) {
+        // Avant : on repasse sur la vraie vidéo (un seul seek de sync si on
+        // venait du canvas), puis lecture séquentielle accélérée.
+        if (showingCanvas) {
+          try {
+            video.currentTime = displayedTime;
+          } catch {
+            // ignore
+          }
+          showVideoLayer();
+        }
         video.playbackRate = Math.min(Math.max(diff / 0.4, 1), 6);
         safePlay();
       } else {
+        // Arrière : cache d'abord (aucun seek), repli sur seek throttlé sinon.
         if (!video.paused) video.pause();
-        const now = performance.now();
-        if (now - lastSeekAt >= SEEK_THROTTLE_MS) {
-          lastSeekAt = now;
-          const step = Math.max(diff, -SEEK_STEP_CAP);
-          const nextTime = Math.max(0, video.currentTime + step);
-          try {
-            video.currentTime = nextTime;
-          } catch {
-            // ignore
+        const drew = drawCachedFrame(Math.max(0, targetTime));
+        if (drew) {
+          showCanvasLayer();
+        } else {
+          showVideoLayer();
+          const now = performance.now();
+          if (now - lastSeekAt >= SEEK_THROTTLE_MS) {
+            lastSeekAt = now;
+            const step = Math.max(diff, -SEEK_STEP_CAP);
+            const nextTime = Math.max(0, video.currentTime + step);
+            try {
+              video.currentTime = nextTime;
+            } catch {
+              // ignore
+            }
           }
         }
       }
@@ -168,11 +283,16 @@ export default function Hero() {
     rafRef.current = requestAnimationFrame(tick);
 
     return () => {
+      cancelled = true;
       video.removeEventListener("loadedmetadata", checkReady);
       video.removeEventListener("canplay", checkReady);
       video.removeEventListener("progress", checkReady);
+      video.removeEventListener("timeupdate", maybeCaptureFrame);
+      window.removeEventListener("resize", resizeCanvas);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       video.pause();
+      frameCache.forEach((bitmap) => bitmap.close());
+      frameCache.clear();
     };
   }, []);
 
@@ -186,26 +306,25 @@ export default function Hero() {
             image à la place. */}
         <video
           ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
           src={HERO_MEDIA.videoUrl}
           muted
           playsInline
           preload="auto"
         />
+        {/* Canvas du cache de frames : ne s'affiche que quand on scrolle
+            vers l'arrière et qu'une image y a déjà été capturée pendant la
+            lecture avant (cf. useEffect). Invisible sinon. */}
+        <canvas
+          ref={canvasRef}
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-150"
+        />
 
         {/* Voile très léger, uniquement pour garantir la lisibilité du texte — jamais un dégradé de couleur plat en remplacement de la photo. */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-encre/15 via-transparent to-transparent" />
 
-        {/* Deux calques distincts et sans conflit : le wrapper (ref, JS
-            vanille) pilote l'effacement au scroll (opacity/translateY,
-            cf. tick()) ; chaque élément à l'intérieur pilote sa propre
-            entrée en cascade au chargement (Framer Motion) — deux
-            systèmes d'animation différents, mais sur des noeuds DOM
-            différents, donc ils se composent proprement. */}
-        <div
-          ref={textRef}
-          className="relative z-10 flex h-full w-full flex-col items-start justify-center px-6 text-left sm:px-12 lg:px-20"
-        >
+        <div className="relative z-10 flex h-full w-full flex-col items-start justify-center px-6 text-left sm:px-12 lg:px-20">
           <motion.p
             initial={prefersReducedMotion ? false : "hidden"}
             animate="visible"
@@ -218,23 +337,32 @@ export default function Hero() {
           <motion.h1
             initial={prefersReducedMotion ? false : "hidden"}
             animate="visible"
-            variants={fadeUp}
-            transition={{ duration: 0.85, delay: 0.32, ease: PREMIUM_EASE }}
+            variants={wordContainer}
             className="max-w-2xl text-[11vw] leading-[1.05] font-semibold text-brume sm:text-[6.5vw] lg:text-[72px]"
           >
-            Une qualité aussi <span className="text-laiton">noble</span> que
-            notre engagement.
+            {TITLE_WORDS.map((word, i) => (
+              <motion.span
+                key={word.text}
+                variants={wordItem}
+                transition={{ duration: 0.55, ease: PREMIUM_EASE }}
+                className={`inline-block ${word.accent ? "text-laiton" : ""}`}
+              >
+                {word.text}
+                {i < TITLE_WORDS.length - 1 ? " " : ""}
+              </motion.span>
+            ))}
           </motion.h1>
 
           <motion.div
             initial={prefersReducedMotion ? false : "hidden"}
             animate="visible"
             variants={fadeUp}
-            transition={{ duration: 0.7, delay: 0.55, ease: PREMIUM_EASE }}
+            transition={{ duration: 0.7, delay: 1.05, ease: PREMIUM_EASE }}
+            className="mt-14"
           >
             <Link
               href="/#gammes"
-              className="glass-dark mt-10 rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+              className="glass-dark rounded-full px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
             >
               Découvrir nos gammes
             </Link>

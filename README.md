@@ -60,22 +60,25 @@ npm run dev
 - **Performance vidéo du hero** : le scroll vers l'avant utilise
   `video.play()` + un `playbackRate` proportionnel au retard à rattraper
   (lecture séquentielle, que les décodeurs gèrent nativement bien) —
-  confirmé fluide. Le scroll vers l'arrière retombe sur un seek direct,
-  throttlé (~110ms) et limité à un petit pas à chaque fois plutôt qu'un
-  saut brut — moins bon que l'avant (une vidéo ne sait pas jouer à
-  l'envers, un seek loin de la dernière image-clé reste un redécodage
-  coûteux quoi qu'on fasse) mais toujours réactif dès le premier scroll.
-  **Une tentative plus ambitieuse a été essayée et abandonnée** : un cache
-  de frames (`<canvas>` + `createImageBitmap`, capturées via un warmup qui
-  lisait toute la vidéo une fois, caché derrière le poster, avant
-  d'activer le scroll). Ça rendait le scroll arrière bien plus fluide une
-  fois le warmup terminé, mais le warmup lui-même pouvait prendre
-  plusieurs secondes selon la longueur de la vidéo — pendant ce temps le
-  hero restait entièrement figé au scroll (aucune animation, avant comme
-  arrière), ce qui est pire que le problème que ça cherchait à résoudre.
-  Retour à la technique simple, réactive dès le premier frame. La netteté
-  au scroll arrière reste une limite connue de la vidéo source 720p (cf.
-  section "à faire"). **Pas d'attribut `poster`** sur le `<video>` : le
+  confirmé fluide. Le scroll vers l'arrière ne peut pas jouer la vidéo à
+  l'envers ; un premier essai de cache de frames faisait un **warmup
+  complet bloquant** (lisait toute la vidéo une fois, caché derrière un
+  poster, avant d'activer le scroll) — abandonné, le warmup pouvait
+  prendre plusieurs secondes pendant lesquelles le hero restait
+  entièrement figé (aucune animation, avant comme arrière), pire que le
+  problème qu'il cherchait à résoudre. La version actuelle construit le
+  même cache (`<canvas>` + `createImageBitmap`, une image toutes les
+  0,2s) de façon **opportuniste et non bloquante** : à chaque frame où la
+  vidéo joue déjà normalement vers l'avant (le cas courant), on capture
+  au passage l'image courante — gratuit, le décodeur l'a de toute façon
+  déjà sous la main pour l'affichage. Le scroll vers l'arrière pioche
+  dans ce cache s'il a de quoi (dessiné sur le canvas, aucun seek) ; sinon
+  repli sur le seek throttlé habituel — jamais pire qu'avant, potentiellement
+  bien mieux une fois qu'une partie de la vidéo a déjà été vue en avançant
+  (le cas d'usage normal : on descend d'abord, on remonte ensuite). La
+  netteté au scroll arrière reste une limite connue de la vidéo source
+  720p (cf. section "à faire"). **Pas d'attribut `poster`** sur le
+  `<video>` : le
   calque `<img>` séparé qui le montrait (avec son propre fondu JS) créait
   un "cut" visible dès le premier mm de scroll, et il s'est avéré que le
   problème n'était pas le fondu en lui-même mais les deux images —
@@ -106,18 +109,20 @@ npm run dev
   simuler une vague qui bouge. Liée en continu à la progression du scroll
   jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
   changement de section), scrubbable dans les deux sens.
-- **Hero : entrée du texte en cascade + effacement au scroll** : le bloc
-  eyebrow/titre/CTA n'avait jusqu'ici aucune animation propre. Il entre
-  maintenant en cascade au chargement (Framer Motion, fondu + léger
-  glissement vers le haut, décalé par élément — eyebrow puis titre puis
-  bouton — courbe "ease-out-expo" cohérente avec le reste du site), puis
-  s'efface en douceur (fondu + translation) dès les tout premiers pourcents
-  du scroll pour laisser la vidéo prendre visuellement le relais plutôt
-  que de rester plaqué dessus pendant tout le scrub. Deux systèmes
-  d'animation distincts sur des nœuds DOM différents (le wrapper piloté en
-  JS vanille pour le scroll, chaque enfant piloté par Framer Motion pour
-  l'entrée) : pas de conflit entre eux. Respecte `prefers-reduced-motion`
-  (élements affichés directement, sans animation).
+- **Hero : entrée du titre mot par mot** : le bloc eyebrow/titre/CTA
+  n'avait jusqu'ici aucune animation propre. Un premier essai faisait
+  entrer chaque bloc (eyebrow, titre entier, bouton) en un seul morceau
+  puis effaçait tout le texte dès le début du scroll — corrigé sur retour
+  explicite : le texte doit **rester visible** sur le hero, et l'entrée
+  doit se faire **mot par mot** plutôt que bloc par bloc. Le titre est
+  maintenant découpé en mots, chacun un `motion.span` avec son propre
+  délai (Framer Motion `staggerChildren`), fondu + léger glissement vers
+  le haut, courbe "ease-out-expo" cohérente avec le reste du site ; le
+  bouton entre juste après. Plus aucun effacement au scroll. Respecte
+  `prefers-reduced-motion` (texte affiché directement, sans animation).
+  Au passage, l'espacement entre le titre et le bouton (`mt-10`) était
+  trop court pour la taille du titre et laissait le bouton chevaucher le
+  jambage du "g" de "engagement." — corrigé (`mt-14`).
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
@@ -128,11 +133,18 @@ npm run dev
   par statistique (bouclier/camion/hexagone — la France comme
   "l'Hexagone"), sur fond plat — non concerné par cette demande de retour
   en arrière. Contenu textuel des deux sections identique à l'original.
-- **Gammes : fond simple** : un cadrage feuillage (fond flou plein cadre,
-  puis des branches détourées à 2 puis 4 coins) a été essayé pour cette
-  section mais jugé "cheap" dans ce contexte précis (pas assez de matière
-  derrière pour porter l'effet) ; la section est restée sur un fond
-  `bg-ciel` uni, sans décoration.
+- **Gammes : ombres de plantes en fond de section** : un cadrage feuillage
+  (fond flou plein cadre, puis des branches détourées à 2 puis 4 coins,
+  puis des photos réelles) a été essayé pour cette section mais toujours
+  jugé "cheap" — trop littéral, pas assez discret. La version actuelle
+  n'utilise plus aucune photo : une silhouette de plante abstraite dessinée
+  en SVG (tige + feuilles en ellipses, `PlantShadow` dans
+  `GammesPreview.tsx`), posée à faible opacité et fortement floutée
+  (`blur-xl`) dans deux coins opposés — comme une ombre portée plutôt
+  qu'un feuillage détaillé. Le tracé n'a pas besoin d'être fin puisqu'il
+  disparaît dans le flou ; c'est justement ce qui le rend discret. Aucune
+  dépendance à une image générée (donc vérifiable et stable, contrairement
+  aux tentatives précédentes).
 
 ## À faire avant la mise en prod
 
