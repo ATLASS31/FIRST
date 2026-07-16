@@ -1,34 +1,14 @@
 import Link from "next/link";
 import GlassPanel from "./GlassPanel";
-
-const GAMMES = [
-  {
-    href: "/gamme-primaire",
-    name: "Primaire",
-    tagline: "L'essentiel, à la main.",
-    from: "[prix à confirmer]",
-  },
-  {
-    href: "/gamme-premium",
-    name: "Premium",
-    tagline: "Le confort, sans concession.",
-    from: "[prix à confirmer]",
-  },
-  {
-    href: "/gamme-prestige",
-    name: "Prestige",
-    tagline: "L'art de la maison.",
-    from: "à partir de 88 763 €",
-  },
-];
+import { GAMMES } from "@/lib/gammes";
 
 export default function GammesPreview() {
   return (
-    <section className="bg-ciel px-6 py-28">
+    <section id="gammes" className="bg-ciel px-6 py-28">
       <div className="mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
-          Trois univers, une même exigence.
+          Trois gammes pour trois exigences.
         </h2>
 
         <div className="mt-16 grid gap-6 md:grid-cols-3">
@@ -43,11 +23,13 @@ export default function GammesPreview() {
                     {gamme.name}
                   </h3>
                   <p className="mt-2 text-sm text-encre-doux">
-                    {gamme.tagline}
+                    {gamme.cardTagline}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-encre-douce">{gamme.from}</p>
+                  <p className="text-sm text-encre-douce">
+                    {gamme.fromPrice}
+                  </p>
                   <p className="eyebrow mt-3 text-xs text-foret">
                     Découvrir →
                   </p>

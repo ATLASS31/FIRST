@@ -5,12 +5,10 @@ import Link from "next/link";
 import GlassPanel from "./GlassPanel";
 
 const LINKS = [
+  { href: "/#concept", label: "Concept" },
+  { href: "/#gammes", label: "Gammes" },
   { href: "/modeles", label: "Modèles" },
-  { href: "/gamme-primaire", label: "Primaire" },
-  { href: "/gamme-premium", label: "Premium" },
-  { href: "/gamme-prestige", label: "Prestige" },
-  { href: "/atelier", label: "Notre atelier" },
-  { href: "/contact", label: "Contact" },
+  { href: "/#procede", label: "Procédé" },
 ];
 
 export default function Nav() {
@@ -48,7 +46,7 @@ export default function Nav() {
           href="/contact"
           className="hidden rounded-full bg-foret px-5 py-2 text-sm font-medium text-brume transition-opacity hover:opacity-90 md:inline-block"
         >
-          Être rappelé
+          Demander un devis
         </Link>
 
         <button

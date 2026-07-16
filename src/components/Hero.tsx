@@ -78,12 +78,11 @@ export default function Hero() {
 
         <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-6 text-center">
           <p className="eyebrow mb-6 text-xs text-brume sm:text-sm">
-            Constructeur de maisons en bois premium
+            Bellora
           </p>
-          <h1 className="max-w-5xl text-[15vw] leading-[0.95] font-semibold text-brume sm:text-[10vw] lg:text-[108px]">
-            Votre maison,
-            <br />
-            sur <span className="text-laiton">mesure</span>.
+          <h1 className="max-w-5xl text-[12vw] leading-[1.02] font-semibold text-brume sm:text-[8vw] lg:text-[96px]">
+            Une qualité aussi <span className="text-laiton">noble</span> que
+            notre engagement.
           </h1>
         </div>
 
