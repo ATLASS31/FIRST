@@ -75,7 +75,11 @@ npm run dev
   arrière), ce qui est pire que le problème que ça cherchait à résoudre.
   Retour à la technique simple, réactive dès le premier frame. La netteté
   au scroll arrière reste une limite connue de la vidéo source 720p (cf.
-  section "à faire").
+  section "à faire"). Le calque `<img>` séparé qui servait de poster (avec
+  son propre fondu JS) a aussi été retiré : il créait un "cut" visible
+  entre l'image de référence et la première frame de la vidéo. L'attribut
+  `poster` natif du `<video>` suffit — géré nativement par le navigateur,
+  sans calque ni transition à gérer nous-mêmes.
 - **Hero : texte et CTA alignés à gauche** (`items-start text-left`),
   plutôt que centrés, pour rester dans la zone basse-gauche de la vidéo
   comme sur la maquette de référence.
@@ -85,21 +89,25 @@ npm run dev
   brume comme le fond de la section des 3 piliers qui suit (transition
   dans la continuité de la couleur, pas de séparation visible), avec son
   contour traité en une vraie ligne de lumière liquid glass (`.wave-rim` —
-  cœur quasi blanc, halo chaud en laiton, `filter: drop-shadow`) — se
-  balaie par un `clip-path` lié en continu à la progression du scroll
+  cœur quasi blanc, halo chaud en laiton, `filter: drop-shadow`). Un
+  premier essai de révélation par balayage `clip-path` (gauche→droite)
+  lisait comme "apparaît petit bout par petit bout", pas comme une vague —
+  remplacé par une montée verticale (`translateY`, de hors-champ vers la
+  position de repos) : le bord ondulé de la forme émerge alors
+  naturellement au fil de la montée, comme de l'eau qui arrive, plutôt
+  qu'un front rectangulaire. Liée en continu à la progression du scroll
   jusqu'à la toute fin (`WAVE_REVEAL_END = 1`, pas de temps mort avant le
-  changement de section).
-- **Notre histoire / Chiffres clés** : un habillage photo (forêt embrumée
-  en fond + cadrage de branches détourées) a été essayé pour ces deux
-  sections puis annulé — jugé "cheap", pas assez soft. Retour aux fonds
-  plats d'origine (`bg-brume-2` / brume), le contenu reste posé dans de
-  vrais panneaux liquid glass (`GlassPanel`, ton clair, `sheen`) —
-  l'habillage glass en lui-même était apprécié, seule la photo derrière ne
-  fonctionnait pas. Notre histoire garde son petit repère (icône sapin) +
-  ligne dorée sous l'eyebrow ; les 3 chiffres clés gardent chacun leur
-  icône dorée (bouclier/camion/hexagone — la France comme "l'Hexagone")
-  au-dessus de la valeur. Contenu textuel identique à l'original dans les
-  deux cas.
+  changement de section), scrubbable dans les deux sens.
+- **Notre histoire** : un habillage photo (forêt embrumée en fond +
+  cadrage de branches détourées), puis une version avec panneau liquid
+  glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
+  section puis entièrement annulés sur demande explicite — retour à
+  l'exact original (`bg-brume-2`, texte centré simple, sans glass ni
+  icône). Vérifié identique à l'octet près à la version d'avant ces essais.
+  Chiffres clés garde en revanche son panneau liquid glass + icône dorée
+  par statistique (bouclier/camion/hexagone — la France comme
+  "l'Hexagone"), sur fond plat — non concerné par cette demande de retour
+  en arrière. Contenu textuel des deux sections identique à l'original.
 - **Gammes : fond simple** : un cadrage feuillage (fond flou plein cadre,
   puis des branches détourées à 2 puis 4 coins) a été essayé pour cette
   section mais jugé "cheap" dans ce contexte précis (pas assez de matière

@@ -29,14 +29,12 @@ const SEEK_STEP_CAP = 0.22;
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const posterRef = useRef<HTMLImageElement>(null);
   const waveRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const section = sectionRef.current;
     const video = videoRef.current;
-    const posterEl = posterRef.current;
     if (!section || !video) return;
 
     const prefersReducedMotion = window.matchMedia(
@@ -85,9 +83,12 @@ export default function Hero() {
       rafRef.current = null;
       const progress = getProgress();
 
-      // La vague : un vrai mouvement (balayage par clip-path), lié en continu
-      // à la progression du scroll — indépendant de l'état de la vidéo, et
-      // scrubbable dans les deux sens comme le reste du hero.
+      // La vague : monte depuis hors-champ (sous le bord de l'écran) vers sa
+      // position de repos, liée en continu à la progression du scroll —
+      // indépendant de l'état de la vidéo, et scrubbable dans les deux sens.
+      // Un simple translateY (pas de clip-path) : le bord ondulé de la forme
+      // émerge donc naturellement au fil de la montée, comme de l'eau qui
+      // arrive, plutôt qu'un front rectangulaire qui balaie horizontalement.
       if (waveRef.current) {
         const waveProgress = Math.min(
           Math.max(
@@ -97,17 +98,12 @@ export default function Hero() {
           ),
           1
         );
-        waveRef.current.style.clipPath = `inset(0 ${(1 - waveProgress) * 100}% 0 0)`;
-        waveRef.current.style.transform = `translateY(${(1 - waveProgress) * 14}px)`;
+        waveRef.current.style.transform = `translateY(${(1 - waveProgress) * 100}%)`;
       }
 
       if (!ready) {
         rafRef.current = requestAnimationFrame(tick);
         return;
-      }
-
-      if (posterEl && posterEl.style.opacity !== "0") {
-        posterEl.style.opacity = "0";
       }
 
       const targetTime = Math.min(progress * duration, duration - 0.05);
@@ -150,6 +146,10 @@ export default function Hero() {
   return (
     <section ref={sectionRef} className="relative h-[320vh]">
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-encre">
+        {/* L'attribut poster natif affiche l'image de référence jusqu'à ce
+            que la vidéo ait une première frame à montrer — géré nativement
+            par le navigateur, pas de calque <img> séparé avec son propre
+            fondu JS (qui créait un "cut" visible entre les deux). */}
         <video
           ref={videoRef}
           className="absolute inset-0 h-full w-full object-cover"
@@ -158,16 +158,6 @@ export default function Hero() {
           muted
           playsInline
           preload="auto"
-        />
-        {/* Recouvre la vidéo jusqu'à ce qu'elle soit prête à être pilotée par
-            le scroll (évite de voir la première frame brute avant coup). */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={posterRef}
-          aria-hidden
-          src={HERO_MEDIA.posterUrl}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
         />
 
         {/* Voile très léger, uniquement pour garantir la lisibilité du texte — jamais un dégradé de couleur plat en remplacement de la photo. */}
@@ -197,14 +187,14 @@ export default function Hero() {
 
         {/* Vague : un aplat plein teinté brume (couleur du fond de la
             section suivante) avec un contour lumineux en liquid glass —
-            pas toute la forme en verre, seulement son bord. Balayée par un
-            clip-path lié en continu à la progression du scroll (cf.
-            tick()) : un vrai mouvement de vague, jamais un fondu. */}
+            pas toute la forme en verre, seulement son bord. Monte depuis
+            hors-champ (cf. tick()) plutôt que balayée par un clip-path :
+            un vrai mouvement de vague qui arrive, jamais un fondu. */}
         <div
           ref={waveRef}
           aria-hidden
           className="wave-reveal pointer-events-none absolute inset-x-0 bottom-0 z-[6] h-32 sm:h-48"
-          style={{ clipPath: "inset(0 100% 0 0)" }}
+          style={{ transform: "translateY(100%)" }}
         >
           <svg
             viewBox="0 0 100 100"
