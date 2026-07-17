@@ -334,6 +334,24 @@ npm run dev
   ombre d'élévation à deux niveaux, reflet spéculaire radial statique.
   Au passage, un petit trait doré horizontal ajouté entre les deux
   paragraphes du texte, détail visible sur la référence.
+
+  Retour ensuite (en anglais, ton direction artistique) : la carte "lit
+  comme un mockup, pas Apple" — blanche, typo trop grosse ("4–12
+  semaines" débordait), transition pas assez fluide. `.figure-card`
+  entièrement recalibrée dans un sens plus retenu : opacité de fond
+  réduite drastiquement (0.92→0.68 puis 0.22→0.06 — le premier essai
+  restait assez couvrant pour ne rien laisser deviner du flou derrière,
+  donc lisait comme un carré blanc plutôt que du verre), un grain SVG
+  très léger ajouté (`feTurbulence` en data URI, `opacity: 0.035` —
+  texture de verre dépoli plutôt qu'un aplat numérique trop lisse), le
+  gros highlight spéculaire remplacé par un rim fin et discret, l'ombre
+  d'élévation adoucie. Typo réduite (`text-5xl font-bold` → `text-3xl
+  font-semibold`) et carte élargie (200px → 232px) en parallèle pour que
+  "4–12 semaines" respire au lieu de déborder. Transition `layoutId`
+  assouplie (`stiffness: 350 → 260`, `damping: 32 → 34`, `mass: 0.9`
+  ajouté) pour un glissement moins ressort/plus posé. Toutes les valeurs
+  volontairement basses — l'idée demandée était que l'effet "passe presque
+  inaperçu" plutôt que de se faire remarquer.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

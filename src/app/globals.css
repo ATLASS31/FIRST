@@ -350,39 +350,42 @@ body {
   pointer-events: none;
 }
 
-/* Carte du chiffre actif dans le carrousel Notre histoire : posée sur
-   `.glass` (fond blanc translucide standard) elle lisait "pas liquid
-   glass, pas assez grosse" — deux causes distinctes.
-   1) Taille : réglée directement dans `NotreHistoire.tsx` (padding et
-      tailles de texte très augmentés), pas ici.
-   2) Le vrai problème verre : `.glass` a un `box-shadow` élévation
-      NON-inset (`0 20px 40px -12px` etc.), mais tout `GlassPanel` a
-      `overflow: hidden` par défaut — qui clippe silencieusement ce type
-      d'ombre à la frontière de l'élément (même bug que celui trouvé sur
-      `.glass-graphite`, cf. plus haut). La carte perdait donc l'ombre
-      d'élévation qui donne l'impression de flotter au-dessus de la
-      ligne. Classe dédiée : fond plus opaque (se détache mieux d'un
-      arrière-plan `bg-brume-2` très proche en teinte, où le flou seul ne
-      "refracte" presque rien puisqu'il n'y a pas de contraste derrière),
-      `overflow: visible` pour laisser l'ombre respirer, et un reflet
-      spéculaire statique (même procédé que `.gamme-badge`) pour la
-      touche de brillance. */
+/* Carte du chiffre actif dans le carrousel Notre histoire.
+   V1 (fond `.glass` standard) perdait son ombre d'élévation, clippée par
+   l'`overflow: hidden` par défaut de `GlassPanel` (même bug que
+   `.glass-graphite` plus haut) — corrigé par une classe dédiée.
+   V2 (opacité 0.92→0.68, fort) jugée "trop blanche, lit comme une carte
+   opaque, pas du verre" — le fond était encore assez couvrant pour
+   masquer tout ce qu'il y avait à réfracter derrière. Revu pour un
+   matériau réellement translucide et discret plutôt qu'un carré blanc :
+   opacité de fond très réduite (0.22→0.06, le flou + saturate font le
+   travail plutôt que la couleur), un grain SVG très léger (texture de
+   verre dépoli, `feTurbulence` en data URI — évite tout aplat numérique
+   trop lisse), un rim lumineux fin en haut (`inset` net et discret,
+   jamais un gros highlight) plutôt qu'une grosse tache spéculaire, et une
+   ombre d'élévation réduite en intensité (le premier jet, très marqué,
+   lisait plus "carte flottante posée dessus" que "verre qui capte la
+   lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
+   presque passer inaperçu plutôt que se faire remarquer. */
 .figure-card {
   position: relative;
   overflow: visible;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0.68) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.22);
+  background-image:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(255, 255, 255, 0.04) 100%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
   box-shadow:
-    0 32px 56px -20px rgba(26, 22, 20, 0.32),
-    0 12px 24px -12px rgba(26, 22, 20, 0.16),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(26, 22, 20, 0.05);
+    0 20px 40px -22px rgba(26, 22, 20, 0.22),
+    0 6px 14px -8px rgba(26, 22, 20, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.04);
 }
 
 .figure-card::before {
@@ -391,10 +394,9 @@ body {
   inset: 0;
   border-radius: inherit;
   background: radial-gradient(
-    130% 160% at 18% -15%,
-    rgba(255, 255, 255, 0.75) 0%,
-    rgba(255, 255, 255, 0.2) 30%,
-    transparent 58%
+    120% 100% at 20% -10%,
+    rgba(255, 255, 255, 0.35) 0%,
+    transparent 45%
   );
   pointer-events: none;
 }

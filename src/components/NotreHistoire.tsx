@@ -88,17 +88,17 @@ export default function NotreHistoire() {
                       transition={
                         prefersReducedMotion
                           ? { duration: 0 }
-                          : { type: "spring", stiffness: 350, damping: 32 }
+                          : { type: "spring", stiffness: 260, damping: 34, mass: 0.9 }
                       }
                     >
                       <GlassPanel
                         rounded="rounded-2xl"
-                        className="figure-card w-[140px] px-5 py-6 text-center sm:w-[200px] sm:px-8 sm:py-8"
+                        className="figure-card w-[168px] px-6 py-7 text-center sm:w-[232px] sm:px-9 sm:py-9"
                       >
-                        <p className="text-3xl font-bold leading-[1.05] text-encre sm:text-5xl">
+                        <p className="text-xl font-semibold leading-snug text-encre sm:text-3xl">
                           {figure.value}
                         </p>
-                        <p className="eyebrow mt-2 text-[10px] text-encre-douce sm:text-xs">
+                        <p className="eyebrow mt-2.5 text-[10px] text-encre-douce sm:text-xs">
                           {figure.label}
                         </p>
                       </GlassPanel>
