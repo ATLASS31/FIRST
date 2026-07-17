@@ -372,6 +372,28 @@ npm run dev
   passent à alpha 0, ce qui donne au PNG une vraie transparence. Un léger
   dégradé CSS (`mask-image`) fond ensuite le bord recadré dans le
   `bg-brume-2` de la section.
+
+  Jugé ensuite "pas bien du tout" une fois vu en contexte réel (bande pleine
+  largeur en bas de section, trop présente) — le client demande cette fois
+  explicitement une génération ("fais l'image toi, je te fais confiance"),
+  contrairement à l'itération précédente. Régénérée via Higgsfield
+  (`nano_banana_pro`) avec, cette fois, un fond plein `#EFEDE4` demandé
+  directement dans le prompt (= `--brume-2` exact) plutôt qu'un fond
+  "transparent" factice : plus besoin de détourage ni de fondu, l'image se
+  pose telle quelle sans aucune couture visible. URL Higgsfield stockée dans
+  `src/lib/media.ts` (`NOTRE_HISTOIRE_LANDSCAPE_URL`, même convention que
+  `HERO_MEDIA`/`CALCULATOR_BG_URL` — pas rapatriée en local, `public/images/
+  notre-histoire-landscape.png` supprimé). Recomposée en plus petit format
+  portrait, cadrée à gauche uniquement (`hidden sm:block`, largeur fixe
+  `w-40`/`sm:w-48`) plutôt qu'en bande pleine largeur, pour rester discrète.
+  Positionnement revu au passage : un premier essai en overlay `absolute
+  bottom-0` chevauchait la dernière ligne du titre — sur une section aussi
+  courte, le texte occupe déjà presque toute la hauteur disponible, un
+  élément ancré au bas de la section n'a nulle part où se loger sans
+  recouvrir le texte au-dessus. Repositionnée dans le flux normal, sous le
+  dernier paragraphe de la colonne de texte, ce qui élimine le risque de
+  chevauchement par construction plutôt que par un réglage de hauteur
+  ajusté au pixel.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

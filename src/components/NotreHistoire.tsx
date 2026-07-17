@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
+import { NOTRE_HISTOIRE_LANDSCAPE_URL } from "@/lib/media";
 
 const AUTOPLAY_MS = 3000;
 
@@ -29,33 +30,6 @@ export default function NotreHistoire() {
 
   return (
     <section className="relative overflow-hidden bg-brume-2 px-6 py-28">
-      {/* Illustration low-poly (fournie par le client). Le fichier source
-          exporté affichait son ciel en damier "transparence factice" (peint
-          dans les pixels, sans vrai canal alpha) — recréé ici avec une
-          vraie transparence par détournement chromatique (les pixels du
-          damier sont gris pur et très clairs, contrairement au feuillage,
-          au sable et au lac). Un conteneur de hauteur fixe +
-          `object-position: bottom` ne garde que la bande basse (arbres,
-          chemin, lac, montagne) ; un léger dégradé en haut fond le bord
-          recadré dans le `bg-brume-2` de la section. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 sm:h-56 lg:h-72"
-      >
-        <Image
-          src="/images/notre-histoire-landscape.png"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-bottom"
-          style={{
-            maskImage: "linear-gradient(to bottom, transparent, black 10%)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, transparent, black 10%)",
-          }}
-        />
-      </div>
-
       <div className="relative mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
@@ -77,6 +51,24 @@ export default function NotreHistoire() {
             assemblée en atelier français par des charpentiers et menuisiers
             expérimentés.
           </p>
+
+          {/* Illustration low-poly, générée pour coller à la palette exacte
+              du site (fond plein `#EFEDE4` = `--brume-2`) plutôt que
+              découpée sur fond transparent : pas de recadrage ni de fondu
+              nécessaires. Posée dans le flux normal, sous le texte, plutôt
+              qu'en overlay absolu : sur une section aussi courte le texte
+              occupe presque toute la hauteur, un overlay ancré en bas
+              chevauchait la dernière ligne du titre. Cadrée à gauche
+              uniquement (pas pleine largeur) pour rester discrète. */}
+          <div aria-hidden className="mt-10 hidden w-40 sm:block sm:w-48">
+            <Image
+              src={NOTRE_HISTOIRE_LANDSCAPE_URL}
+              alt=""
+              width={864}
+              height={1152}
+              className="h-auto w-full"
+            />
+          </div>
         </div>
 
         <div className="min-w-0">
