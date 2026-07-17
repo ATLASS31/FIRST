@@ -124,29 +124,41 @@ body {
       de .glass-dark en plus du halo, puisqu'un seul box-shadow peut
       s'appliquer (le second qui gagne la cascade remplace le premier). */
 .hero-cta {
+  /* Un reflet statique seul (essai précédent) restait trop discret pour
+     lire comme du verre — jugé "pas liquid" sur le vrai fond vidéo clair.
+     `saturate/contrast/brightness` en plus du blur font davantage
+     "refracter" ce qu'il y a derrière (le plus proche d'un effet loupe
+     qu'on puisse faire sans le filtre SVG, non fiable cross-navigateur —
+     cf. commentaire plus bas). Rim clair net en haut + ombre nette en bas
+     simulent la courbure d'un verre bombé plutôt qu'un simple panneau plat. */
+  backdrop-filter: blur(18px) saturate(220%) contrast(1.08) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(220%) contrast(1.08)
+    brightness(1.05);
   box-shadow:
     0 24px 48px -12px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1.5px 0 rgba(0, 0, 0, 0.35),
     0 0 22px rgba(173, 138, 85, 0.4),
     0 0 52px rgba(173, 138, 85, 0.22);
 }
 
-/* Le reflet ambiant animé étant écarté (bug ci-dessus), le bouton perdait
+/* Le reflet ambiant animé étant écarté (bug plus haut), le bouton perdait
    tout son éclat "verre" sur un fond vidéo clair (herbe, ciel) — il lisait
    comme un simple pavé mat. Un reflet FIXE (jamais animé, donc aucune
    promotion de calque liée à une transform qui bouge) redonne la brillance
-   sans réintroduire le bug de débordement : un highlight diagonal en haut
-   à gauche, comme la lumière fixe qu'on verrait sur un vrai verre bombé. */
+   sans réintroduire le bug de débordement. Un premier essai en dégradé
+   linéaire diagonal restait trop plat/discret ; un highlight radial
+   concentré en haut à gauche lit davantage comme un vrai reflet
+   spéculaire (point de lumière sur une surface bombée) qu'un simple voile. */
 .hero-cta::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    128deg,
-    rgba(255, 255, 255, 0.38) 0%,
-    rgba(255, 255, 255, 0.12) 22%,
-    transparent 48%
+  background: radial-gradient(
+    130% 160% at 18% -12%,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.2) 28%,
+    transparent 56%
   );
   pointer-events: none;
 }
@@ -161,6 +173,43 @@ body {
   .glass-graphite {
     backdrop-filter: url(#glass-distortion) blur(20px) saturate(170%);
   }
+}
+
+/* Pastille de catégorie sur les cartes gammes (Primaire/Premium/Prestige) :
+   posée sur une vraie photo colorée, le `.glass` de base (fond blanc très
+   translucide) lit comme un simple sticker blanc plat — "trop blanc",
+   sans aucun effet loupe. La réfraction SVG (`url(#glass-distortion)`
+   ci-dessus) n'est fiable que sur Chromium récent ; sur les autres
+   navigateurs le `@supports` échoue et il ne reste que le blur seul. Sans
+   pouvoir compter dessus partout, l'effet verre est reconstitué en CSS
+   pur : un backdrop-filter plus saturé/contrasté (fait "pop" la photo
+   derrière, l'impression de réfraction la plus proche qu'on puisse faire
+   sans le filtre SVG), un rim net et clair en haut + une ombre nette en
+   bas (courbure d'un verre bombé) et un reflet spéculaire radial
+   concentré plutôt qu'un aplat uniforme. Classe dédiée plutôt que modifier
+   `.glass` directement : `.glass` est partagé avec la nav, déjà validée,
+   pas de raison d'y toucher. */
+.gamme-badge {
+  backdrop-filter: blur(12px) saturate(220%) contrast(1.1) brightness(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(220%) contrast(1.1)
+    brightness(1.05);
+  box-shadow:
+    0 8px 20px -8px rgba(26, 22, 20, 0.35),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.18);
+}
+
+.gamme-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 160% at 20% -20%,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.18) 32%,
+    transparent 58%
+  );
+  pointer-events: none;
 }
 
 /* Reflet ambiant : fin, discret, lent — pour le chrome toujours visible

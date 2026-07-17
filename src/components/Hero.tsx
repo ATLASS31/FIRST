@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
@@ -353,15 +353,22 @@ export default function Hero() {
             className="max-w-2xl text-[11vw] leading-[1.05] font-semibold text-brume sm:text-[6.5vw] lg:text-[72px]"
           >
             {TITLE_WORDS.map((word, i) => (
-              <motion.span
-                key={word.text}
-                variants={wordItem}
-                transition={{ duration: 0.55, ease: PREMIUM_EASE }}
-                className={`inline-block ${word.accent ? "text-laiton" : ""}`}
-              >
-                {word.text}
-                {i < TITLE_WORDS.length - 1 ? " " : ""}
-              </motion.span>
+              // Fragment plutôt qu'un wrapper : le <br> forcé avant "que"
+              // (seul sur mobile — le retour à la ligne y tombait mal, le
+              // mot isolé en fin de ligne) doit rester un frère direct des
+              // mots dans le flux du titre, pas un enfant d'un conteneur
+              // qui casserait le wrap naturel des autres mots.
+              <Fragment key={word.text}>
+                {word.text === "que" && <br aria-hidden className="sm:hidden" />}
+                <motion.span
+                  variants={wordItem}
+                  transition={{ duration: 0.55, ease: PREMIUM_EASE }}
+                  className={`inline-block ${word.accent ? "text-laiton" : ""}`}
+                >
+                  {word.text}
+                  {i < TITLE_WORDS.length - 1 ? " " : ""}
+                </motion.span>
+              </Fragment>
             ))}
           </motion.h1>
 

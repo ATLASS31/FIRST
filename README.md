@@ -164,7 +164,36 @@ npm run dev
   glass sans réintroduire le bug de débordement — une transform qui ne
   bouge jamais n'est pas promue sur son propre calque de composition de
   la même façon qu'une transform animée, donc `overflow: hidden` continue
-  de la clipper correctement.
+  de la clipper correctement. Toujours jugé "pas liquid" ensuite — le
+  reflet statique restait trop discret pour lire comme du verre. Renforcé :
+  `backdrop-filter` avec `saturate/contrast/brightness` en plus du blur
+  (fait davantage "réfracter" ce qu'il y a derrière — l'effet le plus
+  proche d'une loupe qu'on puisse faire sans le filtre SVG, cf. point
+  suivant), rim net et clair en haut + ombre nette en bas du panneau
+  (courbure d'un verre bombé plutôt qu'un panneau plat), et le reflet
+  fixe passé d'un dégradé linéaire diagonal à un highlight radial
+  concentré en haut à gauche — lit davantage comme un point de lumière
+  réel sur une surface bombée qu'un simple voile.
+- **Gammes : pastilles de catégorie sans effet loupe** : les pastilles
+  Primaire/Premium/Prestige (`.glass`, ton clair) posées sur une vraie
+  photo colorée lisaient comme un simple sticker blanc plat. La
+  réfraction SVG (`url(#glass-distortion)`, `feTurbulence` +
+  `feDisplacementMap` dans `GlassFilter.tsx`) n'est fiable que sur
+  Chromium récent — le `@supports` qui la gate échoue silencieusement
+  ailleurs (Safari, Firefox, et vraisemblablement le navigateur mobile de
+  test), laissant seulement un blur plat sans aucune réfraction. Plutôt
+  que de modifier `.glass` partagé avec la nav (déjà validée), une classe
+  dédiée `.gamme-badge` ajoute un `backdrop-filter` plus saturé/contrasté
+  et un rim haut clair + ombre basse (même traitement que le CTA du hero
+  ci-dessus) pour reconstituer l'effet verre en CSS pur, sans dépendre du
+  filtre SVG.
+- **Hero mobile : retour à la ligne du titre corrigé** : le titre wrappait
+  de façon disgracieuse sur mobile ("que" isolé en fin de ligne). Un `<br>`
+  forcé (visible uniquement sous `sm:`) est inséré juste avant le mot
+  "que" dans `TITLE_WORDS.map`, sans toucher au wrap naturel des autres
+  mots ni à l'entrée mot-par-mot en Framer Motion — le titre casse
+  maintenant proprement en "Une qualité" / "aussi noble" / "que notre" /
+  "engagement." sur petit écran.
 - **Notre histoire** : un habillage photo (forêt embrumée en fond +
   cadrage de branches détourées), puis une version avec panneau liquid
   glass + icône + ligne dorée sur fond plat, ont été essayés pour cette
