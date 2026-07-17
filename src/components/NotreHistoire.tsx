@@ -20,23 +20,30 @@ const FIGURES = [
 ];
 
 // Décalage horizontal du soleil selon l'étape active — le seul fil qui relie
-// explicitement la timeline à la scène (demande du client : "le soleil se
-// décale imperceptiblement selon l'étape active").
-const SUN_OFFSETS = [-16, 0, 16];
+// explicitement la timeline à la scène (concept validé par le client,
+// conservé tel quel à travers la refonte de la scène elle-même).
+const SUN_OFFSETS = [-14, 0, 14];
 
 /**
- * Scène low-poly en fond de section — colline/pins/rochers à gauche, rive
- * et eau calme à droite, un seul dessin continu (pas deux fragments
- * séparés) pour que la lumière du soleil ait un sens sur toute la largeur.
- * Couleurs choisies proches de `--ciel` (le fond de la section) : c'est un
- * détail d'ambiance, pas une illustration qui se remarque en premier.
- * `active` ne pilote que le décalage du soleil (voir `SUN_OFFSETS`) ; les
- * animations d'ambiance (lueur, reflet) sont en CSS pure (voir
- * `.scene-sun-glow`/`.scene-water-shimmer` dans `globals.css`) — aucun
+ * Scène architecturale abstraite en fond de section — plus une
+ * illustration de paysage (colline/pins/rochers/rive), jugée "pas assez
+ * premium" et trop "dessinée". Reconstruite comme une composition de
+ * volumes low-poly épurés : un plan lointain à peine perceptible (`F`), un
+ * plan de sol qui unifie la composition (`B`), et deux monolithes facettés
+ * qui se détachent nettement (`A` à gauche, `C` à droite, près du soleil).
+ * Trois à quatre volumes, pas plus — l'inspiration explicite (maquette
+ * architecturale, keynote Apple) demande peu d'éléments très bien
+ * composés plutôt qu'un décor chargé de petits détails. Chaque volume est
+ * en aplat (pas de dégradé lissé) avec au plus deux facettes de teinte
+ * différente : c'est le contraste plat entre deux tons, pas un flou, qui
+ * suggère la lumière et le pli d'une surface minérale. `active` ne pilote
+ * que le décalage du soleil (voir `SUN_OFFSETS`) ; les animations
+ * d'ambiance (lueur solaire, respiration de la lumière) sont en CSS pur
+ * (voir `.scene-sun-glow`/`.scene-light-wash` dans `globals.css`) — aucun
  * risque d'hydratation puisqu'elles ne dépendent que d'une media query
  * `prefers-reduced-motion`, jamais de JS.
  */
-function LandscapeScene({
+function AbstractScene({
   active,
   prefersReducedMotion,
   className,
@@ -46,88 +53,95 @@ function LandscapeScene({
   className?: string;
 }) {
   return (
-    <svg viewBox="0 0 800 220" aria-hidden className={className} fill="none">
-      {/* Colline */}
+    // `preserveAspectRatio="none"` : le conteneur (pleine largeur de
+    // section, quelques dizaines de pixels de haut) est beaucoup plus
+    // large que le viewBox — le comportement par défaut ("meet") aurait
+    // centré la scène en préservant son ratio, laissant des bandes vides
+    // à gauche/droite. Invisible sur un fond uni, mais ça décale aussi
+    // tout le contenu (dont le soleil) vers le centre horizontal,
+    // indépendamment de la largeur réelle du conteneur — c'est ce qui
+    // faisait dériver le soleil jusque sous la timeline à certaines
+    // largeurs. Les volumes sont des aplats géométriques simples : une
+    // légère mise à l'échelle non uniforme ne se voit pas, contrairement
+    // à un défaut d'alignement avec le texte et la carte au-dessus.
+    <svg
+      viewBox="0 0 800 220"
+      preserveAspectRatio="none"
+      aria-hidden
+      className={className}
+      fill="none"
+    >
+      {/* Plan lointain — à peine visible, donne juste une sensation
+          d'espace au-delà de la composition principale. */}
       <path
-        d="M0 220 L0 150 C 50 125 100 138 140 148 C 190 160 240 138 290 150 L 340 175 L 340 220 Z"
-        fill="#EDE6D6"
-        opacity="0.55"
+        d="M0 220 L0 176 L200 168 L420 172 L620 165 L800 171 L800 220 Z"
+        fill="#F0ECE1"
+        opacity="0.3"
       />
-      {/* Chemin qui s'estompe */}
+      {/* Plan de sol — unifie les deux monolithes, deuxième niveau de
+          profondeur. */}
       <path
-        d="M20 214 C 55 188 85 168 118 150 C 155 128 205 108 270 90"
-        stroke="url(#pathFade)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
+        d="M0 220 L0 199 L180 190 L400 195 L620 188 L800 196 L800 220 Z"
+        fill="#E7E0D0"
+        opacity="0.42"
       />
-      {/* Pins minimalistes */}
-      <g fill="#5B6E56" opacity="0.5">
-        <path d="M55 148 L70 148 L62.5 120 Z" />
-        <path d="M58 158 L67 158 L62.5 136 Z" />
-        <path d="M100 154 L112 154 L106 130 Z" />
-        <path d="M133 160 L143 160 L138 142 Z" />
+      {/* Reflets très discrets à la base des monolithes — lumière qui
+          rebondit sur le plan de sol, pas une eau ni un lac. */}
+      <ellipse cx="107" cy="211" rx="56" ry="9" fill="url(#reflectionPool)" opacity="0.45" />
+      <ellipse cx="668" cy="211" rx="58" ry="9" fill="url(#reflectionPool)" opacity="0.55" />
+      {/* Monolithe gauche — deux facettes (avant éclairée / côté ombré), un
+          court faîtage plutôt qu'un pic unique : lit comme un bloc massif
+          taillé, pas comme un sommet de montagne. */}
+      <g stroke="rgba(26,22,20,0.07)" strokeWidth="1">
+        <polygon points="65,220 65,145 92,98 128,108 148,220" fill="#EDE6D8" opacity="0.62" />
+        <polygon points="128,108 168,135 150,220 148,220" fill="#C9BCA2" opacity="0.55" />
       </g>
-      <g fill="#8A7458" opacity="0.55">
-        <rect x="61" y="158" width="3" height="10" />
-        <rect x="104.5" y="154" width="3" height="8" />
-        <rect x="136.5" y="160" width="2.5" height="7" />
+      {/* Monolithe droit — plus court, teinte réchauffée par la proximité
+          du soleil, même principe de faîtage court. */}
+      <g stroke="rgba(26,22,20,0.07)" strokeWidth="1">
+        <polygon points="620,220 620,175 652,128 688,138 698,220" fill="#F1DBB0" opacity="0.6" />
+        <polygon points="688,138 712,158 700,220 698,220" fill="#D8B98C" opacity="0.5" />
       </g>
-      {/* Rochers facettés (deux tons par bloc pour suggérer une facette) */}
-      <g opacity="0.55">
-        <polygon points="170,220 200,220 194,198 178,196" fill="#DCD3BF" />
-        <polygon points="194,198 178,196 184,182 198,186" fill="#EDE6D6" />
-        <polygon points="232,220 264,220 255,198 240,196" fill="#DCD3BF" />
-        <polygon points="255,198 240,196 246,182 261,186" fill="#EDE6D6" />
-      </g>
-      {/* Brume légère sur la ligne d'horizon, pour la profondeur */}
-      <rect x="0" y="140" width="800" height="30" fill="url(#mist)" opacity="0.5" />
-      {/* Rive et eau calme */}
-      <path
-        d="M800 220 L800 150 C 740 130 680 140 620 158 L 560 220 Z"
-        fill="#EDE6D6"
-        opacity="0.45"
+      {/* Lumière chaude qui traverse la scène — un voile large et très
+          diffus plutôt qu'un rayon dessiné, qui respire très lentement. */}
+      <rect
+        className="scene-light-wash"
+        x="260"
+        y="0"
+        width="540"
+        height="220"
+        fill="url(#ambientLight)"
       />
-      <g stroke="#8FA0AC" strokeWidth="1.2" strokeLinecap="round" opacity="0.3">
-        <line x1="420" y1="185" x2="700" y2="185" />
-        <line x1="450" y1="198" x2="730" y2="198" />
-        <line x1="400" y1="210" x2="680" y2="210" />
-      </g>
-      {/* Soleil bas + reflet — se décale selon l'étape active */}
+      {/* Soleil bas — se décale selon l'étape active de la timeline. Position
+          verticale calée à dessein sur la même hauteur relative que dans la
+          scène figurative précédente (cy proche de 148 plutôt que très haut
+          dans le ciel) : avec `preserveAspectRatio="none"`, le conteneur
+          très large et bas fait qu'un soleil placé haut dans le viewBox
+          finit visuellement tout près de la timeline au-dessus — vérifié
+          avec un script de mesure comparant le centre du soleil rendu à la
+          position du dernier point de la timeline. */}
       <motion.g
         animate={{ x: SUN_OFFSETS[active] }}
         transition={
           prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 50, damping: 18 }
         }
       >
-        <circle className="scene-sun-glow" cx="640" cy="148" r="46" fill="url(#sunGlow)" />
-        <circle cx="640" cy="148" r="12" fill="#F0C48A" opacity="0.75" />
-        <rect
-          className="scene-water-shimmer"
-          x="598"
-          y="160"
-          width="84"
-          height="50"
-          fill="url(#sunReflect)"
-        />
+        <circle className="scene-sun-glow" cx="735" cy="146" r="40" fill="url(#sunGlow)" />
+        <circle cx="735" cy="146" r="8" fill="#F0C48A" opacity="0.75" />
       </motion.g>
       <defs>
-        <linearGradient id="pathFade" x1="20" y1="214" x2="270" y2="90" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#8A7458" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#8A7458" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#F6F2EA" stopOpacity="0" />
-          <stop offset="55%" stopColor="#F6F2EA" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#F6F2EA" stopOpacity="0" />
-        </linearGradient>
         <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#F3C892" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#F3C892" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="sunReflect" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#E8B978" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#E8B978" stopOpacity="0" />
-        </linearGradient>
+        <radialGradient id="ambientLight" cx="86%" cy="55%" r="75%">
+          <stop offset="0%" stopColor="#F6D9A6" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#F6D9A6" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="reflectionPool" cx="50%" cy="0%" r="100%">
+          <stop offset="0%" stopColor="#F0C48A" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#F0C48A" stopOpacity="0" />
+        </radialGradient>
       </defs>
     </svg>
   );
@@ -245,7 +259,12 @@ export default function NotreHistoire() {
 
   const shineX = useTransform(sx, [0, 1], ["0%", "100%"]);
   const shineY = useTransform(sy, [0, 1], ["0%", "100%"]);
-  const shineBackground = useMotionTemplate`radial-gradient(220px circle at ${shineX} ${shineY}, rgba(255,255,255,0.32), transparent 60%)`;
+  // Deux couches de spéculaire plutôt qu'une seule tache diffuse : un point
+  // chaud étroit (comme la réflexion directe d'une source de lumière sur
+  // une surface polie) superposé à un halo large et doux (l'éclairage
+  // ambiant réfléchi) — c'est la combinaison des deux qui lit comme un
+  // vrai matériau physique plutôt qu'un simple dégradé qui suit la souris.
+  const shineBackground = useMotionTemplate`radial-gradient(70px circle at ${shineX} ${shineY}, rgba(255,255,255,0.55), transparent 45%), radial-gradient(260px circle at ${shineX} ${shineY}, rgba(255,255,255,0.2), transparent 65%)`;
   const rotateX = useTransform(sy, [0, 1], [3.5, -3.5]);
   const rotateY = useTransform(sx, [0, 1], [-3.5, 3.5]);
 
@@ -269,15 +288,16 @@ export default function NotreHistoire() {
       onMouseLeave={handleSceneLeave}
       className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24"
     >
-      {/* Scène 3D minimaliste — décor d'ambiance seulement (demande
-          explicite : "ne pas prendre toute la place"), une bande basse et
-          discrète, jamais l'élément principal. `z-0` sous le contenu. */}
+      {/* Scène architecturale abstraite — décor d'ambiance seulement
+          (demande explicite : "ne pas prendre toute la place"), une bande
+          basse et discrète, jamais l'élément principal. `z-0` sous le
+          contenu. */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 sm:h-40 lg:h-48"
         style={{ x: parallaxX, y: parallaxY }}
       >
-        <LandscapeScene
+        <AbstractScene
           active={active}
           prefersReducedMotion={prefersReducedMotion}
           className="h-full w-full"
@@ -356,7 +376,7 @@ export default function NotreHistoire() {
                       }
                     >
                       <GlassPanel
-                        rounded="rounded-[42px_30px_46px_26px]"
+                        rounded="rounded-[48px_26px_52px_20px]"
                         className="figure-card w-[176px] px-7 py-8 text-center sm:w-[248px] sm:px-10 sm:py-10"
                       >
                         <motion.div

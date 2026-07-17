@@ -367,40 +367,55 @@ body {
    lisait plus "carte flottante posée dessus" que "verre qui capte la
    lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
    presque passer inaperçu plutôt que se faire remarquer. */
-/* Troisième refonte matière de la carte du chiffre actif. Le vert forêt
-   (même dilué à faible opacité) se lisait comme "un simple rectangle gris
-   avec un blur" — le client précise vouloir un verre CLAIR à peine teinté
-   de crème, pas une teinte forte diluée. Base quasi blanche/ivoire très
-   translucide plutôt qu'une couleur qu'on dilue : `rgba(255,253,247,…)`
-   à faible opacité, un dégradé diagonal blanc à 3 arrêts pour simuler
-   plusieurs couches de verre superposées (pas un aplat uni), un bord fin
-   et lumineux (`border` blanc à forte opacité, pas juste 0.2). Blur
-   modéré (20px, pas "un gros blur") + saturate pour une légère
-   distorsion de ce qu'il y a derrière, sans le noyer. Tout est
-   volontairement discret : le but explicite est que l'effet ne se
-   remarque qu'au mouvement de la souris ou quand la lumière accroche un
-   bord, jamais au premier coup d'œil. */
+/* Quatrième refonte matière de la carte du chiffre actif. Malgré le verre
+   clair teinté crème du tour précédent, le client la voit toujours comme
+   "un rectangle blanc avec un effet de glow" — le problème n'est plus la
+   teinte mais l'absence de présence physique : un seul dégradé diagonal
+   plat et un halo uniforme ne suggèrent ni matière ni lumière crédible.
+   Trois changements structurels plutôt qu'un simple réglage d'opacité :
+   1) un second calque de dégradé vertical (haut → bas) est ajouté en plus
+      du diagonal existant, pour que le haut de la carte lise clairement
+      "plus proche de la lumière" et le bas "en ombre propre" — un objet
+      réel éclairé d'en haut, pas un aplat orienté au hasard ;
+   2) l'ombre portée passe de deux à trois couches (contact proche très
+      serré, ombre moyenne, halo large et diffus) au lieu d'une seule paire
+      valeur/flou — c'est cette superposition d'échelles, pas une ombre
+      plus grosse, qui donne l'impression qu'un vrai objet repose sur la
+      scène plutôt qu'un panneau plaqué dessus ;
+   3) l'anneau interne (`inset 0 0 0 1px`) ajouté simule une deuxième
+      épaisseur de verre légèrement en retrait de la bordure externe —
+      le genre de détail qui ne se remarque jamais consciemment mais qui
+      fait la différence entre "plat" et "épais". */
 .figure-card {
   position: relative;
   overflow: visible;
   background-color: rgba(255, 253, 247, 0.4);
   background-image:
     linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 253, 247, 0.1) 45%,
+      rgba(250, 240, 220, 0.22) 100%
+    ),
+    linear-gradient(
       155deg,
-      rgba(255, 255, 255, 0.32) 0%,
-      rgba(255, 250, 240, 0.08) 55%,
-      rgba(255, 255, 255, 0.2) 100%
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(255, 250, 240, 0.06) 55%,
+      rgba(255, 255, 255, 0.18) 100%
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   border: 1px solid rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
   box-shadow:
-    0 30px 54px -32px rgba(60, 52, 38, 0.2),
-    0 8px 18px -12px rgba(60, 52, 38, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 0 34px rgba(255, 232, 195, 0.14),
-    inset 0 -10px 18px rgba(120, 100, 70, 0.05);
+    0 48px 78px -38px rgba(50, 42, 30, 0.26),
+    0 18px 32px -18px rgba(50, 42, 30, 0.16),
+    0 4px 10px -3px rgba(50, 42, 30, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(120, 100, 70, 0.12),
+    inset 0 0 40px rgba(255, 232, 195, 0.16),
+    inset 0 -16px 26px rgba(120, 100, 70, 0.07);
 }
 
 /* Deux temps de lumière superposés plutôt qu'un seul : le radial simule un
@@ -425,16 +440,21 @@ body {
   pointer-events: none;
 }
 
+/* Halo externe recentré vers le bas : la scène en fond de section est la
+   source de lumière de la composition (soleil bas + voile chaud), donc la
+   carte doit sembler capter cette lumière par en dessous plutôt qu'être
+   éclairée dans le vide — un détail qui relie physiquement la carte à la
+   scène plutôt que de les traiter comme deux éléments indépendants. */
 .figure-card::after {
   content: "";
   position: absolute;
-  inset: -20px;
+  inset: -22px;
   background: radial-gradient(
-    circle,
-    rgba(255, 214, 160, 0.14) 0%,
-    transparent 70%
+    140% 100% at 50% 118%,
+    rgba(255, 214, 160, 0.18) 0%,
+    transparent 68%
   );
-  filter: blur(26px);
+  filter: blur(28px);
   z-index: -1;
   pointer-events: none;
 }
@@ -452,18 +472,18 @@ body {
 }
 
 /* Fond de la section Notre histoire : reste `bg-ciel` (même classe que
-   Gammes, cf. commits précédents — "aucune divergence de teinte"), mais le
-   client revient sur le décor lui-même : après deux tours à le retirer
-   entièrement, il demande maintenant explicitement une "scène 3D
-   minimaliste" — colline/pins/rochers/rive/soleil, vivante mais très
-   discrète (voir `LandscapeScene` dans `NotreHistoire.tsx`). Les
-   animations d'ambiance de cette scène (lueur du soleil, reflet dans
-   l'eau) sont volontairement en CSS pur plutôt qu'en JS/Framer Motion :
-   elles n'ont besoin d'aucune donnée dynamique (juste "vivre doucement en
-   boucle"), et une media query `prefers-reduced-motion` suffit à les
-   couper proprement — pas de risque de désaccord serveur/client comme
-   celui déjà rencontré et corrigé sur le reflet mouse-tracké de la carte
-   (cf plus bas). */
+   Gammes, cf. commits précédents — "aucune divergence de teinte"). Le
+   décor lui-même a fait plusieurs allers-retours (colline/pins/rochers
+   figuratifs, puis suppression totale, puis retour sous forme de "scène
+   3D") avant de se stabiliser sur une composition architecturale abstraite
+   — quelques grands volumes low-poly en aplat, pas un paysage dessiné (voir
+   `AbstractScene` dans `NotreHistoire.tsx`). Les animations d'ambiance de
+   cette scène (lueur du soleil, respiration du voile de lumière) restent
+   volontairement en CSS pur plutôt qu'en JS/Framer Motion : elles n'ont
+   besoin d'aucune donnée dynamique (juste "vivre doucement en boucle"), et
+   une media query `prefers-reduced-motion` suffit à les couper proprement —
+   pas de risque de désaccord serveur/client comme celui déjà rencontré et
+   corrigé sur le reflet mouse-tracké de la carte (cf plus bas). */
 @keyframes scene-glow-pulse {
   0%,
   100% {
@@ -478,25 +498,26 @@ body {
   animation: scene-glow-pulse 9s ease-in-out infinite;
 }
 
-@keyframes scene-shimmer {
+/* Le voile de lumière chaude qui traverse la scène respire très
+   lentement (14s, amplitude d'opacité réduite) — "la lumière évolue
+   doucement" sans jamais devenir une pulsation qui se remarque. */
+@keyframes scene-light-breathe {
   0%,
   100% {
-    opacity: 0.28;
-    transform: translateY(0);
+    opacity: 0.75;
   }
   50% {
-    opacity: 0.48;
-    transform: translateY(-2px);
+    opacity: 1;
   }
 }
 
-.scene-water-shimmer {
-  animation: scene-shimmer 6s ease-in-out infinite;
+.scene-light-wash {
+  animation: scene-light-breathe 14s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .scene-sun-glow,
-  .scene-water-shimmer {
+  .scene-light-wash {
     animation: none;
   }
 }

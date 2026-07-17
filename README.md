@@ -733,6 +733,83 @@ npm run dev
   la mesure de transform confirment que le reflet et le tilt de la carte
   continuent de suivre la souris indépendamment du nouveau parallaxe de
   la scène.
+
+  **De la scène figurative à une composition architecturale abstraite** :
+  retour client sur la "scène 3D" (colline/pins/rochers/rive) du tour
+  précédent — un concept gardé ("le soleil se décale selon l'étape active"),
+  mais un rendu jugé "pas assez premium", trop proche d'une illustration de
+  paysage low-poly classique et donc en décalage avec "l'univers
+  architectural de Bellora". Consigne explicite : quelques grands volumes
+  très épurés (3 à 4, pas plus), des reliefs géométriques sobres, des
+  surfaces à teinte minérale, des plans superposés pour la profondeur, une
+  lumière chaude qui traverse la scène, des reflets sur des surfaces sans
+  jamais représenter littéralement une eau ou une forêt — inspiration
+  maquette architecturale / keynote Apple plutôt que décor low-poly.
+  `LandscapeScene` (colline, pins, rochers, rive, brume) entièrement
+  remplacé par `AbstractScene` : deux "monolithes" en aplat à deux facettes
+  chacun (une face éclairée, une face en ombre — c'est le contraste net
+  entre deux teintes plates, pas un dégradé lissé, qui suggère une surface
+  minérale taillée), un plan de sol qui les unifie, un plan lointain à
+  peine perceptible pour la sensation d'espace au-delà. Les faîtages sont
+  volontairement coupés à deux points plutôt qu'un seul pic (`92,98` →
+  `128,108` plutôt qu'un unique sommet) : un seul point de faîte lisait
+  comme un sommet de montagne, la même silhouette avec un court plateau
+  incliné lit comme un bloc massif taillé. Les "reflets subtils sur des
+  surfaces" demandés sont deux ellipses à dégradé radial très discrètes à
+  la base des monolithes (lumière qui rebondit sur le plan de sol), sans
+  aucune ligne d'eau ni ondulation. La "lumière chaude qui traverse la
+  scène" est un large voile radial en surimpression, qui respire très
+  lentement (`@keyframes scene-light-breathe`, 14s) plutôt que le
+  frémissement de reflet sur l'eau supprimé avec la rive.
+
+  Un vrai bug de mise à l'échelle a été débusqué en construisant cette
+  version, latent depuis la toute première scène SVG mais resté invisible
+  jusqu'ici : le `<svg viewBox="0 0 800 220">` n'avait pas de
+  `preserveAspectRatio` explicite, donc navigateur applique la valeur par
+  défaut (`xMidYMid meet`), qui centre le contenu en préservant son ratio
+  plutôt que de remplir le conteneur. Comme la bande de scène est bien plus
+  large que haute (jusqu'à ratio 7:1 en desktop, largeur de section entière
+  pour une hauteur de quelques dizaines de pixels), "meet" la scène est
+  restée cantonnée à une bande centrée, avec des marges vides invisibles de
+  chaque côté puisqu'elles sont de la même couleur que le fond. Sans
+  conséquence tant que le contenu du SVG restait symétrique et loin des
+  bords (les pins/rochers de la scène figurative), le défaut est devenu
+  visible dès que le soleil — élément ponctuel et lumineux — s'est retrouvé
+  décalé vers le centre par ce recentrage, jusqu'à passer sous le dernier
+  point de la timeline (chevauchement confirmé par script : centre du
+  soleil à 33px du centre du point, avec un rayon de halo de ~40px).
+  Corrigé avec `preserveAspectRatio="none"` : la scène remplit maintenant
+  exactement la largeur du conteneur à chaque largeur d'écran, sans marge
+  ni recentrage — un choix qui n'a pas de coût visuel ici puisque les
+  volumes sont des aplats géométriques simples (une légère mise à l'échelle
+  non uniforme ne se remarque pas), contrairement à un décalage
+  d'alignement avec le texte et la carte au-dessus. Une fois ce recentrage
+  supprimé, la position verticale du soleil a aussi été revue (`cy=146`,
+  contre une valeur initiale trop haute dans le "ciel" du viewBox) pour
+  garder une marge confortable avec la timeline — revérifié avec un script
+  dédié (`check-sun-overlap.mjs`) comparant le centre rendu du soleil à
+  celui du dernier point de la timeline à chaque étape.
+
+  **Quatrième refonte de la matière de la carte** : toujours perçue comme
+  "un rectangle blanc avec un effet de glow" malgré le verre clair du tour
+  précédent — le problème identifié n'est plus la teinte mais l'absence de
+  présence physique. Un second calque de dégradé vertical (clair en haut,
+  plus dense en bas) s'ajoute au dégradé diagonal existant, pour que la
+  carte lise comme un objet éclairé d'en haut plutôt qu'un aplat orienté au
+  hasard. L'ombre portée passe de deux à trois couches de tailles
+  différentes (contact serré, ombre moyenne, halo large) plutôt qu'une
+  seule paire valeur/flou — c'est la superposition d'échelles qui donne
+  l'impression d'un objet réellement posé sur la scène. Un anneau interne
+  (`inset 0 0 0 1px`) simule une deuxième épaisseur de verre légèrement en
+  retrait du bord. Le halo externe (`::after`) est recentré vers le bas de
+  la carte plutôt que diffus tout autour : la scène en fond de section est
+  la source de lumière de la composition, la carte doit sembler capter
+  cette lumière par en dessous. Le reflet mouse-tracké passe d'une seule
+  tache diffuse à deux couches superposées (un point chaud étroit à 70px +
+  un halo large à 260px) pour lire comme un vrai spéculaire physique.
+  Coins organiques accentués (`48px_26px_52px_20px`, contre `42/30/46/26`
+  avant) pour une silhouette moins immédiatement identifiable comme un
+  rectangle arrondi.
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des
   silhouettes de plantes abstraites en SVG (`PlantShadow`, ombre portée
