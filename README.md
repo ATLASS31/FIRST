@@ -394,6 +394,19 @@ npm run dev
   dernier paragraphe de la colonne de texte, ce qui élimine le risque de
   chevauchement par construction plutôt que par un réglage de hauteur
   ajusté au pixel.
+
+  Jugée "nulle" une fois vue en contexte réel (troisième itération, toujours
+  pas convaincante) — abandonnée entièrement, retour à la section sans
+  illustration. Au passage, un effet de bord expliquait la seconde partie du
+  retour client sur l'alignement : le grid à deux colonnes utilise
+  `lg:items-center`, qui centre verticalement chaque colonne comme un bloc
+  dans la hauteur de la ligne — avec l'image, la colonne de texte devenait
+  plus haute que la colonne carrousel, ce qui décalait visuellement l'eyebrow
+  "NOTRE HISTOIRE" par rapport au compteur "0X/03" (qui ne partaient plus au
+  même niveau). Simplement retirer l'image restaure des hauteurs de colonne
+  proches et donc l'alignement d'origine — vérifié après coup, les deux
+  repères sont de nouveau à la même hauteur. `NOTRE_HISTOIRE_LANDSCAPE_URL`
+  retiré de `src/lib/media.ts`.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

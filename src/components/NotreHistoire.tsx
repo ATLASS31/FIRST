@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
-import { NOTRE_HISTOIRE_LANDSCAPE_URL } from "@/lib/media";
 
 const AUTOPLAY_MS = 3000;
 
@@ -51,24 +49,6 @@ export default function NotreHistoire() {
             assemblée en atelier français par des charpentiers et menuisiers
             expérimentés.
           </p>
-
-          {/* Illustration low-poly, générée pour coller à la palette exacte
-              du site (fond plein `#EFEDE4` = `--brume-2`) plutôt que
-              découpée sur fond transparent : pas de recadrage ni de fondu
-              nécessaires. Posée dans le flux normal, sous le texte, plutôt
-              qu'en overlay absolu : sur une section aussi courte le texte
-              occupe presque toute la hauteur, un overlay ancré en bas
-              chevauchait la dernière ligne du titre. Cadrée à gauche
-              uniquement (pas pleine largeur) pour rester discrète. */}
-          <div aria-hidden className="mt-10 hidden w-40 sm:block sm:w-48">
-            <Image
-              src={NOTRE_HISTOIRE_LANDSCAPE_URL}
-              alt=""
-              width={864}
-              height={1152}
-              className="h-auto w-full"
-            />
-          </div>
         </div>
 
         <div className="min-w-0">
