@@ -286,6 +286,34 @@ npm run dev
   par statistique (bouclier/camion/hexagone — la France comme
   "l'Hexagone"), sur fond plat — non concerné par cette demande de retour
   en arrière. Contenu textuel des deux sections identique à l'original.
+  **Fusionné ensuite avec Chiffres clés** (sur référence visuelle du
+  client) : les deux sections, jusque-là séparées, sont devenues un seul
+  bloc à deux colonnes — texte à gauche, à droite une timeline horizontale
+  où les 3 chiffres (garantie, livraison, fabrication France) défilent un
+  par un. Un seul chiffre à la fois est "actif" : il quitte le fil pour se
+  poser dans une carte liquid glass élevée au-dessus de la ligne (texte
+  plus grand, ombre) pendant que les deux autres restent à plat sur la
+  ligne, atténués (opacité 40%). Compteur "0X / 03" au-dessus. La carte
+  active se déplace d'un chiffre à l'autre via `layoutId` (Framer Motion
+  anime automatiquement la transition de position/taille — le "FLIP"
+  classique, pas un fondu brut) ; la ligne elle-même se remplit en doré
+  jusqu'au chiffre actif. Boucle automatique toutes les 3 secondes
+  (`setInterval`), ET cliquable manuellement — le minuteur repart de zéro
+  à chaque changement d'actif (autoplay ou clic), pour qu'un clic ne soit
+  jamais aussitôt écrasé par l'avancement automatique (vérifié : cliquer
+  puis attendre 2,5 s ne fait pas changer l'actif). `KeyFigures.tsx`
+  supprimé (entièrement absorbé dans `NotreHistoire.tsx`), son import
+  retiré de `page.tsx`. Premier jet cassé sur mobile : le texte de chaque
+  chiffre était en `whitespace-nowrap`, ce qui forçait la ligne des 3
+  éléments à dépasser la largeur de l'écran (le classique "grid/flex
+  blowout" — un enfant en `nowrap` impose sa largeur de contenu minimale
+  au parent flex, qui ne peut pas la comprimer sans `min-w-0`) ; texte du
+  débordant hors-cadre. Corrigé : `whitespace-nowrap` retiré (le texte
+  wrappe proprement, centré), tailles de police et espacements rendus
+  responsive (base mobile → `sm:` → `lg:`), `min-w-0` posé sur les
+  colonnes de la grille et les boutons du carrousel pour qu'ils puissent
+  se comprimer plutôt que de repousser toute la section hors du
+  viewport.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

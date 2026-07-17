@@ -1,7 +1,6 @@
 import Hero from "@/components/Hero";
 import ThreePiliers from "@/components/ThreePiliers";
 import NotreHistoire from "@/components/NotreHistoire";
-import KeyFigures from "@/components/KeyFigures";
 import GammesPreview from "@/components/GammesPreview";
 import Procede from "@/components/Procede";
 import SavoirFaire from "@/components/SavoirFaire";
@@ -14,7 +13,6 @@ export default function Home() {
       <Hero />
       <ThreePiliers />
       <NotreHistoire />
-      <KeyFigures />
       <GammesPreview />
       <Procede />
       <SavoirFaire />
