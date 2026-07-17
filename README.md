@@ -443,6 +443,29 @@ npm run dev
   l'itération précédente (image ancrée en bas qui mange la dernière ligne du
   titre) s'est reproduit une première fois pendant les réglages — cette fois
   détecté et corrigé avant livraison, pas après un nouveau retour client.
+
+  Jugée ensuite "beaucoup trop imposante" — traitée comme un hero de fond
+  plutôt que comme une "frise paysagère discrète" (mot du client) en bas de
+  section. Cahier des charges très précis fourni, y compris un extrait CSS
+  de référence (`height: 32%`, `object-fit: cover`, masque 4-arrêts,
+  `opacity: 0.72`) : repris dans l'esprit plutôt que copié tel quel (un
+  `height` en `%` ne peut pas se résoudre sur un ancestor à hauteur `auto` —
+  toute la section l'est, dictée par son contenu). Bande ramenée à
+  ~150-190px (≈ 18-30% de la hauteur de section selon le viewport, mesuré),
+  `z-index: 0` explicite sous le contenu (`z-10` sur le bloc de contenu),
+  masque vertical à 4 arrêts beaucoup plus progressif que le fondu précédent
+  (`transparent 0% → 15% à 20% → 80% à 50% → opaque 100%`, repris tel quel
+  du CSS fourni), légère désaturation/contraste (`saturate-[.82]
+  contrast-[.94]`, jamais de flou), aucune ombre. Masquée entièrement en
+  dessous du breakpoint `sm` plutôt que réduite à une bande trop fine pour
+  être lisible. `padding-bottom` de la section ramené à des valeurs proches
+  du reste du site (`pb-24`/`sm:pb-40`/`lg:pb-40`, contre jusqu'à `40rem` à
+  l'itération précédente) pour supprimer le grand vide entre texte et
+  décor. Fichier image vérifié identique (`md5`) à celui déjà utilisé : ce
+  n'était pas "la mauvaise image" comme d'abord suspecté par le client, seul
+  l'habillage CSS était en cause. Recalibré par le même script de
+  comparaison de rectangles DOM (titre vs image) qu'à l'itération
+  précédente, cette fois avec une marge de sécurité plus généreuse.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

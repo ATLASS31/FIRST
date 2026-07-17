@@ -28,35 +28,34 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden bg-brume-2 px-6 pb-48 pt-28 sm:pb-[24rem] lg:pb-[40rem]">
-      {/* Illustration low-poly fournie par le client (photo, pas générée) :
-          pins à gauche, eau/soleil à droite — même composition que la
-          référence. Le fichier a déjà un ciel en dégradé doux (pas de
-          damier), très proche de `--brume-2` : un simple fondu CSS en haut
-          suffit à le fondre dans la section, sans détourage. Recadrée plus
-          serrée que l'aspect natif (`object-position: bottom`) pour
-          "remonter" la composition et réduire le vide en haut de l'image,
-          comme demandé — au prix des tout derniers sommets des deux sapins
-          les plus hauts, hors cadre. */}
+    <section className="relative overflow-hidden bg-brume-2 px-6 pb-24 pt-28 sm:pb-40 lg:pb-40">
+      {/* Illustration low-poly fournie par le client, traitée en frise
+          paysagère discrète (pas un hero de fond) : bande basse et fine —
+          environ 25-30% de la hauteur de la section, jamais l'élément
+          principal — z-index sous le contenu, opacité réduite, légèrement
+          désaturée (pas floutée), fondu vertical très progressif (pas de
+          contour net) pour disparaître dans le `bg-brume-2`. Masquée sur
+          mobile plutôt que réduite à une bande illisible. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 sm:h-[342px] lg:h-[580px]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden sm:block sm:h-[150px] lg:h-[190px]"
       >
         <Image
           src="/images/notre-histoire-landscape.png"
           alt=""
           fill
           sizes="100vw"
-          className="object-cover object-bottom"
+          className="object-cover object-bottom opacity-[0.72] saturate-[0.82] contrast-[0.94]"
           style={{
-            maskImage: "linear-gradient(to bottom, transparent, black 12%)",
+            maskImage:
+              "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.8) 50%, #000 100%)",
             WebkitMaskImage:
-              "linear-gradient(to bottom, transparent, black 12%)",
+              "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.8) 50%, #000 100%)",
           }}
         />
       </div>
 
-      <div className="relative mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+      <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
           <h2 className="mt-4 text-3xl font-semibold text-encre sm:text-4xl">
