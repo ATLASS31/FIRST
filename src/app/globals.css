@@ -149,35 +149,113 @@ body {
    `blur(8px)` non désiré). Aucun outil de repro ici ne peut détecter un
    `@supports` qui passe (le Chromium du bac à sable, comme la plupart des
    navigateurs, échoue ce test) — un bug purement dans l'ordre du fichier,
-   pas dans un rendu observable en local. */
-.hero-cta {
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.1);
-  box-shadow:
-    0 20px 40px -16px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+   pas dans un rendu observable en local.
+
+   Dernier calibrage demandé : verre moins opaque, blur énorme, un reflet
+   qui bouge très lentement (8-10s), un halo doré à peine perceptible
+   (5%), et au survol le bouton "gonfle" de quelques px pendant qu'un
+   reflet rapide glisse de gauche à droite.
+
+   Le reflet MOBILE est volontairement fait via `background-position`
+   animé sur le dégradé lui-même — PAS via un pseudo-élément `::before`
+   en `position: absolute` + `transform` comme `.glass-sheen` ailleurs
+   sur le site. C'est le mécanisme exact qui causait le bug de débordement
+   documenté au point 2) ci-dessus (confirmé par test : retirer la classe
+   du pseudo-élément animé faisait disparaître la barre qui dépassait). Un
+   dégradé peint directement en `background-image` de l'élément est
+   toujours clippé nativement par son propre `border-radius`, sans avoir
+   besoin d'un `overflow: hidden` sur un enfant positionné séparément —
+   aucune des conditions du bug precedent (pseudo-élément, position
+   absolute, transform animée) n'est réunie ici. Le survol change
+   `animation-name` (bascule vers un aller simple rapide) plutôt que de
+   transitionner `background-position` en parallèle de l'animation lente
+   — les deux ne peuvent pas piloter proprement la même propriété CSS en
+   même temps (l'animation gagnerait sur la transition de façon
+   imprévisible). */
+@keyframes hero-cta-sheen-idle {
+  0%,
+  12% {
+    background-position:
+      -60% -60%,
+      0% 0%;
+  }
+  60%,
+  100% {
+    background-position:
+      160% 160%,
+      0% 0%;
+  }
 }
 
-/* Reflet fixe (jamais animé, cf. bug #2 ci-dessus) : point de lumière
-   radial en haut à gauche, discret puisque le fond est déjà clair. */
-.hero-cta::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    130% 160% at 18% -12%,
-    rgba(255, 255, 255, 0.45) 0%,
-    rgba(255, 255, 255, 0.14) 28%,
-    transparent 56%
-  );
-  pointer-events: none;
+@keyframes hero-cta-sheen-hover {
+  0% {
+    background-position:
+      -140% 0%,
+      0% 0%;
+  }
+  100% {
+    background-position:
+      140% 0%,
+      0% 0%;
+  }
+}
+
+.hero-cta {
+  background-image:
+    linear-gradient(
+      105deg,
+      transparent 42%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 58%
+    ),
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+  background-size:
+    260% 260%,
+    100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position:
+    -60% -60%,
+    0% 0%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(44px) saturate(190%) brightness(1.08);
+  -webkit-backdrop-filter: blur(44px) saturate(190%) brightness(1.08);
+  box-shadow:
+    0 20px 40px -16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 0 48px rgba(173, 138, 85, 0.05);
+  animation: hero-cta-sheen-idle 9s ease-in-out infinite;
+  transition:
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.4s ease;
+}
+
+.hero-cta:hover {
+  transform: scale(1.035);
+  animation: hero-cta-sheen-hover 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+  box-shadow:
+    0 20px 40px -16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 0 56px rgba(173, 138, 85, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-cta {
+    animation: none;
+    transition: none;
+    background-position:
+      0% 0%,
+      0% 0%;
+  }
+  .hero-cta:hover {
+    transform: none;
+    animation: none;
+  }
 }
 
 /* Pastille de catégorie sur les cartes gammes (Primaire/Premium/Prestige) :

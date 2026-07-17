@@ -197,6 +197,26 @@ npm run dev
   (retour à un `blur(8px)` non désiré, invisible depuis ce bac à sable
   puisque son Chromium échoue ce test `@supports`). `.hero-cta` déplacé
   après ce bloc pour toujours gagner, quel que soit le navigateur.
+  Dernier calibrage, demandé avec des valeurs précises : verre moins
+  opaque (fond éclairci à 15%/3% au lieu de 24%/8%), blur porté à 44px
+  ("énorme"), un halo doré résiduel à 5% d'opacité seulement (`0 0 48px
+  rgba(173, 138, 85, 0.05)`), et surtout un reflet qui se déplace en
+  continu très lentement (boucle de 9s) plutôt qu'un point de lumière fixe
+  — avec, au survol, un bouton qui "gonfle" légèrement (`scale(1.035)`) et
+  un reflet rapide qui glisse une fois de gauche à droite. Le reflet mobile
+  est fait via `background-position` animé sur le dégradé lui-même
+  (`@keyframes hero-cta-sheen-idle`/`-hover`), délibérément PAS via un
+  pseudo-élément `::before` en `position: absolute` + `transform` comme
+  `.glass-sheen` ailleurs sur le site — c'est exactement ce mécanisme qui
+  causait le bug de débordement documenté au point 2) plus haut. Un
+  dégradé peint en `background-image` de l'élément lui-même est toujours
+  clippé nativement par son propre `border-radius`, sans avoir besoin
+  d'un `overflow: hidden` sur un enfant positionné séparément — aucune des
+  conditions du bug précédent n'est réunie. Vérifié via Playwright sur un
+  cycle complet de la boucle lente (captures toutes les ~2s, large marge
+  autour du bouton) et sur le survol : rien ne déborde des bords à aucun
+  moment. `prefers-reduced-motion` coupe l'animation et le hover (vérifié
+  via `getComputedStyle`).
 - **Gammes : pastilles de catégorie sans effet loupe** : les pastilles
   Primaire/Premium/Prestige (`.glass`, ton clair) posées sur une vraie
   photo colorée lisaient comme un simple sticker blanc plat. La
