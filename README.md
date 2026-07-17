@@ -495,6 +495,89 @@ npm run dev
   légèrement plus généreux (`py-4 pl-8 pr-7`, contre `py-3.5 pl-7 pr-6`) ;
   l'icône flèche (`h-4 w-4`) restait déjà proportionnée au nouveau texte,
   pas touchée.
+
+  **Pivot stratégique complet** ensuite : "j'ai l'impression que tu as posé
+  une grande illustration derrière mon interface, ce n'est pas l'effet
+  recherché". Quatre itérations de photo/illustration en fond de section
+  (client → régénérée → annulée → régénérée pleine largeur → recadrée en
+  frise) abandonnées entièrement au profit d'une direction "Apple
+  2026"/less-is-more : le contenu (texte + carte + timeline) redevient le
+  héros de la section, le décor n'apporte plus que de la profondeur
+  (`<20%` de l'attention visuelle demandé).
+
+  Décor entièrement refait à la main en SVG plutôt qu'en photo — même
+  esprit que `PlantShadow` sur `ThreePiliers` (silhouette abstraite, pas
+  une image) : une petite colline bas-gauche avec 2 pins minimalistes (deux
+  triangles empilés, pas de détail réaliste), deux rochers, un chemin dont
+  le trait s'estompe par dégradé de `stroke` plutôt que de s'arrêter net
+  (`HillDecor`) ; une petite rive bas-droite avec de l'eau calme (quelques
+  lignes fines, pas une surface pleine) et un reflet doré réduit à un
+  simple trait dégradé de 3px (`ShoreDecor`, "extrêmement discret" — plus
+  de soleil ni de grand miroir). Couleurs choisies proches du fond de
+  section plutôt que puisées dans les tokens du site (`#EDE6D6`, `#5B6E56`,
+  `#8FA0AC`…) : les tokens existants (`--foret`, `--laiton`) sont pensés
+  pour un usage à pleine saturation (texte, accents), pas pour une touche
+  quasi invisible qui se fond dans `--brume-2`. `z-index: 0` sous le
+  contenu (`z-index: 10`), révélé au scroll comme le reste du site.
+
+  Carte active reprise une nouvelle fois — le retour client était explicite
+  : "surtout pas un rectangle blanc avec un fond vert". La teinte
+  forêt/sauge reste (déjà validée), mais le fond passe de 0.55 à 0.24
+  d'opacité et le blur de 20px à 30px : au-dessus d'un fond quasi neutre
+  (`--brume-2`) et d'un décor lui-même très pâle, une opacité aussi réduite
+  aurait auparavant fait disparaître la carte — désormais qu'il y a du
+  décor (même discret) à réfracter derrière, la transparence peut
+  vraiment se voir. Rayon de coin élevé à `32px` (coins "très doux"). Un
+  halo interne ajouté en `box-shadow` `inset` (chaleur diffuse à
+  l'intérieur du verre, sans consommer un troisième pseudo-élément — les
+  deux existants, `::before`/`::after`, sont déjà pris par le reflet
+  spéculaire statique et le halo externe). Troisième couche ajoutée,
+  inédite sur le site : un reflet qui suit vraiment la souris. Techniquement
+  impossible en CSS pur (il faut la position du curseur), donc un hook
+  dédié (`useCardPointer`, même throttle `requestAnimationFrame` que
+  `TiltCard.tsx` — coordonnées les plus récentes en ref, appliquées au
+  plus une fois par frame) pilote un dégradé radial via
+  `useMotionTemplate`, posé sur un calque séparé (`.figure-card-mouse-shine`,
+  `mix-blend-mode: soft-light`). Les mêmes valeurs de pointeur pilotent
+  aussi un tilt 3D très léger (±3.5°, `rotateX`/`rotateY`) directement sur
+  la carte — pas besoin d'imbriquer le composant `TiltCard` existant
+  puisque le pointeur est déjà suivi pour le reflet ; un second système de
+  tracking séparé aurait été redondant. Le hook ne peut être appelé
+  qu'une fois, en haut du composant (pas dans le `.map` des trois
+  chiffres) : les règles de React interdisent les hooks conditionnels,
+  et une seule carte est "active" à la fois de toute façon.
+
+  **Bug réel trouvé en testant sous `prefers-reduced-motion`** : le reflet
+  mouse-tracké était initialement rendu conditionnellement (`{!prefersReducedMotion
+  && <motion.div ... />}`) puis, après un premier correctif, sa valeur de
+  fond passait par un `style={{ background: prefersReducedMotion ? "none" :
+  shineBackground }}`. Les deux versions cassaient l'hydratation React
+  (avertissement `hydration mismatch` reproductible, visible dans la
+  console) : `useReducedMotion()` peut se résoudre différemment entre le
+  rendu serveur (toujours `false`, pas de `window`) et le tout premier
+  rendu client — avant même que l'effet de correction ne s'exécute — si la
+  préférence système est déjà active à ce moment-là. Tant que le
+  conditionnel ne change que des *valeurs* passées à des props gérées par
+  Framer Motion en interne (`transition`, motion values comme `rotateX`
+  quand les deux branches convergent vers le même état neutre), pas de
+  souci ; dès qu'il fait apparaître/disparaître un nœud DOM ou bascule un
+  `style` entre une chaîne statique et une `MotionValue` sur la même
+  propriété, le rendu HTML initial peut diverger. Corrigé en supprimant
+  entièrement le conditionnel : le reflet et le tilt restent actifs même
+  en `prefers-reduced-motion`, comme `TiltCard.tsx` déjà utilisé partout
+  ailleurs sur le site sans ce genre de garde — cohérent avec le fait
+  qu'un effet piloté directement par la souris (pas une animation qui se
+  déclenche toute seule) n'est pas ce que ce réglage d'accessibilité vise.
+
+  Section rétrécie (25-30% demandé) : plus de réservation géante pour une
+  image (jusqu'à `40rem` de `padding-bottom` à l'itération précédente),
+  retour à un `padding` symétrique modeste (`py-20`/`sm:py-24`, contre
+  `py-28` avant même la toute première image). Typographie légèrement
+  agrandie comme demandé : titre `text-3xl/text-4xl` → `text-4xl/text-5xl`,
+  carte `w-[168px]/232px` → `w-[176px]/248px` avec texte
+  `text-xl/text-3xl` → `text-2xl/text-4xl`, timeline (point, texte inactif,
+  libellés) montée d'un cran. `public/images/notre-histoire-landscape.png`
+  supprimé.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

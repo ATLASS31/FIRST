@@ -367,29 +367,37 @@ body {
    lisait plus "carte flottante posée dessus" que "verre qui capte la
    lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
    presque passer inaperçu plutôt que se faire remarquer. */
-/* Verre fumé teinté forêt/sauge (au lieu de blanc) : demande explicite du
-   client, avec texte ivoire et halo chaud diffus derrière (::after,
-   déborde volontairement — même procédé que le halo du bouton hero et de
-   `.glass-graphite`, cf plus haut). */
+/* Vraie carte Liquid Glass multi-couches (demande explicite du client :
+   "surtout pas un rectangle blanc avec un fond vert"). Fond très
+   translucide (0.55 → 0.24 d'opacité, le blur/saturate font le travail
+   plutôt que la couleur — sinon ça lit comme un aplat peint, pas du
+   verre), blur renforcé (20px → 30px) pour une réfraction plus nette de
+   ce qu'il y a derrière (texte/décor). Halo interne très subtil ajouté en
+   `inset box-shadow` (chaleur diffuse à l'intérieur du verre) en plus du
+   halo externe existant (`::after`, déborde volontairement). Coins
+   nettement adoucis via la prop `rounded` du composant. Le reflet qui
+   suit la souris est un troisième calque, géré en JS (voir
+   `.figure-card-mouse-shine` + `NotreHistoire.tsx`) : impossible en CSS
+   pur puisqu'il doit réagir à la position du curseur. */
 .figure-card {
   position: relative;
   overflow: visible;
-  background-color: rgba(38, 48, 38, 0.55);
+  background-color: rgba(42, 54, 42, 0.24);
   background-image:
     linear-gradient(
       155deg,
-      rgba(114, 132, 102, 0.45) 0%,
-      rgba(24, 32, 24, 0.55) 100%
+      rgba(158, 172, 146, 0.22) 0%,
+      rgba(20, 28, 20, 0.1) 100%
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
   box-shadow:
-    0 20px 40px -20px rgba(18, 24, 16, 0.4),
-    0 6px 16px -8px rgba(18, 24, 16, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -12px 22px rgba(0, 0, 0, 0.2);
+    0 30px 60px -32px rgba(20, 26, 18, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 0 46px rgba(255, 205, 130, 0.1),
+    inset 0 -14px 26px rgba(0, 0, 0, 0.14);
 }
 
 .figure-card::before {
@@ -399,8 +407,8 @@ body {
   border-radius: inherit;
   background: radial-gradient(
     120% 100% at 20% -10%,
-    rgba(255, 255, 255, 0.18) 0%,
-    transparent 45%
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 50%
   );
   pointer-events: none;
 }
@@ -408,15 +416,27 @@ body {
 .figure-card::after {
   content: "";
   position: absolute;
-  inset: -26px;
+  inset: -22px;
   background: radial-gradient(
     circle,
-    rgba(255, 202, 122, 0.32),
+    rgba(255, 202, 122, 0.2) 0%,
     transparent 70%
   );
-  filter: blur(30px);
+  filter: blur(28px);
   z-index: -1;
   pointer-events: none;
+}
+
+/* Troisième calque de verre : le reflet mouse-tracké lui-même (fond posé
+   en `style` inline par NotreHistoire.tsx, calculé à partir de la
+   position du curseur). `mix-blend-mode: soft-light` pour qu'il se fonde
+   dans les couches déjà présentes plutôt que de flotter par-dessus. */
+.figure-card-mouse-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
 }
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du
