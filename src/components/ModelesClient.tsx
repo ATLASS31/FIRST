@@ -40,10 +40,10 @@ export default function ModelesClient() {
       <section className="px-6 pb-16 pt-40 text-center">
         <p className="eyebrow text-xs text-encre-douce">Nos modèles</p>
         <h1 className="mx-auto mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
-          Dix maisons. La vôtre.
+          Neuf maisons. La vôtre.
         </h1>
         <p className="mx-auto mt-4 max-w-md text-sm text-encre-doux">
-          Trois gammes, dix configurations. Filtrez par gamme ou surface pour
+          Trois gammes, neuf configurations. Filtrez par gamme ou surface pour
           trouver votre maison.
         </p>
       </section>
@@ -52,6 +52,7 @@ export default function ModelesClient() {
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
+            aria-pressed={gammeFilter === "toutes"}
             onClick={() => setGammeFilter("toutes")}
             className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
               gammeFilter === "toutes"
@@ -65,6 +66,7 @@ export default function ModelesClient() {
             <button
               key={g.slug}
               type="button"
+              aria-pressed={gammeFilter === g.slug}
               onClick={() => setGammeFilter(g.slug)}
               className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
                 gammeFilter === g.slug
@@ -80,6 +82,7 @@ export default function ModelesClient() {
 
           <button
             type="button"
+            aria-pressed={surfaceFilter === "toutes"}
             onClick={() => setSurfaceFilter("toutes")}
             className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
               surfaceFilter === "toutes"
@@ -93,6 +96,7 @@ export default function ModelesClient() {
             <button
               key={s}
               type="button"
+              aria-pressed={surfaceFilter === s}
               onClick={() => setSurfaceFilter(s)}
               className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
                 surfaceFilter === s

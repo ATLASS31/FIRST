@@ -183,7 +183,20 @@ npm run dev
   `inset` (contenu par construction, ne peut techniquement pas déborder).
   Le fond `.glass-dark` (55% de noir) était par ailleurs trop sombre sur
   un fond vidéo déjà clair — éclairci à 40% + `brightness(1.1)` sur le
-  backdrop-filter.
+  backdrop-filter. Refonte finale sur référence visuelle fournie par le
+  client (pilule claire, bordure fine uniforme, flèche à droite) : fond
+  encore plus translucide, `border` réécrite en entier pour être uniforme
+  sur les 4 côtés (`.glass-dark` la déclare plus claire en haut/à gauche
+  qu'en bas/à droite — cassait l'anneau net de la référence), flèche SVG
+  ajoutée à droite du libellé. Un vrai bug de cascade a aussi été trouvé et
+  corrigé au passage : `.hero-cta` était déclaré AVANT le bloc `@supports
+  (backdrop-filter: url(#glass-distortion))` qui redéclare le
+  `backdrop-filter` de `.glass-dark` — sur un navigateur qui supporte ce
+  filtre SVG, cette redéclaration plus tardive dans le fichier gagnait la
+  cascade et écrasait silencieusement le `backdrop-filter` du bouton
+  (retour à un `blur(8px)` non désiré, invisible depuis ce bac à sable
+  puisque son Chromium échoue ce test `@supports`). `.hero-cta` déplacé
+  après ce bloc pour toujours gagner, quel que soit le navigateur.
 - **Gammes : pastilles de catégorie sans effet loupe** : les pastilles
   Primaire/Premium/Prestige (`.glass`, ton clair) posées sur une vraie
   photo colorée lisaient comme un simple sticker blanc plat. La
@@ -241,6 +254,53 @@ npm run dev
   `GammesPreview.tsx`. Une vraie plus-value informative — pas une
   animation de plus — qui reste discrète (cachée jusqu'au survol/focus,
   transition opacité + hauteur) pour ne pas alourdir la carte au repos.
+
+## Audit du 2026-07-17 : bugs et corrections
+
+Passage complet du code (tous les composants, pages, lib) à la recherche de
+failles de sécurité, bugs et erreurs, sur demande explicite. Aucune faille de
+sécurité trouvée — le site est intégralement statique côté client (aucun
+`dangerouslySetInnerHTML`, `eval`, endpoint API, variable d'environnement
+exposée ; `next.config.ts` restreint `images.remotePatterns` à un seul
+hostname précis, pas de wildcard). `npm audit` remonte une alerte modérée sur
+`postcss` mais elle vient d'une dépendance interne à `next` lui-même (outil
+de build, jamais exposé au visiteur) ; le correctif proposé (`npm audit fix
+--force`) rétrograderait `next` vers une version `9.x` — un downgrade
+massif et cassant, pas appliqué. Bugs réels trouvés et corrigés :
+
+- **Bug de cascade CSS sur `.hero-cta`** (déjà détaillé plus haut) : la
+  classe était déclarée avant le bloc `@supports` qui redéclare le
+  `backdrop-filter` de `.glass-dark` — invisible dans ce bac à sable
+  (Chromium ici échoue le test `@supports`) mais actif sur tout navigateur
+  qui le supporte. Corrigé en réordonnant le fichier.
+- **`Nav.tsx` : `aria-label` du bouton menu mobile figé** sur "Ouvrir le
+  menu" même une fois le menu ouvert (où cliquer dessus le referme) — un
+  lecteur d'écran annonçait donc l'action inverse de ce que le bouton fait
+  réellement. Rendu dynamique : `aria-label={open ? "Fermer le menu" :
+  "Ouvrir le menu"}`.
+- **Incohérence de contenu "dix" vs 9 configurations réelles** : le hero
+  (`ThreePiliers.tsx`), la page Modèles (`ModelesClient.tsx` + ses
+  métadonnées) annonçaient "dix maisons" / "dix configurations" partout,
+  alors que `GAMMES` dans `lib/gammes.ts` n'en définit que 9 au total (2 en
+  Primaire + 3 en Premium + 4 en Prestige) — confirmé par le README
+  lui-même, qui documentait déjà "grille filtrable des 9 configurations"
+  plus haut. Un chiffre affiché aux visiteurs qui ne correspondait pas au
+  contenu réel du site. Corrigé partout ("neuf" à la place de "dix", 4
+  occurrences).
+- **Widgets custom sans nom accessible** : le slider de surface du
+  calculateur (`PremiumSlider.tsx`, `role="slider"` fait main) n'exposait
+  aucun `aria-label` — un lecteur d'écran l'annonçait comme "slider" sans
+  préciser lequel. Prop `label` ajoutée et branchée ("Surface du module").
+  Les boutons de sélection en groupe (gamme/surface dans le tunnel de
+  contact, filtres de la page Modèles, région/type dans le calculateur,
+  cartes d'options du tunnel) changent visuellement d'état au clic mais ne
+  l'exposaient pas non plus aux technologies d'assistance — `aria-pressed`
+  ajouté sur chacun.
+
+Le formulaire de contact (`ContactClient.tsx`) n'envoie volontairement rien
+à un backend pour l'instant (commentaire `TODO prod` explicite dans le
+code) — ce n'est pas un bug, juste un chantier non démarré (branchement à
+un vrai endpoint email/CRM), déjà remonté dans la section suivante.
 
 ## À faire avant la mise en prod
 

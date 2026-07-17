@@ -9,12 +9,14 @@ export default function PremiumSlider({
   step,
   value,
   onChange,
+  label,
 }: {
   min: number;
   max: number;
   step: number;
   value: number;
   onChange: (value: number) => void;
+  label: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -55,6 +57,7 @@ export default function PremiumSlider({
       ref={trackRef}
       role="slider"
       tabIndex={0}
+      aria-label={label}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}

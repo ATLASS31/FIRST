@@ -36,6 +36,23 @@ const TITLE_WORDS = [
   { text: "engagement." },
 ];
 
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="h-4 w-4 shrink-0"
+    >
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 const CACHE_BUCKET = 0.2;
 
 /**
@@ -384,9 +401,10 @@ export default function Hero() {
               href="/#gammes"
               tone="dark"
               rounded="rounded-full"
-              className="hero-cta px-8 py-3 text-sm font-medium text-brume transition-opacity hover:opacity-90"
+              className="hero-cta flex items-center gap-10 py-3.5 pl-7 pr-6 text-sm font-medium text-brume transition-opacity hover:opacity-90"
             >
-              Découvrir nos gammes
+              <span>Découvrir nos gammes</span>
+              <ArrowIcon />
             </GlassPanel>
           </motion.div>
         </div>

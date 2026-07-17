@@ -52,7 +52,7 @@ export default function Nav() {
 
         <button
           type="button"
-          aria-label="Ouvrir le menu"
+          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 md:hidden"

@@ -47,6 +47,7 @@ function PillGroup<T extends string>({
         <button
           key={opt.id}
           type="button"
+          aria-pressed={value === opt.id}
           onClick={() => onChange(opt.id)}
           className={`rounded-full border px-4 py-1.5 text-sm transition-colors duration-300 ${
             value === opt.id
@@ -114,6 +115,7 @@ export default function RentabiliteCalculator() {
               </div>
               <div className="mt-4">
                 <PremiumSlider
+                  label="Surface du module"
                   min={20}
                   max={100}
                   step={5}

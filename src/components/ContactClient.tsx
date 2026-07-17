@@ -63,6 +63,7 @@ function OptionCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
       className={`w-full rounded-xl border p-4 text-left transition-colors ${
         selected
@@ -151,6 +152,7 @@ export default function ContactClient() {
               <button
                 key={g}
                 type="button"
+                aria-pressed={data.gamme === g}
                 onClick={() => set("gamme", g)}
                 className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
                   data.gamme === g
@@ -171,6 +173,7 @@ export default function ContactClient() {
               <button
                 key={s}
                 type="button"
+                aria-pressed={data.surface === s}
                 onClick={() => set("surface", s)}
                 className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
                   data.surface === s

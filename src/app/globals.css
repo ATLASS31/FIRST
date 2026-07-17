@@ -104,79 +104,6 @@ body {
   -webkit-backdrop-filter: blur(26px) saturate(170%);
 }
 
-/* Halo doré pour le CTA principal du hero : le .glass-dark de base ne se
-   sent pas assez "premium et lumineux" tout seul sur un fond vidéo sombre.
-   Deux essais rejetés avant celui-ci :
-   1) `filter: drop-shadow` — recalcule une ombre à partir du contenu
-      réellement rendu à chaque frame ; combiné au reflet ambiant
-      (.glass-sheen, un ::before animé), l'ombre "suivait" le reflet qui
-      bouge, vue comme une grosse tache floue qui se déplaçait.
-   2) `box-shadow` + `.glass-sheen` — plus de tache qui suit le reflet,
-      mais le reflet lui-même débordait visuellement du bouton (barre
-      diagonale dépassant largement la pilule), malgré un `overflow:
-      hidden` + `border-radius` corrects sur l'élément (vérifié en
-      confirmant que retirer .glass-sheen fait disparaître la barre) —
-      un vrai bug de rendu (`backdrop-filter` + `border-radius` +
-      `overflow: hidden` + pseudo-élément animé) plutôt qu'une erreur de
-      classe. Solution : pas de reflet ambiant sur ce bouton précis, juste
-      le halo statique — déjà largement assez "lumineux" à lui seul, et
-      sans aucun artefact. `box-shadow` redéclare ici les valeurs de base
-      de .glass-dark en plus du halo, puisqu'un seul box-shadow peut
-      s'appliquer (le second qui gagne la cascade remplace le premier). */
-.hero-cta {
-  /* Un reflet statique seul (essai précédent) restait trop discret pour
-     lire comme du verre — jugé "pas liquid" sur le vrai fond vidéo clair.
-     `saturate/brightness` en plus du blur font davantage "refracter" ce
-     qu'il y a derrière (le plus proche d'un effet loupe qu'on puisse
-     faire sans le filtre SVG, non fiable cross-navigateur — cf.
-     commentaire plus bas). Le fond est aussi éclairci (0.55 → 0.4 de
-     noir) : trop sombre sur un fond vidéo déjà clair, ça lisait comme un
-     pavé mat plutôt que du verre. Rim clair net en haut + ombre nette en
-     bas simulent la courbure d'un verre bombé plutôt qu'un panneau plat.
-     Le halo doré était en `0 0 22px/52px` NON inset — par définition un
-     box-shadow non-inset peint hors de la boîte, jamais "cropé" dedans ;
-     sur un fond vidéo clair et changeant, ce halo devenait un flou dilaté
-     très visible qui semblait "sortir" du bouton de façon incohérente
-     selon ce qu'il y avait juste en dessous. Remplacé par un liseré doré
-     en `inset` (contenu par définition, ne peut pas déborder) pour garder
-     la touche premium sans jamais rien qui s'échappe. */
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.16) 0%,
-      rgba(255, 255, 255, 0.04) 100%
-    ),
-    rgba(26, 22, 20, 0.4);
-  backdrop-filter: blur(18px) saturate(200%) brightness(1.1);
-  -webkit-backdrop-filter: blur(18px) saturate(200%) brightness(1.1);
-  box-shadow:
-    0 20px 40px -16px rgba(0, 0, 0, 0.4),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1.5px 0 rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(173, 138, 85, 0.4);
-}
-
-/* Le reflet ambiant animé étant écarté (bug plus haut), le bouton perdait
-   tout son éclat "verre" sur un fond vidéo clair (herbe, ciel) — il lisait
-   comme un simple pavé mat. Un reflet FIXE (jamais animé, donc aucune
-   promotion de calque liée à une transform qui bouge) redonne la brillance
-   sans réintroduire le bug de débordement. Un premier essai en dégradé
-   linéaire diagonal restait trop plat/discret ; un highlight radial
-   concentré en haut à gauche lit davantage comme un vrai reflet
-   spéculaire (point de lumière sur une surface bombée) qu'un simple voile. */
-.hero-cta::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    130% 160% at 18% -12%,
-    rgba(255, 255, 255, 0.6) 0%,
-    rgba(255, 255, 255, 0.2) 28%,
-    transparent 56%
-  );
-  pointer-events: none;
-}
-
 @supports (backdrop-filter: url(#glass-distortion)) {
   .glass {
     backdrop-filter: url(#glass-distortion) blur(7px) saturate(180%);
@@ -187,6 +114,70 @@ body {
   .glass-graphite {
     backdrop-filter: url(#glass-distortion) blur(20px) saturate(170%);
   }
+}
+
+/* CTA principal du hero. Historique des essais avant la version actuelle
+   (tous conservés ici pour ne pas les retenter) :
+   1) `filter: drop-shadow` pour le halo — recalcule une ombre à partir du
+      contenu réellement rendu à chaque frame ; combiné au reflet ambiant
+      animé (`.glass-sheen`), l'ombre "suivait" le reflet, vue comme une
+      tache floue qui se déplaçait ("une boule qui passe").
+   2) `box-shadow` (halo statique) + `.glass-sheen` — le reflet lui-même
+      débordait visuellement du bouton malgré un `overflow: hidden` +
+      `border-radius` corrects — bug de rendu confirmé en retirant la
+      classe en direct dans le DOM (la barre disparaît).
+   3) `.glass-dark` (fond sombre) + halo doré en `box-shadow` NON-inset —
+      jugé "pas liquid, cheap" sur le vrai fond vidéo clair (fond trop
+      sombre) ; et le halo non-inset peint par définition hors de la
+      boîte, jamais "cropé" dedans — lisait comme une lumière qui
+      "sort" du bouton de façon incohérente selon le fond vidéo dessous.
+   Version actuelle, calée sur une référence visuelle fournie par le
+   client (pilule claire, bordure fine uniforme sur tout le contour,
+   flèche à droite) : fond très translucide (plus proche de `.glass` que
+   de `.glass-dark`, mais plus clair encore), `border` réécrite en entier
+   pour être uniforme sur les 4 côtés — `.glass-dark` la déclare plus
+   claire en haut/à gauche qu'en bas/à droite, ce qui cassait l'anneau net
+   de la référence. Tout reste `inset`/contenu dans la boîte : plus aucun
+   effet ne peut "déborder" comme dans les tentatives précédentes.
+
+   Ce bloc est déclaré APRÈS le `@supports` ci-dessus, pas avant : un vrai
+   bug de cascade trouvé lors de l'audit du 2026-07-17 — `.hero-cta` était
+   défini avant le `@supports`, qui redéclare `backdrop-filter` sur
+   `.glass-dark` ; sur un navigateur qui supporte le filtre SVG, cette
+   redéclaration plus tardive dans le fichier gagnait la cascade et
+   écrasait silencieusement le `backdrop-filter` réglé ici (retour à
+   `blur(8px)` non désiré). Aucun outil de repro ici ne peut détecter un
+   `@supports` qui passe (le Chromium du bac à sable, comme la plupart des
+   navigateurs, échoue ce test) — un bug purement dans l'ordre du fichier,
+   pas dans un rendu observable en local. */
+.hero-cta {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px) saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.1);
+  box-shadow:
+    0 20px 40px -16px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* Reflet fixe (jamais animé, cf. bug #2 ci-dessus) : point de lumière
+   radial en haut à gauche, discret puisque le fond est déjà clair. */
+.hero-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    130% 160% at 18% -12%,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.14) 28%,
+    transparent 56%
+  );
+  pointer-events: none;
 }
 
 /* Pastille de catégorie sur les cartes gammes (Primaire/Premium/Prestige) :

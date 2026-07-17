@@ -17,8 +17,8 @@ const PILIERS = [
   },
   {
     title: "L'espace, à vous",
-    subtitle: "Dix combinaisons",
-    body: "Trois gammes, dix configurations à votre image.",
+    subtitle: "Neuf combinaisons",
+    body: "Trois gammes, neuf configurations à votre image.",
   },
 ];
 
