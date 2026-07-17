@@ -56,7 +56,9 @@ export default function ThreePiliers() {
           4 silhouettes scattered jugées gratuites) — comme la référence
           fournie, un feuillage qui déborde depuis les deux bords plutôt
           qu'un décor dispersé au hasard. Tailles responsive (base mobile
-          → sm → lg) pour rester proportionné sur petit écran. */}
+          → sm → lg) pour rester proportionné sur petit écran. `blur-sm`
+          (4px) plutôt que `blur-md` (12px) initial — jugé trop flou, une
+          silhouette à peine adoucie plutôt qu'une tache diffuse. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden text-foret"
@@ -68,7 +70,7 @@ export default function ThreePiliers() {
           transition={{ duration: 1.2, ease: "easeOut" }}
           className="absolute -left-16 -top-10 h-64 w-64 sm:-left-20 sm:-top-14 sm:h-80 sm:w-80 lg:-left-24 lg:-top-16 lg:h-[26rem] lg:w-[26rem]"
         >
-          <PlantShadow className="h-full w-full blur-md" />
+          <PlantShadow className="h-full w-full blur-sm" />
         </motion.div>
         <motion.div
           initial={{ opacity: 0 }}
@@ -77,7 +79,7 @@ export default function ThreePiliers() {
           transition={{ duration: 1.2, delay: 0.25, ease: "easeOut" }}
           className="absolute -right-16 -top-10 h-64 w-64 -scale-x-100 sm:-right-20 sm:-top-14 sm:h-80 sm:w-80 lg:-right-24 lg:-top-16 lg:h-[26rem] lg:w-[26rem]"
         >
-          <PlantShadow className="h-full w-full blur-md" />
+          <PlantShadow className="h-full w-full blur-sm" />
         </motion.div>
       </div>
 

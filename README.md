@@ -335,7 +335,26 @@ npm run dev
   un feuillage qui déborde des deux bords, pas un décor semé au hasard.
   Tailles responsive (base mobile → `sm:` → `lg:`), révélées au scroll
   (`whileInView`, une fois). Vérifié en mobile (390px) : proportionné,
-  lisible, pas d'aplat flou pixelisé.
+  lisible, pas d'aplat flou pixelisé. Flou revu ensuite (`blur-md` 12px
+  → `blur-sm` 4px) : jugé trop flou, une silhouette à peine adoucie plutôt
+  qu'une tache diffuse.
+- **Calculateur de rentabilité : tilt trop marqué et pas fluide** :
+  `TiltCard` applique un tilt 3D (`rotateX`/`rotateY`) au survol sur tous
+  les panneaux glass du site ; le calculateur utilisait déjà le réglage
+  le plus bas (`strength={1.5}`, contre 2 à 2.5 ailleurs), mais sur un
+  panneau aussi large (`max-w-4xl`) le même angle produit un débattement
+  bien plus marqué aux bords qu'sur une petite carte — d'où l'impression
+  de mouvement excessif. Réduit à `strength={0.6}`. Le manque de fluidité
+  venait probablement d'ailleurs : le `mousemove` brut peut se déclencher
+  plus souvent qu'une frame d'écran, et chaque appel recalculait aussitôt
+  la rotation — sur un panneau avec un `backdrop-filter: blur(26px)`
+  (déjà coûteux à recalculer à chaque frame dès que la géométrie de
+  l'élément change), ces recalculs redondants ajoutaient du travail
+  inutile. `TiltCard.tsx` throttle maintenant les coordonnées à une seule
+  mise à jour par frame via `requestAnimationFrame` (les coordonnées les
+  plus récentes sont conservées dans une ref, appliquées au prochain tick
+  plutôt qu'à chaque événement) — bénéficie à toutes les cartes du site,
+  pas seulement au calculateur.
 
 ## Audit du 2026-07-17 : bugs et corrections
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 /**
@@ -8,6 +8,15 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
  * profondeur), pour donner une sensation d'objet physique aux cartes plutôt
  * qu'un aplat. Volontairement discret — quelques degrés maximum, jamais un
  * effet gadget. Ignoré au clavier/tactile (pas de pointeur fin).
+ *
+ * Le `mousemove` brut peut se déclencher bien plus souvent qu'une frame
+ * d'écran (souris haute fréquence) ; chaque appel recalculait la rotation
+ * immédiatement, ce qui multipliait les recompositions inutiles sur des
+ * cartes avec `backdrop-filter` (déjà coûteux à recalculer à chaque
+ * frame quand la géométrie de l'élément change) — perçu comme "pas
+ * fluide", surtout sur le grand panneau du calculateur. Les coordonnées
+ * les plus récentes sont conservées dans une ref et appliquées au plus
+ * une fois par frame via `requestAnimationFrame`.
  */
 export default function TiltCard({
   children,
@@ -19,6 +28,8 @@ export default function TiltCard({
   strength?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const latestPoint = useRef({ x: 0, y: 0 });
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
   const springConfig = { stiffness: 300, damping: 30, mass: 0.4 };
@@ -28,14 +39,29 @@ export default function TiltCard({
   const rotateX = useTransform(sy, [0, 1], [strength, -strength]);
   const rotateY = useTransform(sx, [0, 1], [-strength, strength]);
 
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    px.set((e.clientX - rect.left) / rect.width);
-    py.set((e.clientY - rect.top) / rect.height);
+    latestPoint.current = { x: e.clientX, y: e.clientY };
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      px.set((latestPoint.current.x - rect.left) / rect.width);
+      py.set((latestPoint.current.y - rect.top) / rect.height);
+    });
   };
 
   const handleLeave = () => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     px.set(0.5);
     py.set(0.5);
   };
