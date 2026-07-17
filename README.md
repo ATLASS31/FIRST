@@ -466,6 +466,35 @@ npm run dev
   l'habillage CSS était en cause. Recalibré par le même script de
   comparaison de rectangles DOM (titre vs image) qu'à l'itération
   précédente, cette fois avec une marge de sécurité plus généreuse.
+
+  Retour inverse ensuite : "trop floue et trop basse", sapins et lac plus
+  reconnaissables. Cause exacte identifiée : le masque 4-arrêts repris du
+  CSS client restait sous 80% d'opacité jusqu'à 50% de la hauteur — combiné
+  à `opacity: 0.72` et à la désaturation, la portion "nette" de la bande
+  n'était en réalité jamais pleinement opaque, d'où le délavage. Masque
+  simplifié à 2 arrêts (`transparent 0% → opaque 28%`, la quasi-totalité de
+  la bande reste ensuite à 100%), opacité remontée à 0.95, désaturation
+  quasi neutre (`saturate-[.94] contrast-[.98]`). Deuxième bug trouvé en
+  vérifiant : à largeur de bande égale, `object-fit: cover` "zoome"
+  d'autant plus fort verticalement que le viewport est large (l'image doit
+  couvrir une largeur croissante, donc s'agrandit, donc sa portion visible
+  en hauteur rétrécit proportionnellement) — la hauteur fixe qui montrait
+  les sapins en entier sur tablette les faisait complètement sortir du
+  cadre sur desktop. Recalibré séparément par breakpoint (350px sur
+  tablette, 460px sur desktop — un compromis : monter à la hauteur qui
+  montre les sapins en entier à 100% aurait ramené la bande à la taille du
+  hero jugée trop imposante à l'itération précédente ; à 460px les sapins
+  sont visibles avec seulement l'extrême pointe des deux plus hauts prise
+  dans le fondu). `padding-bottom` recalculé en conséquence pour remonter
+  la bande et resserrer l'écart avec le texte (vérifié par script : ~35px
+  d'écart sur les deux breakpoints, contre 79-130px selon les réglages
+  intermédiaires testés en cours de route).
+- **Hero : bouton CTA jugé trop petit** — `text-sm` (14px) à côté d'un
+  titre en `text-6xl`+ lisait comme sous-dimensionné pour l'action
+  principale du hero. Remonté à `text-base` (16px) avec un padding
+  légèrement plus généreux (`py-4 pl-8 pr-7`, contre `py-3.5 pl-7 pr-6`) ;
+  l'icône flèche (`h-4 w-4`) restait déjà proportionnée au nouveau texte,
+  pas touchée.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

@@ -28,29 +28,38 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden bg-brume-2 px-6 pb-24 pt-28 sm:pb-40 lg:pb-40">
-      {/* Illustration low-poly fournie par le client, traitée en frise
-          paysagère discrète (pas un hero de fond) : bande basse et fine —
-          environ 25-30% de la hauteur de la section, jamais l'élément
-          principal — z-index sous le contenu, opacité réduite, légèrement
-          désaturée (pas floutée), fondu vertical très progressif (pas de
-          contour net) pour disparaître dans le `bg-brume-2`. Masquée sur
-          mobile plutôt que réduite à une bande illisible. */}
+    <section className="relative overflow-hidden bg-brume-2 px-6 pb-40 pt-28 sm:pb-[341px] lg:pb-[26.4rem]">
+      {/* Illustration low-poly fournie par le client, en frise paysagère
+          discrète (pas un hero de fond) — mais la première version
+          (opacité 0.72 + désaturation + fondu très progressif sur 50% de
+          la hauteur) donnait un rendu délavé où les sapins et le lac
+          n'étaient plus reconnaissables. Fondu resserré : transparent en
+          haut, mais opaque dès ~28%, pour que la majorité de la bande
+          reste nette. Opacité/désaturation ramenées à quasi rien — juste
+          assez pour ne pas jurer avec le reste du site. Hauteur en
+          `aspect-ratio` plutôt qu'en px fixes par breakpoint : avec
+          `object-fit: cover` sur une bande pleine largeur, une hauteur en
+          pixels fixe montre une fraction de l'image d'autant plus petite
+          que l'écran est large (le zoom horizontal implicite de `cover`
+          compresse proportionnellement plus la portion verticale visible)
+          — sur desktop les sapins sortaient entièrement du cadre alors
+          qu'ils étaient nets sur tablette. Un ratio fixe conserve le même
+          cadrage (mêmes sapins, même portion d'eau) à toutes les largeurs.
+          Masquée sur mobile plutôt que réduite à une bande illisible. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden sm:block sm:h-[150px] lg:h-[190px]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 hidden sm:block sm:h-[350px] lg:h-[460px]"
       >
         <Image
           src="/images/notre-histoire-landscape.png"
           alt=""
           fill
           sizes="100vw"
-          className="object-cover object-bottom opacity-[0.72] saturate-[0.82] contrast-[0.94]"
+          className="object-cover object-bottom opacity-95 saturate-[0.94] contrast-[0.98]"
           style={{
-            maskImage:
-              "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.8) 50%, #000 100%)",
+            maskImage: "linear-gradient(to bottom, transparent 0%, #000 28%)",
             WebkitMaskImage:
-              "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.8) 50%, #000 100%)",
+              "linear-gradient(to bottom, transparent 0%, #000 28%)",
           }}
         />
       </div>
