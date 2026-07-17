@@ -91,7 +91,7 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="notre-histoire-surface relative overflow-hidden px-6 py-20 sm:py-24">
+    <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
       <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
@@ -182,10 +182,10 @@ export default function NotreHistoire() {
                               : { duration: 0.4, delay: 0.1, ease: "easeOut" }
                           }
                         >
-                          <p className="text-2xl font-semibold leading-snug text-[#FAF8F3] sm:text-4xl">
+                          <p className="text-2xl font-semibold leading-snug text-encre sm:text-4xl">
                             {figure.value}
                           </p>
-                          <p className="eyebrow mt-2.5 text-xs text-[#FAF8F3]/65 sm:text-sm">
+                          <p className="eyebrow mt-2.5 text-xs text-encre-douce sm:text-sm">
                             {figure.label}
                           </p>
                           <span

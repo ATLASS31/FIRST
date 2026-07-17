@@ -628,7 +628,37 @@ npm run dev
   déplacer) — un temps de lecture avant que le nouveau chiffre n'apparaisse
   plutôt qu'un remplacement instantané du texte pendant que la carte est
   encore en mouvement.
-- **Gammes : de la décoration de fond à une fiche technique réelle** : le
+
+  **Fond encore retouché** : le dégradé/lumière/grain custom
+  (`.notre-histoire-surface`) est jugé toujours en trop — "ne crée pas un
+  nouveau fond, réutilise exactement la couleur de la section Gammes".
+  Classe entièrement supprimée de `globals.css` ; la section utilise
+  directement `bg-ciel` (`#e8eee8`, le même token que `GammesPreview.tsx`
+  et `GammeDetail.tsx`), sans dégradé ni halo ni texture — la seule façon
+  de garantir "aucune différence de teinte" avec la section Gammes est de
+  partager littéralement la même classe utilitaire plutôt que d'essayer de
+  recréer la couleur à l'œil.
+
+  **Carte retravaillée une quatrième fois** : le verre fumé teinté forêt
+  (ajouté pour répondre au tout premier "pas un rectangle blanc avec un
+  fond vert") est toujours perçu comme "un simple rectangle gris avec un
+  blur", cette fois avec une consigne plus précise — un verre CLAIR à
+  peine teinté de crème, pas une couleur qu'on dilue à faible opacité.
+  Fond changé de `rgba(36,46,36,…)` (vert forêt) à `rgba(255,253,247,…)`
+  (blanc cassé/ivoire) : contrairement à une teinte saturée diluée (qui se
+  grise mathématiquement en perdant de l'opacité), un blanc cassé reste un
+  blanc cassé quelle que soit son opacité — c'est ce qui permet un rendu
+  "verre clair" plutôt que "couleur fanée". Bordure passée de 0.2 à 0.65
+  d'opacité (le "bord lumineux très fin" demandé), blur réduit (32px →
+  20px, "pas un gros blur"). Corollaire obligatoire : le texte de la carte,
+  ivoire clair sur fond sombre jusque-là, repasse en encre foncée
+  (`text-encre`/`text-encre-douce`) — illisible sur un verre aussi clair
+  sinon. Halo externe et halo interne adoucis en conséquence (moins de
+  contraste nécessaire sur un fond déjà clair). Reflet mouse-tracké et
+  tilt inchangés — c'est la seule partie de "plusieurs couches qui bougent
+  avec la souris" déjà acquise, le reste de la demande (bord lumineux,
+  lumière interne, légère distorsion, coins organiques) porte sur la
+  matière statique du verre, pas sur l'interaction.
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des
   silhouettes de plantes abstraites en SVG (`PlantShadow`, ombre portée

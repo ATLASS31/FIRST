@@ -367,43 +367,40 @@ body {
    lisait plus "carte flottante posée dessus" que "verre qui capte la
    lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
    presque passer inaperçu plutôt que se faire remarquer. */
-/* Vraie carte Liquid Glass multi-couches (demande explicite du client :
-   "surtout pas un rectangle blanc avec un fond vert" — puis, une fois le
-   décor low-poly derrière retiré, "aujourd'hui elle ressemble à un simple
-   rectangle gris"). Fond translucide avec un vrai dégradé de teinte
-   (chaud/doré en haut → vert forêt profond en bas, 3 arrêts) plutôt qu'un
-   aplat mono-teinte qui, dilué à faible opacité sur un fond clair, se lit
-   comme du gris plutôt que comme du verre fumé coloré. Blur renforcé
-   (30px) + saturate élevé pour une réfraction nette de ce qu'il y a
-   derrière (dégradé de section + halo chaud). Halo interne très subtil en
-   `inset box-shadow` en plus du halo externe (`::after`, déborde
-   volontairement). Coins organiques (asymétriques, posés via la prop
-   `rounded` du composant en un seul raccourci `border-radius` — permet à
-   `border-radius: inherit` de suivre les 4 valeurs). Le reflet qui suit la
-   souris est un calque à part, géré en JS (voir `.figure-card-mouse-shine`
-   + `NotreHistoire.tsx`) : impossible en CSS pur puisqu'il doit réagir à
-   la position du curseur. */
+/* Troisième refonte matière de la carte du chiffre actif. Le vert forêt
+   (même dilué à faible opacité) se lisait comme "un simple rectangle gris
+   avec un blur" — le client précise vouloir un verre CLAIR à peine teinté
+   de crème, pas une teinte forte diluée. Base quasi blanche/ivoire très
+   translucide plutôt qu'une couleur qu'on dilue : `rgba(255,253,247,…)`
+   à faible opacité, un dégradé diagonal blanc à 3 arrêts pour simuler
+   plusieurs couches de verre superposées (pas un aplat uni), un bord fin
+   et lumineux (`border` blanc à forte opacité, pas juste 0.2). Blur
+   modéré (20px, pas "un gros blur") + saturate pour une légère
+   distorsion de ce qu'il y a derrière, sans le noyer. Tout est
+   volontairement discret : le but explicite est que l'effet ne se
+   remarque qu'au mouvement de la souris ou quand la lumière accroche un
+   bord, jamais au premier coup d'œil. */
 .figure-card {
   position: relative;
   overflow: visible;
-  background-color: rgba(36, 46, 36, 0.3);
+  background-color: rgba(255, 253, 247, 0.4);
   background-image:
     linear-gradient(
-      150deg,
-      rgba(196, 178, 130, 0.24) 0%,
-      rgba(120, 138, 108, 0.16) 38%,
-      rgba(16, 24, 16, 0.24) 100%
+      155deg,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 250, 240, 0.08) 55%,
+      rgba(255, 255, 255, 0.2) 100%
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(32px) saturate(165%);
-  -webkit-backdrop-filter: blur(32px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   box-shadow:
-    0 40px 80px -36px rgba(40, 34, 26, 0.3),
-    0 14px 30px -18px rgba(40, 34, 26, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 0 50px rgba(255, 205, 130, 0.12),
-    inset 0 -16px 30px rgba(0, 0, 0, 0.16);
+    0 30px 54px -32px rgba(60, 52, 38, 0.2),
+    0 8px 18px -12px rgba(60, 52, 38, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 34px rgba(255, 232, 195, 0.14),
+    inset 0 -10px 18px rgba(120, 100, 70, 0.05);
 }
 
 .figure-card::before {
@@ -413,7 +410,7 @@ body {
   border-radius: inherit;
   background: radial-gradient(
     125% 100% at 18% -12%,
-    rgba(255, 255, 255, 0.26) 0%,
+    rgba(255, 255, 255, 0.4) 0%,
     transparent 50%
   );
   pointer-events: none;
@@ -422,13 +419,13 @@ body {
 .figure-card::after {
   content: "";
   position: absolute;
-  inset: -22px;
+  inset: -20px;
   background: radial-gradient(
     circle,
-    rgba(255, 202, 122, 0.2) 0%,
+    rgba(255, 214, 160, 0.14) 0%,
     transparent 70%
   );
-  filter: blur(28px);
+  filter: blur(26px);
   z-index: -1;
   pointer-events: none;
 }
@@ -445,41 +442,14 @@ body {
   mix-blend-mode: soft-light;
 }
 
-/* Fond de la section Notre histoire — deuxième retour en arrière du
-   client sur le décor : après un essai en low-poly SVG (colline, pins,
-   rochers, rive) jugé "toujours forcé, pas à sa place ici", tout a été
-   retiré. Explicitement pensé pour tenir seul (sans la carte au-dessus) :
-   un dégradé très doux crème → sable, une lumière chaude diffuse dans le
-   coin bas-droit, un grain de papier quasi invisible. Rien de figuratif —
-   aucun élément qui puisse à nouveau se lire comme "une illustration
-   posée derrière l'interface". */
-.notre-histoire-surface {
-  background: linear-gradient(155deg, var(--brume) 0%, #f1e6d2 100%);
-}
-
-.notre-histoire-surface::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(
-    62% 58% at 90% 94%,
-    rgba(203, 166, 93, 0.16),
-    transparent 70%
-  );
-  pointer-events: none;
-}
-
-.notre-histoire-surface::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.05'/%3E%3C/svg%3E");
-  opacity: 0.5;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-}
+/* Troisième retour du client sur le fond de la section Notre histoire :
+   "ne crée pas un nouveau fond, réutilise exactement la couleur de la
+   section Gammes (`bg-ciel`)". Le dégradé/lumière/grain custom
+   (`.notre-histoire-surface`) ajoutés à l'itération précédente sont
+   entièrement retirés — la section utilise directement la classe
+   utilitaire `bg-ciel` dans `NotreHistoire.tsx`, sans classe dédiée, pour
+   qu'il n'y ait littéralement aucune divergence de teinte possible avec
+   la section Gammes qui utilise la même classe. */
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du
    2026-07-17 bis) sur le même mécanisme que `.hero-cta` : l'ancienne
