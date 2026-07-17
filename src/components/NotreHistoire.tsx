@@ -36,7 +36,10 @@ export default function NotreHistoire() {
           </h2>
           <p className="mt-6 text-base leading-relaxed text-encre-doux">
             Le modulaire bois traîne une réputation : préfabriqué bon marché,
-            finitions médiocres, durée de vie courte.{" "}
+            finitions médiocres, durée de vie courte.
+          </p>
+          <span aria-hidden className="mt-4 block h-px w-8 bg-laiton" />
+          <p className="mt-4 text-base leading-relaxed text-encre-doux">
             <strong className="font-semibold text-encre">
               Nous construisons l&apos;inverse.
             </strong>{" "}
@@ -88,11 +91,14 @@ export default function NotreHistoire() {
                           : { type: "spring", stiffness: 350, damping: 32 }
                       }
                     >
-                      <GlassPanel className="px-3 py-3 text-center sm:px-6 sm:py-5">
-                        <p className="text-base font-semibold text-encre sm:text-2xl lg:text-3xl">
+                      <GlassPanel
+                        rounded="rounded-2xl"
+                        className="figure-card w-[140px] px-5 py-6 text-center sm:w-[200px] sm:px-8 sm:py-8"
+                      >
+                        <p className="text-3xl font-bold leading-[1.05] text-encre sm:text-5xl">
                           {figure.value}
                         </p>
-                        <p className="eyebrow mt-1 text-[8px] text-encre-douce sm:text-[10px]">
+                        <p className="eyebrow mt-2 text-[10px] text-encre-douce sm:text-xs">
                           {figure.label}
                         </p>
                       </GlassPanel>

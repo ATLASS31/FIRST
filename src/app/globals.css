@@ -350,6 +350,55 @@ body {
   pointer-events: none;
 }
 
+/* Carte du chiffre actif dans le carrousel Notre histoire : posée sur
+   `.glass` (fond blanc translucide standard) elle lisait "pas liquid
+   glass, pas assez grosse" — deux causes distinctes.
+   1) Taille : réglée directement dans `NotreHistoire.tsx` (padding et
+      tailles de texte très augmentés), pas ici.
+   2) Le vrai problème verre : `.glass` a un `box-shadow` élévation
+      NON-inset (`0 20px 40px -12px` etc.), mais tout `GlassPanel` a
+      `overflow: hidden` par défaut — qui clippe silencieusement ce type
+      d'ombre à la frontière de l'élément (même bug que celui trouvé sur
+      `.glass-graphite`, cf. plus haut). La carte perdait donc l'ombre
+      d'élévation qui donne l'impression de flotter au-dessus de la
+      ligne. Classe dédiée : fond plus opaque (se détache mieux d'un
+      arrière-plan `bg-brume-2` très proche en teinte, où le flou seul ne
+      "refracte" presque rien puisqu'il n'y a pas de contraste derrière),
+      `overflow: visible` pour laisser l'ombre respirer, et un reflet
+      spéculaire statique (même procédé que `.gamme-badge`) pour la
+      touche de brillance. */
+.figure-card {
+  position: relative;
+  overflow: visible;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.68) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow:
+    0 32px 56px -20px rgba(26, 22, 20, 0.32),
+    0 12px 24px -12px rgba(26, 22, 20, 0.16),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.05);
+}
+
+.figure-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    130% 160% at 18% -15%,
+    rgba(255, 255, 255, 0.75) 0%,
+    rgba(255, 255, 255, 0.2) 30%,
+    transparent 58%
+  );
+  pointer-events: none;
+}
+
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du
    2026-07-17 bis) sur le même mécanisme que `.hero-cta` : l'ancienne
    version animait un `transform` (translate + rotate) sur un

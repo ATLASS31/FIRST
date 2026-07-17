@@ -314,6 +314,26 @@ npm run dev
   colonnes de la grille et les boutons du carrousel pour qu'ils puissent
   se comprimer plutôt que de repousser toute la section hors du
   viewport.
+
+  Carte du chiffre actif jugée ensuite trop petite et "pas liquid glass"
+  par rapport à une seconde référence visuelle, plus proche : deux causes
+  distinctes. La taille était réglée trop petit (texte, padding) — corrigé
+  en l'augmentant nettement (`text-3xl`/`sm:text-5xl` en gras, carte de
+  largeur fixe `140px`/`sm:200px` pour forcer "4–12" et "semaines" sur
+  deux lignes comme la référence, plutôt que sur une seule ligne étirée).
+  Mais surtout, un vrai bug trouvé au passage : la carte utilisait `.glass`
+  standard, dont le `box-shadow` d'élévation est non-inset — et
+  `GlassPanel` pose `overflow: hidden` par défaut, qui clippe ce genre
+  d'ombre à la frontière de l'élément (même bug que celui déjà trouvé sur
+  `.glass-graphite`). La carte perdait donc l'ombre qui la fait "flotter"
+  au-dessus de la ligne — et sur un fond `bg-brume-2` presque de la même
+  teinte que le verre lui-même, sans cette ombre il ne restait plus rien
+  pour la distinguer comme un objet en verre plutôt qu'un aplat. Classe
+  dédiée `.figure-card` (même famille que `.hero-cta`/`.gamme-badge`) :
+  fond plus opaque, `overflow: visible` pour laisser respirer une vraie
+  ombre d'élévation à deux niveaux, reflet spéculaire radial statique.
+  Au passage, un petit trait doré horizontal ajouté entre les deux
+  paragraphes du texte, détail visible sur la référence.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des
