@@ -403,16 +403,25 @@ body {
     inset 0 -10px 18px rgba(120, 100, 70, 0.05);
 }
 
+/* Deux temps de lumière superposés plutôt qu'un seul : le radial simule un
+   éclairage ambiant en haut à gauche (déjà présent), le linéaire diagonal
+   ajouté simule un vrai reflet — une bande de lumière qui "accroche" le
+   bord du verre à un angle, comme sur une plaque de verre réelle, plutôt
+   qu'une simple tache diffuse ("réflexion réaliste" demandée). */
 .figure-card::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(
-    125% 100% at 18% -12%,
-    rgba(255, 255, 255, 0.4) 0%,
-    transparent 50%
-  );
+  background:
+    linear-gradient(
+      118deg,
+      transparent 32%,
+      rgba(255, 255, 255, 0.22) 46%,
+      rgba(255, 255, 255, 0.05) 58%,
+      transparent 72%
+    ),
+    radial-gradient(125% 100% at 18% -12%, rgba(255, 255, 255, 0.38) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -442,14 +451,71 @@ body {
   mix-blend-mode: soft-light;
 }
 
-/* Troisième retour du client sur le fond de la section Notre histoire :
-   "ne crée pas un nouveau fond, réutilise exactement la couleur de la
-   section Gammes (`bg-ciel`)". Le dégradé/lumière/grain custom
-   (`.notre-histoire-surface`) ajoutés à l'itération précédente sont
-   entièrement retirés — la section utilise directement la classe
-   utilitaire `bg-ciel` dans `NotreHistoire.tsx`, sans classe dédiée, pour
-   qu'il n'y ait littéralement aucune divergence de teinte possible avec
-   la section Gammes qui utilise la même classe. */
+/* Fond de la section Notre histoire : reste `bg-ciel` (même classe que
+   Gammes, cf. commits précédents — "aucune divergence de teinte"), mais le
+   client revient sur le décor lui-même : après deux tours à le retirer
+   entièrement, il demande maintenant explicitement une "scène 3D
+   minimaliste" — colline/pins/rochers/rive/soleil, vivante mais très
+   discrète (voir `LandscapeScene` dans `NotreHistoire.tsx`). Les
+   animations d'ambiance de cette scène (lueur du soleil, reflet dans
+   l'eau) sont volontairement en CSS pur plutôt qu'en JS/Framer Motion :
+   elles n'ont besoin d'aucune donnée dynamique (juste "vivre doucement en
+   boucle"), et une media query `prefers-reduced-motion` suffit à les
+   couper proprement — pas de risque de désaccord serveur/client comme
+   celui déjà rencontré et corrigé sur le reflet mouse-tracké de la carte
+   (cf plus bas). */
+@keyframes scene-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.scene-sun-glow {
+  animation: scene-glow-pulse 9s ease-in-out infinite;
+}
+
+@keyframes scene-shimmer {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.48;
+    transform: translateY(-2px);
+  }
+}
+
+.scene-water-shimmer {
+  animation: scene-shimmer 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-sun-glow,
+  .scene-water-shimmer {
+    animation: none;
+  }
+}
+
+/* Lueur derrière le point actif de la timeline — "un point actif plus
+   vivant" : un halo chaud diffus qui pulse doucement, dans le même esprit
+   que la lueur du soleil de la scène (même teinte), pour que la timeline
+   se sente reliée à la scène plutôt que comme un composant isolé. */
+.scene-dot-glow {
+  background: radial-gradient(circle, rgba(255, 202, 122, 0.45), transparent 70%);
+  animation: scene-glow-pulse 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-dot-glow {
+    animation: none;
+  }
+}
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du
    2026-07-17 bis) sur le même mécanisme que `.hero-cta` : l'ancienne

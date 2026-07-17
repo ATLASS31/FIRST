@@ -659,6 +659,80 @@ npm run dev
   avec la souris" déjà acquise, le reste de la demande (bord lumineux,
   lumière interne, légère distorsion, coins organiques) porte sur la
   matière statique du verre, pas sur l'interaction.
+
+  **Retour du paysage, cette fois comme scène animée** : après deux allers-
+  retours sur le décor (ajouté en photo, remplacé par un SVG low-poly jugé
+  "forcé", puis supprimé entièrement), demande finale du client de le
+  réintroduire mais reconçu comme une "scène 3D" vivante plutôt qu'une
+  illustration statique — colline, pins minimalistes, rochers facettés,
+  rive avec reflet d'eau, lumière basse qui évolue, tout en restant
+  "extrêmement discret". Nouveau composant `LandscapeScene` dans
+  `NotreHistoire.tsx` : SVG pur (`viewBox`, pas d'image bitmap) plutôt que
+  photo ou export low-poly figuratif comme les tentatives précédentes —
+  choix déterminant, puisque le bug de compression verticale rencontré sur
+  la toute première intégration photo (`object-fit: cover` qui montre une
+  tranche verticale différente selon la largeur de viewport, nécessitant un
+  réglage de hauteur par breakpoint) est structurellement impossible avec
+  un SVG mis à l'échelle en CSS : le ratio du contenu suit toujours
+  fidèlement le ratio du conteneur, à toutes les largeurs, sans réglage
+  manuel. Animations ambiantes (pulsation du halo solaire, léger
+  frémissement du reflet sur l'eau) en pur CSS (`@keyframes` +
+  `@media (prefers-reduced-motion: reduce) { animation: none }`) plutôt
+  qu'en JS/Framer Motion — délibéré : ça élimine par construction tout
+  risque de désaccord SSR/client sur ces éléments, puisqu'aucune valeur
+  calculée côté client n'entre en jeu.
+
+  Le fil explicitement demandé entre la scène et la timeline — "le soleil
+  se décale imperceptiblement selon l'étape active" — est porté par un
+  `motion.g` dont la position anime vers `SUN_OFFSETS[active]` (ressort
+  Framer Motion) : le seul point où la scène "sait" quelle étape est
+  active, vérifié en cliquant sur chaque point de la timeline et en
+  contrôlant la transform du groupe SVG (décalage confirmé de -14.7 à
+  +12.7 entre la première et la dernière étape).
+
+  "La caméra respire avec un très léger mouvement de parallaxe" au
+  mouvement de la souris : nouveau hook `useScenePointer()`, structurellement
+  identique à `useCardPointer()` (déjà utilisé pour le reflet de la carte)
+  mais mesuré contre le `<section>` entier plutôt que contre la carte —
+  gardé comme un hook séparé plutôt que fusionné, les deux mesurant contre
+  des repères différents. Applique une translation discrète (±6px en x,
+  ±4px sur y, ressort amorti) sur le calque de la scène. En écrivant ce
+  hook, un risque de mismatch d'hydratation identique à deux bugs déjà
+  rencontrés sur cette même section a été repéré et corrigé avant même de
+  tester : la tentation initiale d'écrire
+  `style={{ x: prefersReducedMotion ? 0 : parallaxX }}` a été abandonnée au
+  profit de `style={{ x: parallaxX }}` toujours — cette section avait déjà
+  appris deux fois que faire dépendre le *type* d'une valeur `style` de
+  `prefersReducedMotion` (motion value vs littéral statique) provoque un
+  mismatch SSR/client, alors que ne faire dépendre que la config de
+  `transition` ne pose aucun problème.
+
+  Interface simplifiée comme demandé ("supprimer les grosses cartes
+  blanches classiques") : les étapes inactives de la timeline
+  n'affichent plus leur valeur/libellé, seulement un point — une seule
+  carte reste visible à l'écran à la fois, celle de l'étape active,
+  renforçant l'impression d'un objet unique qui "flotte" plutôt que d'une
+  rangée de cartes. Reflet de la carte (`.figure-card::before`) enrichi
+  d'une bande diagonale (`linear-gradient` à 118°) en plus du halo radial
+  déjà présent en haut à gauche, pour lire comme un reflet de lumière qui
+  balaie une surface incurvée plutôt qu'un simple gradient de coin.
+
+  En simplifiant la timeline, la colonne de droite est devenue plus courte,
+  ce qui — combiné à `lg:items-center` sur la grille — a réduit l'espace
+  naturel sous le texte de gauche. Avec la scène à sa hauteur initiale
+  (`h-40 sm:h-52 lg:h-64`), elle chevauchait le dernier paragraphe de 34px
+  en desktop, 22px en tablette et 6px en mobile — détecté avec un nouveau
+  script de mesure géométrique (`check-scene-geom.mjs`, même méthode que
+  pour les chevauchements précédents : comparaison de `getBoundingClientRect()`
+  entre la scène et le dernier texte à trois largeurs). Corrigé en réduisant
+  la scène à `h-32 sm:h-40 lg:h-48` ; ré-exécution du script confirmant une
+  marge saine (25 à 30px) aux trois largeurs. Vérifié en parallèle :
+  `check-reduced-motion2.mjs` ne fait apparaître aucun mismatch
+  d'hydratation propre à cette section (le seul mismatch détecté reste
+  celui, pré-existant et hors scope, du `Hero`), et `check-shine.mjs` /
+  la mesure de transform confirment que le reflet et le tilt de la carte
+  continuent de suivre la souris indépendamment du nouveau parallaxe de
+  la scène.
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des
   silhouettes de plantes abstraites en SVG (`PlantShadow`, ombre portée
