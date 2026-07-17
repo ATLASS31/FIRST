@@ -578,6 +578,56 @@ npm run dev
   `text-xl/text-3xl` → `text-2xl/text-4xl`, timeline (point, texte inactif,
   libellés) montée d'un cran. `public/images/notre-histoire-landscape.png`
   supprimé.
+
+  **Deuxième retour en arrière sur le décor**, cette fois définitif : le
+  low-poly SVG (colline, pins, rochers, rive — remplaçant censé corriger le
+  "hero de fond" de l'itération précédente) est jugé "toujours forcé, pas à
+  sa place ici", avec une remarque de direction artistique explicite —
+  peut-être ailleurs sur le site (transition entre sections, footer,
+  animation au scroll), mais pas derrière cette timeline. `HillDecor` et
+  `ShoreDecor` entièrement supprimés, pas archivés ni commentés — repartis
+  d'une section sans aucun élément figuratif. Remplacés par un système
+  volontairement non-figuratif, pensé pour tenir seul dans les deux sens
+  (test explicite du client : sans la carte, la section doit rester
+  élégante ; sans le fond, la carte doit toujours fonctionner) —
+  `.notre-histoire-surface` dans `globals.css` : un dégradé crème → sable
+  très doux sur la section entière, une lumière chaude diffuse en coin
+  bas-droit (`radial-gradient` à faible opacité, pas un halo qui se
+  remarque), un grain de papier calqué sur la même technique `feTurbulence`
+  déjà utilisée sur `.figure-card` mais à une opacité encore plus faible
+  (quasi invisible, juste de quoi casser la platitude numérique d'un
+  dégradé CSS pur).
+
+  Carte retravaillée une troisième fois — retour client : "aujourd'hui elle
+  ressemble à un simple rectangle gris". Cause : un dégradé à une seule
+  teinte (vert forêt) dilué à faible opacité sur un fond clair se lit
+  presque toujours comme du gris désaturé, quelle que soit la teinte de
+  départ — il manque du contraste de teinte, pas seulement de la
+  transparence. Dégradé remplacé par 3 arrêts avec une vraie variation
+  chromatique (doré chaud en haut → vert sauge au milieu → vert forêt
+  profond en bas), qui se lit comme du verre fumé teinté plutôt que comme
+  un aplat gris. Coins rendus "organiques" via un unique raccourci
+  `border-radius` à 4 valeurs différentes (`rounded-[42px_30px_46px_26px]`)
+  plutôt que quatre classes séparées — nécessaire pour que
+  `border-radius: inherit` sur les pseudo-éléments (`::before`, halo
+  externe, reflet mouse-tracké) suive correctement les 4 coins. Ombre
+  d'élévation assouplie et dé-teintée (moins verte, plus neutre/chaude,
+  deux couches au lieu d'une) pour lire comme une vraie ombre portée douce
+  plutôt que comme un glow coloré. Reflet mouse-tracké et tilt léger
+  (ajoutés à l'itération précédente) conservés tels quels — déjà validés,
+  pas concernés par ce retour.
+
+  Timeline "plus élégante" : le point simple (cercle plein/vide) devient un
+  repère à deux niveaux — un anneau fin toujours visible, un point doré
+  intérieur qui apparaît en `scale` (ressort Framer Motion) uniquement sur
+  l'étape active, plutôt qu'un remplissage de couleur binaire. Piste et
+  remplissage légèrement affinés. Animation de la carte entre les étapes
+  revue pour un ressort plus doux (`stiffness`/`damping` réduits) et un
+  léger fondu-décalage du contenu (valeur + libellé, `key={active}`,
+  `opacity`/`y` avec un court délai après que la carte a fini de se
+  déplacer) — un temps de lecture avant que le nouveau chiffre n'apparaisse
+  plutôt qu'un remplacement instantané du texte pendant que la carte est
+  encore en mouvement.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

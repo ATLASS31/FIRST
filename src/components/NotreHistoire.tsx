@@ -20,90 +20,6 @@ const FIGURES = [
 ];
 
 /**
- * Colline bas-gauche : petits pins minimalistes, deux rochers, un chemin
- * qui s'estompe (dégradé de trait) plutôt que de s'arrêter net — pensé
- * pour disparaître derrière le texte, pas pour être suivi jusqu'au bout.
- * Couleurs volontairement proches du fond de section (`--brume-2`), avec
- * juste une touche de sauge et de sable — pas une illustration posée
- * dessus, un détail qui affleure.
- */
-function HillDecor({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 320 170" aria-hidden className={className} fill="none">
-      <path
-        d="M0 170 L0 128 C 40 108 78 118 110 126 C 150 136 190 118 230 128 L 320 150 L 320 170 Z"
-        fill="#EDE6D6"
-        opacity="0.55"
-      />
-      <path
-        d="M18 168 C 46 148 70 132 96 118 C 128 100 168 84 220 70"
-        stroke="url(#pathFade)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <g fill="#5B6E56" opacity="0.5">
-        <path d="M46 118 L58 118 L52 96 Z" />
-        <path d="M48 128 L56 128 L52 108 Z" />
-        <path d="M82 122 L92 122 L87 102 Z" />
-        <path d="M110 128 L118 128 L114 112 Z" />
-      </g>
-      <g fill="#8A7458" opacity="0.55">
-        <rect x="50.5" y="128" width="3" height="8" />
-        <rect x="85.5" y="122" width="3" height="7" />
-        <rect x="112.5" y="128" width="2.5" height="6" />
-      </g>
-      <g fill="#DCD3BF" opacity="0.6">
-        <ellipse cx="145" cy="152" rx="14" ry="7" />
-        <ellipse cx="168" cy="158" rx="10" ry="5.5" />
-      </g>
-      <defs>
-        <linearGradient
-          id="pathFade"
-          x1="18"
-          y1="168"
-          x2="220"
-          y2="70"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#8A7458" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#8A7458" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/**
- * Petite rive bas-droite : eau calme (quelques lignes horizontales, pas
- * une surface pleine), reflet doré réduit à un simple trait dégradé —
- * "extrêmement discret", pas un soleil ni un grand miroir.
- */
-function ShoreDecor({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 220 110" aria-hidden className={className} fill="none">
-      <path
-        d="M220 110 L220 70 C 196 58 176 62 158 74 L 140 110 Z"
-        fill="#EDE6D6"
-        opacity="0.5"
-      />
-      <g stroke="#8FA0AC" strokeWidth="1.2" strokeLinecap="round" opacity="0.35">
-        <line x1="20" y1="88" x2="130" y2="88" />
-        <line x1="40" y1="98" x2="150" y2="98" />
-        <line x1="10" y1="106" x2="120" y2="106" />
-      </g>
-      <rect x="70" y="90" width="46" height="3" rx="1.5" fill="url(#goldReflect)" opacity="0.4" />
-      <defs>
-        <linearGradient id="goldReflect" x1="70" y1="0" x2="116" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#AD8A55" stopOpacity="0" />
-          <stop offset="50%" stopColor="#AD8A55" stopOpacity="0.7" />
-          <stop offset="100%" stopColor="#AD8A55" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/**
  * Pointeur souris pour la carte active — un seul hook au niveau du
  * composant (jamais dans le `.map`, les hooks ne peuvent pas y être
  * appelés conditionnellement) puisqu'une seule carte est "active" à la
@@ -175,35 +91,7 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden bg-brume-2 px-6 py-20 sm:py-24">
-      {/* Décor low-poly minimal — pivot complet après retour client : plus
-          aucune image de fond, une colline/pins/rochers/chemin dessinés à
-          la main (même esprit que `PlantShadow` sur ThreePiliers) côté
-          gauche, une petite rive à droite. Volontairement petit et
-          discret (<20% de l'attention visuelle demandée) : le contenu
-          reste le héros de la section, le décor n'apporte qu'un peu de
-          profondeur. `z-0` sous le contenu (`z-10`). */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="absolute bottom-0 left-0 h-28 w-48 sm:h-36 sm:w-64 lg:h-40 lg:w-72"
-        >
-          <HillDecor className="h-full w-full" />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-          className="absolute bottom-0 right-0 h-20 w-36 sm:h-24 sm:w-48 lg:h-28 lg:w-56"
-        >
-          <ShoreDecor className="h-full w-full" />
-        </motion.div>
-      </div>
-
+    <section className="notre-histoire-surface relative overflow-hidden px-6 py-20 sm:py-24">
       <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
@@ -236,9 +124,9 @@ export default function NotreHistoire() {
           </p>
 
           <div className="relative mt-16 flex items-end justify-between gap-1">
-            <div className="absolute inset-x-0 bottom-[5px] h-px bg-encre/10" />
+            <div className="absolute inset-x-0 bottom-[7px] h-px bg-encre/8" />
             <motion.div
-              className="absolute bottom-[5px] left-0 h-px bg-laiton"
+              className="absolute bottom-[7px] left-0 h-px bg-laiton"
               animate={{
                 width: `${(active / (FIGURES.length - 1)) * 100}%`,
               }}
@@ -272,11 +160,11 @@ export default function NotreHistoire() {
                       transition={
                         prefersReducedMotion
                           ? { duration: 0 }
-                          : { type: "spring", stiffness: 260, damping: 34, mass: 0.9 }
+                          : { type: "spring", stiffness: 220, damping: 30, mass: 0.8 }
                       }
                     >
                       <GlassPanel
-                        rounded="rounded-[32px]"
+                        rounded="rounded-[42px_30px_46px_26px]"
                         className="figure-card w-[176px] px-7 py-8 text-center sm:w-[248px] sm:px-10 sm:py-10"
                       >
                         <motion.div
@@ -284,16 +172,27 @@ export default function NotreHistoire() {
                           className="figure-card-mouse-shine"
                           style={{ background: shineBackground }}
                         />
-                        <p className="text-2xl font-semibold leading-snug text-[#FAF8F3] sm:text-4xl">
-                          {figure.value}
-                        </p>
-                        <p className="eyebrow mt-2.5 text-xs text-[#FAF8F3]/65 sm:text-sm">
-                          {figure.label}
-                        </p>
-                        <span
-                          aria-hidden
-                          className="mx-auto mt-3 block h-px w-6 bg-laiton/70"
-                        />
+                        <motion.div
+                          key={active}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={
+                            prefersReducedMotion
+                              ? { duration: 0 }
+                              : { duration: 0.4, delay: 0.1, ease: "easeOut" }
+                          }
+                        >
+                          <p className="text-2xl font-semibold leading-snug text-[#FAF8F3] sm:text-4xl">
+                            {figure.value}
+                          </p>
+                          <p className="eyebrow mt-2.5 text-xs text-[#FAF8F3]/65 sm:text-sm">
+                            {figure.label}
+                          </p>
+                          <span
+                            aria-hidden
+                            className="mx-auto mt-3 block h-px w-6 bg-laiton/70"
+                          />
+                        </motion.div>
                       </GlassPanel>
                     </motion.div>
                   ) : (
@@ -306,13 +205,23 @@ export default function NotreHistoire() {
                       </p>
                     </div>
                   )}
-                  <span
-                    className={`h-3 w-3 shrink-0 rounded-full border-2 transition-colors duration-300 ${
-                      isActive
-                        ? "border-laiton bg-laiton"
-                        : "border-encre/25 bg-brume-2"
-                    }`}
-                  />
+                  <span className="relative flex h-4 w-4 shrink-0 items-center justify-center">
+                    <span
+                      className={`absolute inset-0 rounded-full border transition-colors duration-300 ${
+                        isActive ? "border-laiton" : "border-encre/20"
+                      }`}
+                    />
+                    <motion.span
+                      className="h-1.5 w-1.5 rounded-full bg-laiton"
+                      initial={false}
+                      animate={{ scale: isActive ? 1 : 0, opacity: isActive ? 1 : 0 }}
+                      transition={
+                        prefersReducedMotion
+                          ? { duration: 0 }
+                          : { type: "spring", stiffness: 400, damping: 26 }
+                      }
+                    />
+                  </span>
                 </button>
               );
             })}
