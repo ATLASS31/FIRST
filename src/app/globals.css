@@ -126,20 +126,34 @@ body {
 .hero-cta {
   /* Un reflet statique seul (essai précédent) restait trop discret pour
      lire comme du verre — jugé "pas liquid" sur le vrai fond vidéo clair.
-     `saturate/contrast/brightness` en plus du blur font davantage
-     "refracter" ce qu'il y a derrière (le plus proche d'un effet loupe
-     qu'on puisse faire sans le filtre SVG, non fiable cross-navigateur —
-     cf. commentaire plus bas). Rim clair net en haut + ombre nette en bas
-     simulent la courbure d'un verre bombé plutôt qu'un simple panneau plat. */
-  backdrop-filter: blur(18px) saturate(220%) contrast(1.08) brightness(1.05);
-  -webkit-backdrop-filter: blur(18px) saturate(220%) contrast(1.08)
-    brightness(1.05);
+     `saturate/brightness` en plus du blur font davantage "refracter" ce
+     qu'il y a derrière (le plus proche d'un effet loupe qu'on puisse
+     faire sans le filtre SVG, non fiable cross-navigateur — cf.
+     commentaire plus bas). Le fond est aussi éclairci (0.55 → 0.4 de
+     noir) : trop sombre sur un fond vidéo déjà clair, ça lisait comme un
+     pavé mat plutôt que du verre. Rim clair net en haut + ombre nette en
+     bas simulent la courbure d'un verre bombé plutôt qu'un panneau plat.
+     Le halo doré était en `0 0 22px/52px` NON inset — par définition un
+     box-shadow non-inset peint hors de la boîte, jamais "cropé" dedans ;
+     sur un fond vidéo clair et changeant, ce halo devenait un flou dilaté
+     très visible qui semblait "sortir" du bouton de façon incohérente
+     selon ce qu'il y avait juste en dessous. Remplacé par un liseré doré
+     en `inset` (contenu par définition, ne peut pas déborder) pour garder
+     la touche premium sans jamais rien qui s'échappe. */
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.04) 100%
+    ),
+    rgba(26, 22, 20, 0.4);
+  backdrop-filter: blur(18px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(200%) brightness(1.1);
   box-shadow:
-    0 24px 48px -12px rgba(0, 0, 0, 0.45),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1.5px 0 rgba(0, 0, 0, 0.35),
-    0 0 22px rgba(173, 138, 85, 0.4),
-    0 0 52px rgba(173, 138, 85, 0.22);
+    0 20px 40px -16px rgba(0, 0, 0, 0.4),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1.5px 0 rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(173, 138, 85, 0.4);
 }
 
 /* Le reflet ambiant animé étant écarté (bug plus haut), le bouton perdait
@@ -188,15 +202,31 @@ body {
    bas (courbure d'un verre bombé) et un reflet spéculaire radial
    concentré plutôt qu'un aplat uniforme. Classe dédiée plutôt que modifier
    `.glass` directement : `.glass` est partagé avec la nav, déjà validée,
-   pas de raison d'y toucher. */
+   pas de raison d'y toucher.
+
+   `saturate(220%)` s'est révélé être une erreur : sur un fond très
+   translucide, saturer autant amplifie la couleur de la PHOTO derrière
+   plutôt que celle du verre — chaque pastille prenait la teinte de sa
+   propre photo (bleu ciel, orange coucher de soleil, violet) et les
+   trois lisaient comme trois pastilles différentes plutôt qu'un même
+   système cohérent, et comme du plastique teinté plutôt que du verre.
+   Fond remonté à une opacité franchement blanche (au lieu du fond quasi
+   transparent de `.glass`) pour rester visuellement stable quelle que
+   soit la photo dessous ; saturate ramené à une valeur discrète, la
+   cohérence et le rim/reflet portent l'effet verre plutôt que la
+   saturation. */
 .gamme-badge {
-  backdrop-filter: blur(12px) saturate(220%) contrast(1.1) brightness(1.05);
-  -webkit-backdrop-filter: blur(12px) saturate(220%) contrast(1.1)
-    brightness(1.05);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.62) 100%
+  );
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   box-shadow:
-    0 8px 20px -8px rgba(26, 22, 20, 0.35),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(26, 22, 20, 0.18);
+    0 8px 20px -8px rgba(26, 22, 20, 0.3),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.12);
 }
 
 .gamme-badge::before {

@@ -173,7 +173,17 @@ npm run dev
   (courbure d'un verre bombé plutôt qu'un panneau plat), et le reflet
   fixe passé d'un dégradé linéaire diagonal à un highlight radial
   concentré en haut à gauche — lit davantage comme un point de lumière
-  réel sur une surface bombée qu'un simple voile.
+  réel sur une surface bombée qu'un simple voile. Deux derniers défauts
+  signalés ensuite : le halo doré (`0 0 22px` / `0 0 52px`, non-`inset`)
+  peint par définition HORS de la boîte — un box-shadow non-inset n'est
+  jamais "cropé" dans l'élément, c'est justement son rôle de déborder ;
+  sur un fond vidéo clair et changeant, ce flou dilaté devenait une tache
+  très visible qui semblait "sortir" du bouton de façon incohérente selon
+  ce qu'il y avait juste en dessous. Remplacé par un liseré doré en
+  `inset` (contenu par construction, ne peut techniquement pas déborder).
+  Le fond `.glass-dark` (55% de noir) était par ailleurs trop sombre sur
+  un fond vidéo déjà clair — éclairci à 40% + `brightness(1.1)` sur le
+  backdrop-filter.
 - **Gammes : pastilles de catégorie sans effet loupe** : les pastilles
   Primaire/Premium/Prestige (`.glass`, ton clair) posées sur une vraie
   photo colorée lisaient comme un simple sticker blanc plat. La
@@ -186,7 +196,16 @@ npm run dev
   dédiée `.gamme-badge` ajoute un `backdrop-filter` plus saturé/contrasté
   et un rim haut clair + ombre basse (même traitement que le CTA du hero
   ci-dessus) pour reconstituer l'effet verre en CSS pur, sans dépendre du
-  filtre SVG.
+  filtre SVG. Ce `saturate(220%)` s'est révélé être une erreur : sur un
+  fond aussi translucide, saturer autant amplifie la couleur de la PHOTO
+  derrière plutôt que celle du verre lui-même — chaque pastille prenait la
+  teinte de sa propre photo (ciel bleu, coucher de soleil orange, ciel
+  violet) et les trois lisaient comme trois éléments différents plutôt
+  qu'un même système, plus proche du plastique teinté que du verre. Fond
+  remonté à une opacité franchement blanche (0.88 → 0.62, contre le fond
+  quasi transparent de `.glass`) pour rester visuellement stable quelle
+  que soit la photo dessous, `saturate` ramené à 140% — la cohérence et le
+  rim/reflet portent l'effet verre plutôt que la saturation du fond.
 - **Hero mobile : retour à la ligne du titre corrigé** : le titre wrappait
   de façon disgracieuse sur mobile ("que" isolé en fin de ligne). Un `<br>`
   forcé (visible uniquement sous `sm:`) est inséré juste avant le mot
