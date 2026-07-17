@@ -217,6 +217,36 @@ npm run dev
   autour du bouton) et sur le survol : rien ne déborde des bords à aucun
   moment. `prefers-reduced-motion` coupe l'animation et le hover (vérifié
   via `getComputedStyle`).
+
+  Dernière itération : le client a fourni directement un extrait de code
+  CSS à reprendre. Repris quasiment tel quel : fond redevenu une teinte
+  blanche PLATE (`rgba(255,255,255,0.14)`, plus de dégradé) plutôt qu'un
+  dégradé, blur redescendu de 44px à 26px (44px lisait plus comme un flou
+  photo que comme du verre), et surtout le halo doré n'est plus un
+  `box-shadow` — c'est maintenant un vrai second calque DERRIÈRE le
+  bouton (`::before`, `z-index: -1`, `inset: -18px` pour déborder
+  volontairement de 18px tout autour, façon "le soleil traverse le
+  verre"). Ce point mérite d'être noté : plus haut, un halo non-inset
+  avait été rejeté précisément parce qu'il "sortait" du bouton — la
+  différence ici est que ce débordement est explicitement voulu et
+  demandé, pas un artefact accidentel, donc pas la même situation. Ce
+  pseudo-élément reste STATIQUE (jamais animé), donc aucune des
+  conditions du bug de débordement documenté plus haut n'est réunie (ce
+  bug touchait spécifiquement un pseudo-élément animé en `transform`).
+  `overflow: visible` a dû être ajouté sur `.hero-cta` pour laisser ce
+  halo déborder (`GlassPanel` pose `overflow-hidden` par défaut) — sans
+  incidence sur le reflet animé, qui reste peint en `background-image`
+  sur l'élément lui-même et donc toujours clippé nativement par son
+  `border-radius`, qu'il y ait `overflow: hidden` ou non. Le reflet est
+  aussi passé d'une bande nette (un seul pic lumineux) à un dégradé à 5
+  arrêts beaucoup plus progressif — jugé "trop blanc" sinon. Texte
+  recalé sur les valeurs fournies (`#faf8f3`, `font-weight: 600`,
+  `text-shadow: 0 1px 6px rgba(0,0,0,.12)`) : plus proche d'un blanc
+  chaud que le `text-brume` générique utilisé ailleurs, légèrement plus
+  gras, avec un liseré d'ombre pour rester lisible sur un fond vidéo très
+  clair. Revérifié intégralement via Playwright (cycle complet de la
+  boucle + survol) : le halo déborde bien comme voulu sans aucun autre
+  artefact, `getComputedStyle` confirme les valeurs exactes appliquées.
 - **Gammes : pastilles de catégorie sans effet loupe** : les pastilles
   Primaire/Premium/Prestige (`.glass`, ton clair) posées sur une vraie
   photo colorée lisaient comme un simple sticker blanc plat. La

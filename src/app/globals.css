@@ -151,106 +151,117 @@ body {
    navigateurs, échoue ce test) — un bug purement dans l'ordre du fichier,
    pas dans un rendu observable en local.
 
-   Dernier calibrage demandé : verre moins opaque, blur énorme, un reflet
-   qui bouge très lentement (8-10s), un halo doré à peine perceptible
-   (5%), et au survol le bouton "gonfle" de quelques px pendant qu'un
-   reflet rapide glisse de gauche à droite.
+   Dernier calibrage, repris directement d'un exemple de code fourni par
+   le client (base rgba plate + blur 26px + halo séparé derrière le
+   bouton) : le fond redevient une teinte blanche plate et légère au lieu
+   d'un dégradé, le blur redescend à 26px (44px lisait too much comme un
+   flou photo plutôt qu'un verre), et le halo doré n'est plus un
+   `box-shadow` mais un vrai second calque DERRIÈRE le bouton (`::before`,
+   `z-index: -1`, `inset` négatif pour déborder de 18px tout autour) —
+   contrairement au halo en `box-shadow` non-inset essayé plus haut
+   (rejeté, "sort du bouton"), celui-ci est explicitement voulu comme un
+   halo qui dépasse, façon "le soleil traverse le verre". Ce pseudo-
+   élément est STATIQUE (jamais animé), donc aucune des conditions du bug
+   de débordement documenté au point 2) n'est réunie (ce bug touchait
+   spécifiquement un pseudo-élément animé en `transform`) ; `overflow:
+   visible` est nécessaire ici pour laisser ce halo déborder du cadre —
+   sans incidence sur le reste (le reflet animé ci-dessous est peint en
+   `background-image` sur l'élément lui-même, toujours clippé nativement
+   par son `border-radius`, jamais besoin d'`overflow: hidden` pour ça).
 
-   Le reflet MOBILE est volontairement fait via `background-position`
-   animé sur le dégradé lui-même — PAS via un pseudo-élément `::before`
-   en `position: absolute` + `transform` comme `.glass-sheen` ailleurs
-   sur le site. C'est le mécanisme exact qui causait le bug de débordement
-   documenté au point 2) ci-dessus (confirmé par test : retirer la classe
-   du pseudo-élément animé faisait disparaître la barre qui dépassait). Un
-   dégradé peint directement en `background-image` de l'élément est
-   toujours clippé nativement par son propre `border-radius`, sans avoir
-   besoin d'un `overflow: hidden` sur un enfant positionné séparément —
-   aucune des conditions du bug precedent (pseudo-élément, position
-   absolute, transform animée) n'est réunie ici. Le survol change
-   `animation-name` (bascule vers un aller simple rapide) plutôt que de
-   transitionner `background-position` en parallèle de l'animation lente
-   — les deux ne peuvent pas piloter proprement la même propriété CSS en
-   même temps (l'animation gagnerait sur la transition de façon
-   imprévisible). */
+   Le reflet passe d'une bande nette (un seul stop lumineux net) à un
+   dégradé à 5 arrêts beaucoup plus diffus — jugé "trop blanc" sinon.
+   Toujours porté par `background-position` animé (pas par un
+   pseudo-élément en `transform`, cf. bug documenté plus haut) : le survol
+   change `animation-name` (bascule vers un aller simple rapide) plutôt
+   que de transitionner `background-position` en parallèle de l'animation
+   lente — les deux ne peuvent pas piloter proprement la même propriété
+   CSS en même temps. */
 @keyframes hero-cta-sheen-idle {
   0%,
   12% {
-    background-position:
-      -60% -60%,
-      0% 0%;
+    background-position: -60% -60%;
   }
   60%,
   100% {
-    background-position:
-      160% 160%,
-      0% 0%;
+    background-position: 160% 160%;
   }
 }
 
 @keyframes hero-cta-sheen-hover {
   0% {
-    background-position:
-      -140% 0%,
-      0% 0%;
+    background-position: -140% 0%;
   }
   100% {
-    background-position:
-      140% 0%,
-      0% 0%;
+    background-position: 140% 0%;
   }
 }
 
 .hero-cta {
-  background-image:
-    linear-gradient(
-      105deg,
-      transparent 42%,
-      rgba(255, 255, 255, 0.4) 50%,
-      transparent 58%
-    ),
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.15) 0%,
-      rgba(255, 255, 255, 0.03) 100%
-    );
-  background-size:
-    260% 260%,
-    100% 100%;
-  background-repeat: no-repeat, no-repeat;
-  background-position:
-    -60% -60%,
-    0% 0%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(44px) saturate(190%) brightness(1.08);
-  -webkit-backdrop-filter: blur(44px) saturate(190%) brightness(1.08);
+  position: relative;
+  overflow: visible;
+  background-color: rgba(255, 255, 255, 0.14);
+  background-image: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
+  );
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  background-position: -60% -60%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
   box-shadow:
-    0 20px 40px -16px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
-    0 0 48px rgba(173, 138, 85, 0.05);
+    0 10px 35px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 18px rgba(255, 255, 255, 0.06);
+  color: #faf8f3;
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
   animation: hero-cta-sheen-idle 9s ease-in-out infinite;
-  transition:
-    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.4s ease;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Le halo : un cercle chaud flouté qui dépasse le bouton de tous les
+   côtés (inset négatif), posé derrière (z-index négatif) — jamais dans
+   le flux clippé du bouton. */
+.hero-cta::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 220, 150, 0.18),
+    transparent 70%
+  );
+  filter: blur(20px);
+  z-index: -1;
+  pointer-events: none;
+  transition: background 0.4s ease;
 }
 
 .hero-cta:hover {
   transform: scale(1.035);
   animation: hero-cta-sheen-hover 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
-  box-shadow:
-    0 20px 40px -16px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
-    0 0 56px rgba(173, 138, 85, 0.08);
+}
+
+.hero-cta:hover::before {
+  background: radial-gradient(
+    circle,
+    rgba(255, 220, 150, 0.28),
+    transparent 70%
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-cta {
     animation: none;
     transition: none;
-    background-position:
-      0% 0%,
-      0% 0%;
+    background-position: 0% 0%;
   }
   .hero-cta:hover {
     transform: none;

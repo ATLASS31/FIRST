@@ -401,7 +401,7 @@ export default function Hero() {
               href="/#gammes"
               tone="dark"
               rounded="rounded-full"
-              className="hero-cta flex items-center gap-10 py-3.5 pl-7 pr-6 text-sm font-medium text-brume"
+              className="hero-cta flex items-center gap-10 py-3.5 pl-7 pr-6 text-sm"
             >
               <span>Découvrir nos gammes</span>
               <ArrowIcon />
