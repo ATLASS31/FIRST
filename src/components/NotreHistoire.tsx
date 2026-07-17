@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 
@@ -27,7 +28,34 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden bg-brume-2 px-6 py-28">
+    <section className="relative overflow-hidden bg-brume-2 px-6 pb-48 pt-28 sm:pb-[24rem] lg:pb-[40rem]">
+      {/* Illustration low-poly fournie par le client (photo, pas générée) :
+          pins à gauche, eau/soleil à droite — même composition que la
+          référence. Le fichier a déjà un ciel en dégradé doux (pas de
+          damier), très proche de `--brume-2` : un simple fondu CSS en haut
+          suffit à le fondre dans la section, sans détourage. Recadrée plus
+          serrée que l'aspect natif (`object-position: bottom`) pour
+          "remonter" la composition et réduire le vide en haut de l'image,
+          comme demandé — au prix des tout derniers sommets des deux sapins
+          les plus hauts, hors cadre. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 sm:h-[342px] lg:h-[580px]"
+      >
+        <Image
+          src="/images/notre-histoire-landscape.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-bottom"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent, black 12%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent, black 12%)",
+          }}
+        />
+      </div>
+
       <div className="relative mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
@@ -53,7 +81,7 @@ export default function NotreHistoire() {
 
         <div className="min-w-0">
           <p className="text-xs text-encre-douce">
-            <span className="font-semibold text-encre">
+            <span className="font-semibold text-laiton">
               {String(active + 1).padStart(2, "0")}
             </span>{" "}
             / {String(FIGURES.length).padStart(2, "0")}
@@ -95,16 +123,20 @@ export default function NotreHistoire() {
                         rounded="rounded-2xl"
                         className="figure-card w-[168px] px-6 py-7 text-center sm:w-[232px] sm:px-9 sm:py-9"
                       >
-                        <p className="text-xl font-semibold leading-snug text-encre sm:text-3xl">
+                        <p className="text-xl font-semibold leading-snug text-[#FAF8F3] sm:text-3xl">
                           {figure.value}
                         </p>
-                        <p className="eyebrow mt-2.5 text-[10px] text-encre-douce sm:text-xs">
+                        <p className="eyebrow mt-2.5 text-[10px] text-[#FAF8F3]/65 sm:text-xs">
                           {figure.label}
                         </p>
+                        <span
+                          aria-hidden
+                          className="mx-auto mt-3 block h-px w-6 bg-laiton/70"
+                        />
                       </GlassPanel>
                     </motion.div>
                   ) : (
-                    <div className="px-1 text-center opacity-40 transition-opacity hover:opacity-70">
+                    <div className="px-1 text-center opacity-55 transition-opacity hover:opacity-80">
                       <p className="text-xs font-medium text-encre sm:text-lg">
                         {figure.value}
                       </p>

@@ -407,6 +407,42 @@ npm run dev
   proches et donc l'alignement d'origine — vérifié après coup, les deux
   repères sont de nouveau à la même hauteur. `NOTRE_HISTOIRE_LANDSCAPE_URL`
   retiré de `src/lib/media.ts`.
+
+  Quatrième itération, cahier des charges très précis fourni par le client
+  (deux images de référence + liste de consignes). Carte active (`.figure-card`
+  dans `globals.css`) entièrement retravaillée : verre fumé teinté forêt/sauge
+  (`rgba(38,48,38,…)` + dégradé `rgba(114,132,102,…)` → `rgba(24,32,24,…)`,
+  overlay non plus blanc translucide) plutôt que blanc, texte en ivoire
+  (`#FAF8F3`, comme le bouton du hero) pour rester lisible sur ce fond plus
+  sombre, halo chaud diffus derrière la carte (`::after`, même procédé que le
+  halo du bouton hero — déborde volontairement, `overflow: visible` sur le
+  parent). Or (`laiton`) désormais réservé au point actif de la timeline, au
+  numéro d'étape ("01"), et à une fine hairline en bas de carte — retiré de
+  partout ailleurs. Étapes inactives légèrement renforcées (`opacity-40` →
+  `opacity-55`) pour rester lisibles sans concurrencer l'actif.
+
+  Illustration de fond redemandée, cette fois en pleine largeur (pins à
+  gauche, eau/soleil à droite, comme la référence) plutôt qu'en petit format
+  cadré à gauche. Le client a fourni directement le fichier (collé dans le
+  chat une seconde fois, avec l'instruction explicite "utilise la photo que
+  je t'envoie génère pas") : même technique de récupération que la première
+  fois (le fichier n'existe sur aucun chemin accessible en Bash — récupéré
+  depuis le JSONL de la session, où les images collées sont encodées en
+  base64 dans les blocs de message). Contrairement au tout premier essai,
+  cette image a un ciel en dégradé doux nativement très proche de
+  `--brume-2` (pas de damier de transparence factice) : un simple fondu CSS
+  (`mask-image`) en haut suffit, sans détourage chromatique.
+
+  Composition "remontée" comme demandé (moins de ciel vide) : recadrée via
+  `object-position: bottom` dans un conteneur bien plus court que l'image
+  native, pour ne garder que sa bande basse (environ les 60% inférieurs,
+  calculé pour montrer les sapins en entier plutôt que de couper leurs
+  cimes). Hauteur de ce conteneur et `padding-bottom` de la section calibrés
+  ensemble et vérifiés par script (comparaison des rectangles DOM du titre et
+  de l'image) plutôt qu'au jugé : le bug de chevauchement rencontré à
+  l'itération précédente (image ancrée en bas qui mange la dernière ligne du
+  titre) s'est reproduit une première fois pendant les réglages — cette fois
+  détecté et corrigé avant livraison, pas après un nouveau retour client.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

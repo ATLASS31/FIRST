@@ -367,25 +367,29 @@ body {
    lisait plus "carte flottante posée dessus" que "verre qui capte la
    lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
    presque passer inaperçu plutôt que se faire remarquer. */
+/* Verre fumé teinté forêt/sauge (au lieu de blanc) : demande explicite du
+   client, avec texte ivoire et halo chaud diffus derrière (::after,
+   déborde volontairement — même procédé que le halo du bouton hero et de
+   `.glass-graphite`, cf plus haut). */
 .figure-card {
   position: relative;
   overflow: visible;
-  background-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(38, 48, 38, 0.55);
   background-image:
     linear-gradient(
-      165deg,
-      rgba(255, 255, 255, 0.3) 0%,
-      rgba(255, 255, 255, 0.04) 100%
+      155deg,
+      rgba(114, 132, 102, 0.45) 0%,
+      rgba(24, 32, 24, 0.55) 100%
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
   box-shadow:
-    0 20px 40px -22px rgba(26, 22, 20, 0.22),
-    0 6px 14px -8px rgba(26, 22, 20, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(26, 22, 20, 0.04);
+    0 20px 40px -20px rgba(18, 24, 16, 0.4),
+    0 6px 16px -8px rgba(18, 24, 16, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.2);
 }
 
 .figure-card::before {
@@ -395,9 +399,23 @@ body {
   border-radius: inherit;
   background: radial-gradient(
     120% 100% at 20% -10%,
-    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.18) 0%,
     transparent 45%
   );
+  pointer-events: none;
+}
+
+.figure-card::after {
+  content: "";
+  position: absolute;
+  inset: -26px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 202, 122, 0.32),
+    transparent 70%
+  );
+  filter: blur(30px);
+  z-index: -1;
   pointer-events: none;
 }
 
