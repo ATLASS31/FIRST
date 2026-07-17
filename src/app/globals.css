@@ -84,8 +84,23 @@ body {
 /* Verre "objet premium" : pensé pour flotter sur une vraie photo (le
    calculateur a un fond image plein cadre) — assez transparent pour que le
    blur révèle vraiment la scène derrière, avec un halo doré chaud autour,
-   pas juste un panneau sombre posé dessus. */
+   pas juste un panneau sombre posé dessus.
+
+   Le halo était un `box-shadow` non-inset (`0 0 140px`) — repéré lors du
+   passage en revue du 2026-07-17 bis comme silencieusement clippé : tout
+   panneau `GlassPanel` a `overflow: hidden` par défaut, qui coupe aussi
+   bien le contenu que les box-shadow non-inset à la frontière de
+   l'élément. Ce halo n'a donc probablement jamais été vu à sa pleine
+   intensité. Remplacé par le même procédé que le halo du bouton hero : un
+   `::after` séparé (le `::before` porte déjà le reflet de `.glass-sheen`
+   sur ce panneau), `z-index: -1`, `inset` négatif pour déborder
+   volontairement, `overflow: visible` sur l'élément pour le laisser
+   sortir. Le reflet mobile (`.glass-sheen::before`) n'en a pas besoin :
+   il reste calé exactement sur les bords (`inset: 0`), toujours clippé
+   nativement par son propre `border-radius`. */
 .glass-graphite {
+  position: relative;
+  overflow: visible;
   background:
     radial-gradient(
       140% 120% at 15% 0%,
@@ -97,11 +112,24 @@ body {
   border-top-color: rgba(255, 255, 255, 0.4);
   box-shadow:
     0 32px 64px -16px rgba(0, 0, 0, 0.5),
-    0 0 140px rgba(203, 166, 93, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -1px 0 rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(26px) saturate(170%);
   -webkit-backdrop-filter: blur(26px) saturate(170%);
+}
+
+.glass-graphite::after {
+  content: "";
+  position: absolute;
+  inset: -28px;
+  background: radial-gradient(
+    circle,
+    rgba(203, 166, 93, 0.22),
+    transparent 70%
+  );
+  filter: blur(26px);
+  z-index: -1;
+  pointer-events: none;
 }
 
 @supports (backdrop-filter: url(#glass-distortion)) {
@@ -322,31 +350,57 @@ body {
   pointer-events: none;
 }
 
-/* Reflet ambiant : fin, discret, lent — pour le chrome toujours visible
-   (nav, boutons persistants). Un trait large et opaque qui boucle vite lit
-   comme un gadget ; ici c'est un fil de lumière occasionnel. */
-@keyframes sheen {
+/* Reflet ambiant et reflet au survol — remis à niveau (audit du
+   2026-07-17 bis) sur le même mécanisme que `.hero-cta` : l'ancienne
+   version animait un `transform` (translate + rotate) sur un
+   pseudo-élément surdimensionné (`inset: -50%`) — exactement la
+   combinaison qui causait le bug de débordement documenté plus haut
+   (confirmé sur le bouton hero, jamais signalé ailleurs mais le même
+   risque existait partout où `.glass-sheen`/`.glass-sheen-hover` sont
+   utilisés : nav, panneaux CTA, chiffres clés, calculateur, cartes
+   modèles). Le reflet est maintenant piloté par `background-position`
+   sur un pseudo-élément calé exactement sur les bords de l'élément
+   (`inset: 0`, `border-radius: inherit` — plus besoin de le
+   surdimensionner ni d'un `overflow: hidden` pour le contenir puisqu'il
+   ne dépasse jamais ses propres bords). Un dégradé diffus à 5 arrêts
+   (pas une bande nette) pour rester discret plutôt que gadget. */
+@keyframes glass-sheen-idle {
   0%,
-  15% {
-    transform: translateX(-70%) translateY(-70%) rotate(20deg);
+  12% {
+    background-position: -60% -60%;
   }
-  50%,
+  60%,
   100% {
-    transform: translateX(70%) translateY(70%) rotate(20deg);
+    background-position: 160% 160%;
+  }
+}
+
+@keyframes glass-sheen-hover-sweep {
+  0% {
+    background-position: -120% 0%;
+  }
+  100% {
+    background-position: 120% 0%;
   }
 }
 
 .glass-sheen::before {
   content: "";
   position: absolute;
-  inset: -50%;
-  background: linear-gradient(
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
     115deg,
-    transparent 47%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 53%
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
   );
-  animation: sheen 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  background-position: -60% -60%;
+  animation: glass-sheen-idle 12s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -356,21 +410,28 @@ body {
 .glass-sheen-hover::before {
   content: "";
   position: absolute;
-  inset: -50%;
-  background: linear-gradient(
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
     115deg,
-    transparent 42%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 58%
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
   );
-  transform: translateX(-120%) translateY(-120%) rotate(20deg);
-  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  background-size: 220% 220%;
+  background-repeat: no-repeat;
+  background-position: -120% 0%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
 .glass-sheen-hover:hover::before,
 .glass-sheen-hover:focus-within::before {
-  transform: translateX(60%) translateY(60%) rotate(20deg);
+  opacity: 1;
+  animation: glass-sheen-hover-sweep 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -378,6 +439,7 @@ body {
   .glass-sheen-hover::before {
     animation: none;
     transition: none;
+    opacity: 0;
   }
 }
 

@@ -304,6 +304,38 @@ npm run dev
   `GammesPreview.tsx`. Une vraie plus-value informative — pas une
   animation de plus — qui reste discrète (cachée jusqu'au survol/focus,
   transition opacité + hauteur) pour ne pas alourdir la carte au repos.
+- **Reflets liquid glass mis à niveau sur tout le site** (`.glass-sheen` /
+  `.glass-sheen-hover`, utilisés par la nav, les panneaux CTA, Chiffres
+  clés, le calculateur de rentabilité et les cartes Modèles) : ils
+  utilisaient encore l'ancien mécanisme (pseudo-élément `::before`
+  surdimensionné en `inset: -50%`, animé en `transform`) — exactement la
+  combinaison qui causait le bug de débordement découvert sur le bouton
+  hero, jamais déclenché ailleurs mais latent partout où ces classes sont
+  posées. Basculé sur le même mécanisme que `.hero-cta` : le reflet est
+  porté par `background-position` sur un pseudo-élément calé exactement
+  sur les bords (`inset: 0`, `border-radius: inherit`) plutôt qu'un
+  transform — plus besoin de le surdimensionner, donc plus aucun risque
+  de débordement, sur un dégradé diffus à 5 arrêts au lieu d'une bande
+  nette. Au passage, un vrai bug a été trouvé sur `.glass-graphite` (le
+  panneau du calculateur) : son halo doré était un `box-shadow` non-inset
+  (`0 0 140px`), or tout `GlassPanel` a `overflow: hidden` par défaut —
+  qui clippe aussi bien le contenu que les box-shadow non-inset à la
+  frontière de l'élément. Ce halo était donc probablement invisible à
+  pleine intensité depuis toujours. Remplacé par un `::after` séparé
+  (`::before` porte déjà le reflet) en `z-index: -1` qui déborde
+  volontairement, avec `overflow: visible` sur l'élément pour le laisser
+  sortir — même procédé que le halo du bouton hero.
+- **Ombres de plantes à gauche et à droite de la section Concept**
+  (3 piliers) : sur référence visuelle du client, deux silhouettes de
+  plante (même composant `PlantShadow` qu'utilisé — puis retiré — sur
+  Gammes, réintroduit ici) débordent depuis les bords gauche et droit de
+  la section, floutées, à faible opacité. Restreint à ces deux zones
+  précises plutôt que dispersé façon l'essai Gammes (4 silhouettes
+  scattered, jugées gratuites sur les cartes) : ici la référence montrait
+  un feuillage qui déborde des deux bords, pas un décor semé au hasard.
+  Tailles responsive (base mobile → `sm:` → `lg:`), révélées au scroll
+  (`whileInView`, une fois). Vérifié en mobile (390px) : proportionné,
+  lisible, pas d'aplat flou pixelisé.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
