@@ -352,6 +352,26 @@ npm run dev
   ajouté) pour un glissement moins ressort/plus posé. Toutes les valeurs
   volontairement basses — l'idée demandée était que l'effet "passe presque
   inaperçu" plutôt que de se faire remarquer.
+- **Notre histoire : illustration low-poly en fond de section** — fournie
+  directement par le client (collée dans le chat, pas un rendu Higgsfield ;
+  une première tentative de génération a été explicitement refusée : "utilise
+  l'image que j'ai joint n'en crée plus"). Intégrée en `public/images/
+  notre-histoire-landscape.png`, plaquée en bas de la section
+  (`object-cover object-bottom` dans un conteneur de hauteur fixe,
+  responsive `h-40 sm:h-56 lg:h-72`). Le fichier source affichait un damier
+  gris/blanc "transparence factice" (peint dans les pixels par l'outil qui
+  l'a généré, pas un vrai canal alpha — confirmé via les métadonnées du
+  fichier, `hasAlpha: false`) derrière les arbres/chemin/lac/montagne. Un
+  simple recadrage rectangulaire ne suffisait pas : le ciel en damier ne
+  forme pas une bande horizontale nette, il serpente entre les sapins et la
+  montagne qui dépassent dedans par endroits — recadrer assez haut pour
+  effacer tout le damier aurait aussi coupé les arbres. Le fichier a donc
+  été retraité (détourage chromatique) : les pixels du damier sont gris pur
+  et très clairs (canaux R=G=B, valeur ≥ 236), une signature qu'aucune
+  couleur du dessin (vert du feuillage, sable, lac) ne partage — ces pixels
+  passent à alpha 0, ce qui donne au PNG une vraie transparence. Un léger
+  dégradé CSS (`mask-image`) fond ensuite le bord recadré dans le
+  `bg-brume-2` de la section.
 - **Gammes : de la décoration de fond à une fiche technique réelle** : le
   fond de section est passé par plusieurs itérations décoratives — cadrage
   feuillage (fond flou, branches détourées, photos réelles), puis des

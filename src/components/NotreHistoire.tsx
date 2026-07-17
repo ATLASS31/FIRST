@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 
@@ -27,8 +28,35 @@ export default function NotreHistoire() {
   }, [active]);
 
   return (
-    <section className="bg-brume-2 px-6 py-28">
-      <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+    <section className="relative overflow-hidden bg-brume-2 px-6 py-28">
+      {/* Illustration low-poly (fournie par le client). Le fichier source
+          exporté affichait son ciel en damier "transparence factice" (peint
+          dans les pixels, sans vrai canal alpha) — recréé ici avec une
+          vraie transparence par détournement chromatique (les pixels du
+          damier sont gris pur et très clairs, contrairement au feuillage,
+          au sable et au lac). Un conteneur de hauteur fixe +
+          `object-position: bottom` ne garde que la bande basse (arbres,
+          chemin, lac, montagne) ; un léger dégradé en haut fond le bord
+          recadré dans le `bg-brume-2` de la section. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 sm:h-56 lg:h-72"
+      >
+        <Image
+          src="/images/notre-histoire-landscape.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-bottom"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent, black 10%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent, black 10%)",
+          }}
+        />
+      </div>
+
+      <div className="relative mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
           <h2 className="mt-4 text-3xl font-semibold text-encre sm:text-4xl">
