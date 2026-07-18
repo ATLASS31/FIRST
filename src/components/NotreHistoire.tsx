@@ -11,7 +11,7 @@ import {
 } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 
-const AUTOPLAY_MS = 3000;
+const AUTOPLAY_MS = 3500;
 
 const FIGURES = [
   { value: "20 ans", label: "de garantie" },
@@ -19,149 +19,41 @@ const FIGURES = [
   { value: "100%", label: "fabriqué en France" },
 ];
 
-// Décalage horizontal du soleil selon l'étape active — le seul fil qui relie
-// explicitement la timeline à la scène (concept validé par le client,
-// conservé tel quel à travers la refonte de la scène elle-même).
-const SUN_OFFSETS = [-14, 0, 14];
+// Décalage de la lumière selon l'étape active — le seul élément conservé
+// tel quel de la version précédente ("le seul élément que j'aime
+// vraiment"). Ce n'est plus un soleil dans un paysage : c'est la source de
+// lumière qui éclaire la carte elle-même, ce qui rend le lien beaucoup
+// plus direct qu'avant (la carte captait la lumière d'une scène lointaine ;
+// ici la lumière est juste derrière elle).
+const LIGHT_OFFSETS = [
+  { x: -20, y: 12 },
+  { x: 4, y: -10 },
+  { x: 24, y: 6 },
+];
+
+const EASE_PREMIUM = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Scène architecturale abstraite en fond de section — plus une
- * illustration de paysage (colline/pins/rochers/rive), jugée "pas assez
- * premium" et trop "dessinée". Reconstruite comme une composition de
- * volumes low-poly épurés : un plan lointain à peine perceptible (`F`), un
- * plan de sol qui unifie la composition (`B`), et deux monolithes facettés
- * qui se détachent nettement (`A` à gauche, `C` à droite, près du soleil).
- * Trois à quatre volumes, pas plus — l'inspiration explicite (maquette
- * architecturale, keynote Apple) demande peu d'éléments très bien
- * composés plutôt qu'un décor chargé de petits détails. Chaque volume est
- * en aplat (pas de dégradé lissé) avec au plus deux facettes de teinte
- * différente : c'est le contraste plat entre deux tons, pas un flou, qui
- * suggère la lumière et le pli d'une surface minérale. `active` ne pilote
- * que le décalage du soleil (voir `SUN_OFFSETS`) ; les animations
- * d'ambiance (lueur solaire, respiration de la lumière) sont en CSS pur
- * (voir `.scene-sun-glow`/`.scene-light-wash` dans `globals.css`) — aucun
- * risque d'hydratation puisqu'elles ne dépendent que d'une media query
- * `prefers-reduced-motion`, jamais de JS.
+ * Deuxième repartie complète de cette section (la première refonte
+ * remplaçait un paysage low-poly par des volumes architecturaux abstraits
+ * — jugés "posés là sans intention", "froids", ne dégageant "ni
+ * architecture, ni luxe, ni élégance"). Sur demande explicite du client,
+ * on repart d'une page blanche plutôt que d'itérer encore sur cette
+ * direction : "je préfère une proposition radicalement différente qu'une
+ * nouvelle amélioration de cette version". Toute forme géométrique
+ * figurative (volumes, plans de sol, faîtages) est supprimée. Il ne reste
+ * que de la lumière et une seule carte, la lumière et le verre étant les
+ * deux points sur lesquels le client a explicitement demandé de pousser
+ * ("pousse énormément le travail sur la lumière", "améliore encore la
+ * qualité du Liquid Glass, qui reste le point le plus faible").
  */
-function AbstractScene({
-  active,
-  prefersReducedMotion,
-  className,
-}: {
-  active: number;
-  prefersReducedMotion: boolean | null;
-  className?: string;
-}) {
-  return (
-    // `preserveAspectRatio="none"` : le conteneur (pleine largeur de
-    // section, quelques dizaines de pixels de haut) est beaucoup plus
-    // large que le viewBox — le comportement par défaut ("meet") aurait
-    // centré la scène en préservant son ratio, laissant des bandes vides
-    // à gauche/droite. Invisible sur un fond uni, mais ça décale aussi
-    // tout le contenu (dont le soleil) vers le centre horizontal,
-    // indépendamment de la largeur réelle du conteneur — c'est ce qui
-    // faisait dériver le soleil jusque sous la timeline à certaines
-    // largeurs. Les volumes sont des aplats géométriques simples : une
-    // légère mise à l'échelle non uniforme ne se voit pas, contrairement
-    // à un défaut d'alignement avec le texte et la carte au-dessus.
-    <svg
-      viewBox="0 0 800 220"
-      preserveAspectRatio="none"
-      aria-hidden
-      className={className}
-      fill="none"
-    >
-      {/* Plan lointain — à peine visible, donne juste une sensation
-          d'espace au-delà de la composition principale. */}
-      <path
-        d="M0 220 L0 176 L200 168 L420 172 L620 165 L800 171 L800 220 Z"
-        fill="#F0ECE1"
-        opacity="0.3"
-      />
-      {/* Plan de sol — unifie les deux monolithes, deuxième niveau de
-          profondeur. */}
-      <path
-        d="M0 220 L0 199 L180 190 L400 195 L620 188 L800 196 L800 220 Z"
-        fill="#E7E0D0"
-        opacity="0.42"
-      />
-      {/* Reflets très discrets à la base des monolithes — lumière qui
-          rebondit sur le plan de sol, pas une eau ni un lac. */}
-      <ellipse cx="107" cy="211" rx="56" ry="9" fill="url(#reflectionPool)" opacity="0.45" />
-      <ellipse cx="668" cy="211" rx="58" ry="9" fill="url(#reflectionPool)" opacity="0.55" />
-      {/* Monolithe gauche — deux facettes (avant éclairée / côté ombré), un
-          court faîtage plutôt qu'un pic unique : lit comme un bloc massif
-          taillé, pas comme un sommet de montagne. */}
-      <g stroke="rgba(26,22,20,0.07)" strokeWidth="1">
-        <polygon points="65,220 65,145 92,98 128,108 148,220" fill="#EDE6D8" opacity="0.62" />
-        <polygon points="128,108 168,135 150,220 148,220" fill="#C9BCA2" opacity="0.55" />
-      </g>
-      {/* Monolithe droit — plus court, teinte réchauffée par la proximité
-          du soleil, même principe de faîtage court. */}
-      <g stroke="rgba(26,22,20,0.07)" strokeWidth="1">
-        <polygon points="620,220 620,175 652,128 688,138 698,220" fill="#F1DBB0" opacity="0.6" />
-        <polygon points="688,138 712,158 700,220 698,220" fill="#D8B98C" opacity="0.5" />
-      </g>
-      {/* Lumière chaude qui traverse la scène — un voile large et très
-          diffus plutôt qu'un rayon dessiné, qui respire très lentement. */}
-      <rect
-        className="scene-light-wash"
-        x="260"
-        y="0"
-        width="540"
-        height="220"
-        fill="url(#ambientLight)"
-      />
-      {/* Soleil bas — se décale selon l'étape active de la timeline. Position
-          verticale calée à dessein sur la même hauteur relative que dans la
-          scène figurative précédente (cy proche de 148 plutôt que très haut
-          dans le ciel) : avec `preserveAspectRatio="none"`, le conteneur
-          très large et bas fait qu'un soleil placé haut dans le viewBox
-          finit visuellement tout près de la timeline au-dessus — vérifié
-          avec un script de mesure comparant le centre du soleil rendu à la
-          position du dernier point de la timeline. */}
-      <motion.g
-        animate={{ x: SUN_OFFSETS[active] }}
-        transition={
-          prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 50, damping: 18 }
-        }
-      >
-        <circle className="scene-sun-glow" cx="735" cy="146" r="40" fill="url(#sunGlow)" />
-        <circle cx="735" cy="146" r="8" fill="#F0C48A" opacity="0.75" />
-      </motion.g>
-      <defs>
-        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#F3C892" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#F3C892" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="ambientLight" cx="86%" cy="55%" r="75%">
-          <stop offset="0%" stopColor="#F6D9A6" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#F6D9A6" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="reflectionPool" cx="50%" cy="0%" r="100%">
-          <stop offset="0%" stopColor="#F0C48A" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="#F0C48A" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/**
- * Pointeur souris sur toute la section — pilote un très léger parallaxe de
- * la scène ("la caméra respire"). Distinct du pointeur de la carte
- * (`useCardPointer`) : le parallaxe se calcule par rapport à la section
- * entière, le reflet de la carte par rapport à la carte elle-même — deux
- * repères différents, deux hooks. Même throttle `requestAnimationFrame`
- * que partout ailleurs sur le site.
- */
-function useScenePointer() {
+function useLightPointer() {
   const ref = useRef<HTMLElement>(null);
   const rafRef = useRef<number | null>(null);
   const latestPoint = useRef({ x: 0, y: 0 });
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
-  const springConfig = { stiffness: 55, damping: 20, mass: 0.6 };
+  const springConfig = { stiffness: 45, damping: 20, mass: 0.7 };
   const sx = useSpring(px, springConfig);
   const sy = useSpring(py, springConfig);
 
@@ -196,14 +88,10 @@ function useScenePointer() {
 }
 
 /**
- * Pointeur souris pour la carte active — un seul hook au niveau du
- * composant (jamais dans le `.map`, les hooks ne peuvent pas y être
- * appelés conditionnellement) puisqu'une seule carte est "active" à la
- * fois. Même technique de throttle qu'ailleurs sur le site
- * (`TiltCard.tsx`) : les coordonnées les plus récentes sont conservées
- * dans une ref, appliquées au plus une fois par frame via
- * `requestAnimationFrame`, pour ne pas multiplier les recalculs sur un
- * élément avec `backdrop-filter`.
+ * Pointeur souris pour la carte — identique en structure à
+ * `useLightPointer` mais mesuré contre la carte elle-même (repère
+ * différent), throttlé à une mise à jour par frame comme partout ailleurs
+ * sur le site (`TiltCard.tsx`).
  */
 function useCardPointer() {
   const ref = useRef<HTMLDivElement>(null);
@@ -211,7 +99,7 @@ function useCardPointer() {
   const latestPoint = useRef({ x: 0, y: 0 });
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
-  const springConfig = { stiffness: 220, damping: 28, mass: 0.4 };
+  const springConfig = { stiffness: 200, damping: 26, mass: 0.4 };
   const sx = useSpring(px, springConfig);
   const sy = useSpring(py, springConfig);
 
@@ -250,30 +138,25 @@ export default function NotreHistoire() {
   const prefersReducedMotion = useReducedMotion();
   const { ref: cardRef, sx, sy, handleMove, handleLeave } = useCardPointer();
   const {
-    ref: sceneRef,
-    sx: sceneSx,
-    sy: sceneSy,
-    handleMove: handleSceneMove,
-    handleLeave: handleSceneLeave,
-  } = useScenePointer();
+    ref: sectionRef,
+    sx: lightSx,
+    sy: lightSy,
+    handleMove: handleSectionMove,
+    handleLeave: handleSectionLeave,
+  } = useLightPointer();
 
   const shineX = useTransform(sx, [0, 1], ["0%", "100%"]);
   const shineY = useTransform(sy, [0, 1], ["0%", "100%"]);
-  // Deux couches de spéculaire plutôt qu'une seule tache diffuse : un point
-  // chaud étroit (comme la réflexion directe d'une source de lumière sur
-  // une surface polie) superposé à un halo large et doux (l'éclairage
-  // ambiant réfléchi) — c'est la combinaison des deux qui lit comme un
-  // vrai matériau physique plutôt qu'un simple dégradé qui suit la souris.
-  const shineBackground = useMotionTemplate`radial-gradient(70px circle at ${shineX} ${shineY}, rgba(255,255,255,0.55), transparent 45%), radial-gradient(260px circle at ${shineX} ${shineY}, rgba(255,255,255,0.2), transparent 65%)`;
-  const rotateX = useTransform(sy, [0, 1], [3.5, -3.5]);
-  const rotateY = useTransform(sx, [0, 1], [-3.5, 3.5]);
+  // Spéculaire à deux couches : un point chaud étroit (réflexion directe
+  // d'une source de lumière sur une surface polie) superposé à un halo
+  // large et doux (éclairage ambiant réfléchi).
+  const shineBackground = useMotionTemplate`radial-gradient(64px circle at ${shineX} ${shineY}, rgba(255,255,255,0.6), transparent 45%), radial-gradient(240px circle at ${shineX} ${shineY}, rgba(255,255,255,0.22), transparent 65%)`;
+  const rotateX = useTransform(sy, [0, 1], [4, -4]);
+  const rotateY = useTransform(sx, [0, 1], [-4, 4]);
 
-  const parallaxX = useTransform(sceneSx, [0, 1], [-6, 6]);
-  const parallaxY = useTransform(sceneSy, [0, 1], [-4, 4]);
+  const lightParallaxX = useTransform(lightSx, [0, 1], [-10, 10]);
+  const lightParallaxY = useTransform(lightSy, [0, 1], [-7, 7]);
 
-  // La boucle repart de zéro à chaque changement d'actif — qu'il vienne de
-  // l'autoplay ou d'un clic manuel — pour qu'un clic ne soit jamais suivi
-  // d'un changement automatique presque immédiat.
   useEffect(() => {
     const id = setInterval(() => {
       setActive((i) => (i + 1) % FIGURES.length);
@@ -281,27 +164,26 @@ export default function NotreHistoire() {
     return () => clearInterval(id);
   }, [active]);
 
+  const figure = FIGURES[active];
+
   return (
     <section
-      ref={sceneRef}
-      onMouseMove={handleSceneMove}
-      onMouseLeave={handleSceneLeave}
+      ref={sectionRef}
+      onMouseMove={handleSectionMove}
+      onMouseLeave={handleSectionLeave}
       className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24"
     >
-      {/* Scène architecturale abstraite — décor d'ambiance seulement
-          (demande explicite : "ne pas prendre toute la place"), une bande
-          basse et discrète, jamais l'élément principal. `z-0` sous le
-          contenu. */}
+      {/* Champ de lumière — plus aucune forme figurative, seulement une
+          source de lumière chaude qui éclaire la carte depuis le
+          haut-droite, se décale selon l'étape active, et respire très
+          légèrement au mouvement de la souris sur toute la section. */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 sm:h-40 lg:h-48"
-        style={{ x: parallaxX, y: parallaxY }}
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ x: lightParallaxX, y: lightParallaxY }}
       >
-        <AbstractScene
-          active={active}
-          prefersReducedMotion={prefersReducedMotion}
-          className="h-full w-full"
-        />
+        <div className="hs-light-halo hidden sm:block" />
+        <div className="hs-light-ground" />
       </motion.div>
 
       <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
@@ -327,112 +209,121 @@ export default function NotreHistoire() {
           </p>
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm text-encre-douce">
+        <div className="flex min-w-0 flex-col items-center">
+          <p className="self-start text-sm text-encre-douce">
             <span className="font-semibold text-laiton">
               {String(active + 1).padStart(2, "0")}
             </span>{" "}
             / {String(FIGURES.length).padStart(2, "0")}
           </p>
 
-          <div className="relative mt-16 flex items-end justify-between gap-1">
-            <div className="absolute inset-x-0 bottom-[7px] h-px bg-encre/8" />
+          {/* Carte unique — plus de rotation entre trois emplacements, un
+              seul objet fixe dont seul le contenu change. "Je préfère une
+              seule carte absolument parfaite plutôt que plusieurs bonnes
+              idées." */}
+          <div className="relative mt-8">
+            {/* Source de lumière — ancrée au conteneur de la carte (pas à
+                la section) pour garantir qu'elle reste visuellement collée
+                au coin haut-droit de l'objet qu'elle éclaire, quelle que
+                soit la largeur d'écran. C'est elle qui porte le décalage
+                entre étapes ("le seul élément que j'aime vraiment"). */}
             <motion.div
-              className="absolute bottom-[7px] left-0 h-px bg-laiton"
+              aria-hidden
+              className="hs-light-group pointer-events-none absolute -right-6 -top-10 sm:-right-10 sm:-top-14"
+              animate={{ x: LIGHT_OFFSETS[active].x, y: LIGHT_OFFSETS[active].y }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 45, damping: 16 }
+              }
+            >
+              <div className="hs-light-bloom" />
+              <div className="hs-light-core" />
+            </motion.div>
+            <div aria-hidden className="hs-card-base" />
+            <motion.div
+              ref={cardRef}
+              onMouseMove={handleMove}
+              onMouseLeave={handleLeave}
+              style={{ rotateX, rotateY, transformPerspective: 900 }}
+              initial={{ opacity: 0, y: 26, scale: 0.94, filter: "blur(14px)" }}
+              whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { duration: 1, ease: EASE_PREMIUM }
+              }
+            >
+              <GlassPanel
+                rounded="rounded-[52px_28px_56px_22px]"
+                className="hs-card w-[204px] px-8 py-10 text-center sm:w-[280px] sm:px-11 sm:py-12"
+              >
+                <motion.div
+                  aria-hidden
+                  className="hs-card-shine"
+                  style={{ background: shineBackground }}
+                />
+                <motion.div
+                  key={active}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : { duration: 0.5, delay: 0.08, ease: EASE_PREMIUM }
+                  }
+                >
+                  <p className="text-3xl font-semibold leading-snug text-encre sm:text-5xl">
+                    {figure.value}
+                  </p>
+                  <p className="eyebrow mt-3 text-xs text-encre-douce sm:text-sm">
+                    {figure.label}
+                  </p>
+                  <span
+                    aria-hidden
+                    className="mx-auto mt-4 block h-px w-7 bg-laiton/70"
+                  />
+                </motion.div>
+              </GlassPanel>
+            </motion.div>
+          </div>
+
+          {/* Rail de progression — remplace la timeline à trois cartes
+              fantômes. Une seule piste, un seul marqueur lumineux qui
+              glisse (même teinte que la lumière de la carte, pour que les
+              deux se sentent connectés), trois cibles de clic invisibles. */}
+          <div className="relative mt-10 h-6 w-full max-w-[220px] sm:mt-12">
+            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-encre/8" />
+            <motion.div
+              className="hs-rail-marker absolute top-1/2"
               animate={{
-                width: `${(active / (FIGURES.length - 1)) * 100}%`,
+                left: `${(active / (FIGURES.length - 1)) * 100}%`,
               }}
               transition={
-                prefersReducedMotion ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 260, damping: 28, mass: 0.7 }
               }
+              style={{ translateX: "-50%", translateY: "-50%" }}
             />
-
-            {FIGURES.map((figure, i) => {
-              const isActive = i === active;
-              return (
-                <button
-                  key={figure.label}
-                  type="button"
-                  onClick={() => setActive(i)}
-                  aria-label={`${figure.value} ${figure.label}`}
-                  aria-pressed={isActive}
-                  className="relative z-10 flex min-w-0 flex-1 flex-col items-center gap-3 sm:gap-5"
-                >
-                  {isActive ? (
-                    <motion.div
-                      ref={cardRef}
-                      layoutId="figure-card"
-                      onMouseMove={handleMove}
-                      onMouseLeave={handleLeave}
-                      style={{
-                        rotateX,
-                        rotateY,
-                        transformPerspective: 800,
-                      }}
-                      transition={
-                        prefersReducedMotion
-                          ? { duration: 0 }
-                          : { type: "spring", stiffness: 220, damping: 30, mass: 0.8 }
-                      }
-                    >
-                      <GlassPanel
-                        rounded="rounded-[48px_26px_52px_20px]"
-                        className="figure-card w-[176px] px-7 py-8 text-center sm:w-[248px] sm:px-10 sm:py-10"
-                      >
-                        <motion.div
-                          aria-hidden
-                          className="figure-card-mouse-shine"
-                          style={{ background: shineBackground }}
-                        />
-                        <motion.div
-                          key={active}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={
-                            prefersReducedMotion
-                              ? { duration: 0 }
-                              : { duration: 0.4, delay: 0.1, ease: "easeOut" }
-                          }
-                        >
-                          <p className="text-2xl font-semibold leading-snug text-encre sm:text-4xl">
-                            {figure.value}
-                          </p>
-                          <p className="eyebrow mt-2.5 text-xs text-encre-douce sm:text-sm">
-                            {figure.label}
-                          </p>
-                          <span
-                            aria-hidden
-                            className="mx-auto mt-3 block h-px w-6 bg-laiton/70"
-                          />
-                        </motion.div>
-                      </GlassPanel>
-                    </motion.div>
-                  ) : (
-                    <span aria-hidden className="block h-3" />
-                  )}
-                  <span className="relative flex h-4 w-4 shrink-0 items-center justify-center">
-                    {isActive && (
-                      <span className="scene-dot-glow absolute inset-[-6px] rounded-full" />
-                    )}
-                    <span
-                      className={`absolute inset-0 rounded-full border transition-colors duration-300 ${
-                        isActive ? "border-laiton" : "border-encre/20"
-                      }`}
-                    />
-                    <motion.span
-                      className="h-1.5 w-1.5 rounded-full bg-laiton"
-                      initial={false}
-                      animate={{ scale: isActive ? 1 : 0, opacity: isActive ? 1 : 0 }}
-                      transition={
-                        prefersReducedMotion
-                          ? { duration: 0 }
-                          : { type: "spring", stiffness: 400, damping: 26 }
-                      }
-                    />
-                  </span>
-                </button>
-              );
-            })}
+            {FIGURES.map((f, i) => (
+              <button
+                key={f.label}
+                type="button"
+                onClick={() => setActive(i)}
+                aria-label={`${f.value} ${f.label}`}
+                aria-pressed={i === active}
+                className="absolute top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                style={{ left: `${(i / (FIGURES.length - 1)) * 100}%` }}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
+                    i === active ? "bg-transparent" : "bg-encre/20"
+                  }`}
+                />
+              </button>
+            ))}
           </div>
         </div>
       </div>

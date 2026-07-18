@@ -367,63 +367,212 @@ body {
    lisait plus "carte flottante posée dessus" que "verre qui capte la
    lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
    presque passer inaperçu plutôt que se faire remarquer. */
-/* Quatrième refonte matière de la carte du chiffre actif. Malgré le verre
-   clair teinté crème du tour précédent, le client la voit toujours comme
-   "un rectangle blanc avec un effet de glow" — le problème n'est plus la
-   teinte mais l'absence de présence physique : un seul dégradé diagonal
-   plat et un halo uniforme ne suggèrent ni matière ni lumière crédible.
-   Trois changements structurels plutôt qu'un simple réglage d'opacité :
-   1) un second calque de dégradé vertical (haut → bas) est ajouté en plus
-      du diagonal existant, pour que le haut de la carte lise clairement
-      "plus proche de la lumière" et le bas "en ombre propre" — un objet
-      réel éclairé d'en haut, pas un aplat orienté au hasard ;
-   2) l'ombre portée passe de deux à trois couches (contact proche très
-      serré, ombre moyenne, halo large et diffus) au lieu d'une seule paire
-      valeur/flou — c'est cette superposition d'échelles, pas une ombre
-      plus grosse, qui donne l'impression qu'un vrai objet repose sur la
-      scène plutôt qu'un panneau plaqué dessus ;
-   3) l'anneau interne (`inset 0 0 0 1px`) ajouté simule une deuxième
-      épaisseur de verre légèrement en retrait de la bordure externe —
-      le genre de détail qui ne se remarque jamais consciemment mais qui
-      fait la différence entre "plat" et "épais". */
-.figure-card {
+/* Refonte totale de la section "Notre histoire" (deuxième repartie de zéro
+   sur ce chantier). La première refonte remplaçait le paysage low-poly par
+   des volumes architecturaux abstraits — jugés au retour client "posés là
+   sans réelle intention", "un rendu assez froid", ne dégageant "ni
+   architecture, ni luxe, ni élégance" ; la carte restait perçue comme "un
+   rectangle blanc avec des ombres et des dégradés, mais pas un matériau
+   exceptionnel" malgré quatre itérations. Consigne explicite : arrêter
+   d'itérer sur cette direction et repartir d'une page blanche, en ne
+   gardant que l'idée de la lumière qui se décale selon l'étape active.
+   Toute forme géométrique figurative disparaît : il ne reste qu'une
+   source de lumière et une seule carte, sur lesquels le brief demande
+   explicitement de pousser l'exécution ("pousse énormément le travail sur
+   la lumière", "améliore encore la qualité du Liquid Glass, qui reste le
+   point le plus faible de la section"). */
+
+/* Champ de lumière — remplace toute la scène géométrique précédente.
+   Ancré au conteneur de la carte plutôt qu'à la section entière (voir
+   `NotreHistoire.tsx`) : le premier essai positionnait la lumière "au
+   dessus de la carte" en coordonnées de section, ce qui la plaçait en
+   réalité dans le vide au-dessus, avec à peine un débordement visible sur
+   le coin de la carte — corrigé en la rendant enfant direct du wrapper de
+   la carte (`-right-10 -top-14`), collée à son coin. Deux calques (cœur
+   net + halo moyen) à des intensités volontairement hautes : le premier
+   essai (opacité 0.4/0.16) était quasiment invisible sur le fond clair de
+   la section — sur cette page, contrairement à un fond sombre, une source
+   de lumière crédible a besoin de beaucoup plus d'intensité pour se voir
+   du tout. */
+.hs-light-group {
+  position: relative;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.hs-light-core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  margin: -8px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fffaf0 0%, #ffe2ab 45%, #f3c892 75%, transparent 100%);
+  box-shadow:
+    0 0 20px 4px rgba(255, 226, 171, 0.9),
+    0 0 60px 18px rgba(243, 200, 146, 0.55),
+    0 0 120px 40px rgba(243, 200, 146, 0.28);
+}
+
+.hs-light-bloom {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 340px;
+  height: 340px;
+  margin: -170px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 234, 194, 0.5) 0%,
+    rgba(243, 200, 146, 0.26) 40%,
+    transparent 72%
+  );
+}
+
+/* Voile ambiant à l'échelle de la section — beaucoup plus discret que le
+   cœur/halo collés à la carte, juste de quoi teinter très légèrement l'air
+   autour plutôt qu'éclairer quoi que ce soit précisément. Position fixe
+   (ne se décale pas selon l'étape active, contrairement au cœur/halo).
+   Masqué sous `sm:` (voir NotreHistoire.tsx) : à taille fixe, il débordait
+   largement du viewport mobile et traversait le titre en haut de section —
+   `clamp()` limite aussi sa taille sur les largeurs intermédiaires (tablette)
+   où la mise en page reste une seule colonne étroite. */
+.hs-light-halo {
+  position: absolute;
+  right: 4%;
+  top: -6%;
+  width: clamp(360px, 55vw, 720px);
+  height: clamp(360px, 55vw, 720px);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(246, 217, 166, 0.14) 0%, transparent 62%);
+  pointer-events: none;
+}
+
+/* Lueur au sol sous la carte — remplace les anciens "reflets sur les
+   volumes". Statique (pas de mouvement propre), très diffuse : une trace
+   de lumière qui touche terre, pas une eau ni un reflet architectural. */
+.hs-light-ground {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 480px;
+  height: 140px;
+  transform: translateX(-38%);
+  background: radial-gradient(50% 100% at 50% 100%, rgba(243, 200, 146, 0.14) 0%, transparent 60%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+@keyframes hs-light-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.hs-light-bloom,
+.hs-light-halo {
+  animation: hs-light-breathe 10s ease-in-out infinite;
+}
+
+.hs-light-halo {
+  animation-duration: 16s;
+  animation-delay: -4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-light-bloom,
+  .hs-light-halo {
+    animation: none;
+  }
+}
+
+/* Panneau jumeau décalé derrière la carte — simule l'épaisseur réelle du
+   verre : on aperçoit une tranche de matière derrière le bord bas-droit,
+   comme un objet physique qui a du volume, plutôt qu'un panneau plat
+   plaqué sur la scène. `inset: 0` (même boîte exacte que la carte, pas un
+   `inset` asymétrique qui redimensionnerait la boîte) + `transform:
+   translate()` pour le décalage : un rayon de bordure en valeurs fixes
+   (`52px 28px…`) ne suit correctement le contour que si la boîte a la
+   même taille que celle pour laquelle il a été réglé — un inset asymétrique
+   change à la fois la position ET la taille, ce qui déforme les coins
+   (bug constaté et corrigé : coins visiblement décalés/pointus au premier
+   rendu). */
+.hs-card-base {
+  position: absolute;
+  inset: 0;
+  transform: translate(5px, 7px);
+  border-radius: 52px 28px 56px 22px;
+  background: linear-gradient(
+    165deg,
+    rgba(210, 195, 165, 0.34) 0%,
+    rgba(180, 165, 140, 0.24) 100%
+  );
+}
+
+/* La carte elle-même. Réfraction réelle : `url(#glass-distortion)` — le
+   même filtre SVG (`feTurbulence` + `feDisplacementMap`) déjà utilisé sur
+   la nav et les boutons glass du site, jusqu'ici jamais appliqué ici
+   puisque `backdrop-filter` était entièrement réécrit par cette classe
+   sans jamais inclure la référence au filtre. Sans intérêt tant que le
+   fond derrière la carte était un aplat `bg-ciel` uniforme (rien à
+   distordre) ; avec le champ de lumière juste derrière, la réfraction
+   déforme maintenant visiblement le halo — c'est ce qui fait lire "verre
+   qui courbe la lumière" plutôt que "panneau flou avec un dégradé peint
+   dessus". Dégradé vertical (clair en haut, plus dense en bas) en plus du
+   diagonal : la carte lit comme un objet éclairé d'en haut. */
+.hs-card {
   position: relative;
   overflow: visible;
-  background-color: rgba(255, 253, 247, 0.4);
+  background-color: rgba(255, 253, 247, 0.36);
   background-image:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.4) 0%,
-      rgba(255, 253, 247, 0.1) 45%,
-      rgba(250, 240, 220, 0.22) 100%
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 253, 247, 0.08) 42%,
+      rgba(250, 238, 216, 0.24) 100%
     ),
     linear-gradient(
       155deg,
-      rgba(255, 255, 255, 0.3) 0%,
-      rgba(255, 250, 240, 0.06) 55%,
-      rgba(255, 255, 255, 0.18) 100%
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 250, 240, 0.04) 55%,
+      rgba(255, 255, 255, 0.16) 100%
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
   box-shadow:
-    0 48px 78px -38px rgba(50, 42, 30, 0.26),
-    0 18px 32px -18px rgba(50, 42, 30, 0.16),
-    0 4px 10px -3px rgba(50, 42, 30, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 0 rgba(120, 100, 70, 0.12),
-    inset 0 0 40px rgba(255, 232, 195, 0.16),
-    inset 0 -16px 26px rgba(120, 100, 70, 0.07);
+    0 54px 84px -40px rgba(50, 42, 30, 0.28),
+    0 20px 34px -18px rgba(50, 42, 30, 0.17),
+    0 4px 10px -3px rgba(50, 42, 30, 0.13),
+    -0.6px -0.6px 0 rgba(255, 110, 90, 0.05),
+    0.6px 0.6px 0 rgba(90, 170, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(120, 100, 70, 0.13),
+    inset 0 0 42px rgba(255, 226, 180, 0.18),
+    inset 0 -18px 28px rgba(120, 100, 70, 0.08);
 }
 
-/* Deux temps de lumière superposés plutôt qu'un seul : le radial simule un
-   éclairage ambiant en haut à gauche (déjà présent), le linéaire diagonal
-   ajouté simule un vrai reflet — une bande de lumière qui "accroche" le
-   bord du verre à un angle, comme sur une plaque de verre réelle, plutôt
-   qu'une simple tache diffuse ("réflexion réaliste" demandée). */
-.figure-card::before {
+@supports (backdrop-filter: url(#glass-distortion)) {
+  .hs-card {
+    backdrop-filter: url(#glass-distortion) blur(18px) saturate(155%);
+    -webkit-backdrop-filter: blur(18px) saturate(155%);
+  }
+}
+
+/* Reflet fixe qui "accroche" le bord en diagonale, comme sur une plaque de
+   verre réelle sous un éclairage directionnel. */
+.hs-card::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -431,39 +580,36 @@ body {
   background:
     linear-gradient(
       118deg,
-      transparent 32%,
-      rgba(255, 255, 255, 0.22) 46%,
-      rgba(255, 255, 255, 0.05) 58%,
-      transparent 72%
+      transparent 30%,
+      rgba(255, 255, 255, 0.24) 46%,
+      rgba(255, 255, 255, 0.06) 58%,
+      transparent 74%
     ),
-    radial-gradient(125% 100% at 18% -12%, rgba(255, 255, 255, 0.38) 0%, transparent 50%);
+    radial-gradient(130% 105% at 20% -14%, rgba(255, 255, 255, 0.4) 0%, transparent 50%);
   pointer-events: none;
 }
 
-/* Halo externe recentré vers le bas : la scène en fond de section est la
-   source de lumière de la composition (soleil bas + voile chaud), donc la
-   carte doit sembler capter cette lumière par en dessous plutôt qu'être
-   éclairée dans le vide — un détail qui relie physiquement la carte à la
-   scène plutôt que de les traiter comme deux éléments indépendants. */
-.figure-card::after {
+/* Halo externe — capte la lumière du champ juste au-dessus plutôt que de
+   rayonner uniformément : biaisé vers le haut, là où se trouve
+   `.hs-light-group`. */
+.hs-card::after {
   content: "";
   position: absolute;
-  inset: -22px;
+  inset: -26px;
   background: radial-gradient(
-    140% 100% at 50% 118%,
-    rgba(255, 214, 160, 0.18) 0%,
-    transparent 68%
+    120% 90% at 62% -8%,
+    rgba(255, 220, 172, 0.22) 0%,
+    transparent 66%
   );
-  filter: blur(28px);
+  filter: blur(30px);
   z-index: -1;
   pointer-events: none;
 }
 
-/* Troisième calque de verre : le reflet mouse-tracké lui-même (fond posé
-   en `style` inline par NotreHistoire.tsx, calculé à partir de la
-   position du curseur). `mix-blend-mode: soft-light` pour qu'il se fonde
-   dans les couches déjà présentes plutôt que de flotter par-dessus. */
-.figure-card-mouse-shine {
+/* Reflet mouse-tracké (fond posé en `style` inline par NotreHistoire.tsx).
+   `mix-blend-mode: soft-light` pour se fondre dans les couches déjà
+   présentes plutôt que de flotter par-dessus. */
+.hs-card-shine {
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -471,71 +617,19 @@ body {
   mix-blend-mode: soft-light;
 }
 
-/* Fond de la section Notre histoire : reste `bg-ciel` (même classe que
-   Gammes, cf. commits précédents — "aucune divergence de teinte"). Le
-   décor lui-même a fait plusieurs allers-retours (colline/pins/rochers
-   figuratifs, puis suppression totale, puis retour sous forme de "scène
-   3D") avant de se stabiliser sur une composition architecturale abstraite
-   — quelques grands volumes low-poly en aplat, pas un paysage dessiné (voir
-   `AbstractScene` dans `NotreHistoire.tsx`). Les animations d'ambiance de
-   cette scène (lueur du soleil, respiration du voile de lumière) restent
-   volontairement en CSS pur plutôt qu'en JS/Framer Motion : elles n'ont
-   besoin d'aucune donnée dynamique (juste "vivre doucement en boucle"), et
-   une media query `prefers-reduced-motion` suffit à les couper proprement —
-   pas de risque de désaccord serveur/client comme celui déjà rencontré et
-   corrigé sur le reflet mouse-tracké de la carte (cf plus bas). */
-@keyframes scene-glow-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-
-.scene-sun-glow {
-  animation: scene-glow-pulse 9s ease-in-out infinite;
-}
-
-/* Le voile de lumière chaude qui traverse la scène respire très
-   lentement (14s, amplitude d'opacité réduite) — "la lumière évolue
-   doucement" sans jamais devenir une pulsation qui se remarque. */
-@keyframes scene-light-breathe {
-  0%,
-  100% {
-    opacity: 0.75;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.scene-light-wash {
-  animation: scene-light-breathe 14s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scene-sun-glow,
-  .scene-light-wash {
-    animation: none;
-  }
-}
-
-/* Lueur derrière le point actif de la timeline — "un point actif plus
-   vivant" : un halo chaud diffus qui pulse doucement, dans le même esprit
-   que la lueur du soleil de la scène (même teinte), pour que la timeline
-   se sente reliée à la scène plutôt que comme un composant isolé. */
-.scene-dot-glow {
-  background: radial-gradient(circle, rgba(255, 202, 122, 0.45), transparent 70%);
-  animation: scene-glow-pulse 9s ease-in-out infinite;
+/* Marqueur du rail de progression — un point lumineux qui glisse plutôt
+   qu'un point qui change simplement d'état, dans la même teinte que le
+   champ de lumière au-dessus (les deux se lisent comme une seule et même
+   source, pas deux éléments décoratifs indépendants). */
+.hs-rail-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff4de 0%, #e8b978 70%);
+  box-shadow:
+    0 0 0 4px rgba(232, 185, 120, 0.14),
+    0 0 16px 3px rgba(232, 185, 120, 0.4);
   pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .scene-dot-glow {
-    animation: none;
-  }
 }
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du

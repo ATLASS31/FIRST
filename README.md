@@ -878,6 +878,96 @@ npm run dev
   plus récentes sont conservées dans une ref, appliquées au prochain tick
   plutôt qu'à chaque événement) — bénéficie à toutes les cartes du site,
   pas seulement au calculateur.
+- **Notre histoire : repartir de zéro plutôt que d'itérer encore.** Après
+  la composition architecturale abstraite du tour précédent (volumes
+  low-poly + carte), retour client sans détour : "les volumes en bas
+  paraissent posés là sans réelle intention... je ne ressens ni
+  l'architecture, ni le luxe, ni l'élégance", la carte "un rectangle blanc
+  avec des ombres et des dégradés, mais pas un matériau exceptionnel", et
+  la demande explicite d'arrêter d'itérer sur cette version pour repartir
+  d'une page blanche, en ne gardant que l'idée de la lumière qui se décale
+  selon l'étape active ("le seul élément que j'aime vraiment"). Toute
+  forme géométrique figurative disparaît (`AbstractScene`, ses volumes,
+  son plan de sol, sa réflexion d'eau) ; il ne reste qu'une source de
+  lumière et une seule carte, sur lesquels le brief suivant demandait
+  explicitement de pousser l'exécution : plus de travail sur la lumière,
+  matières comme un rendu architectural, vraie présence physique aux
+  volumes, meilleur Liquid Glass ("le point le plus faible"), micro-
+  animations soignées.
+
+  **Timeline simplifiée en rail de progression.** La carte ne "flotte"
+  plus entre trois emplacements liés à la timeline (`layoutId` + FLIP) :
+  c'est maintenant un objet fixe dont seul le contenu change au clic/à
+  l'autoplay ("je préfère une seule carte absolument parfaite plutôt que
+  plusieurs bonnes idées"), et la timeline devient un simple rail sous la
+  carte — une piste fine, un marqueur lumineux (même teinte que la source
+  de lumière au-dessus, pour que les deux se lisent comme une seule chose)
+  qui glisse entre trois positions, trois cibles de clic invisibles.
+
+  **La carte, cinquième refonte de matière — la première à utiliser une
+  vraie réfraction.** Le site a déjà un filtre SVG de réfraction réelle
+  (`feTurbulence` + `feDisplacementMap`, `GlassFilter.tsx`, `url(#glass-
+  distortion)`), utilisé depuis longtemps sur la nav et les boutons glass
+  — jamais sur cette carte, puisque `.figure-card` réécrivait entièrement
+  `backdrop-filter` sans jamais inclure la référence au filtre. Sans
+  intérêt tant que le fond derrière la carte était un aplat `bg-ciel`
+  uniforme (rien à distordre) ; maintenant qu'un champ de lumière se
+  trouve juste derrière, la réfraction déforme visiblement ce halo — c'est
+  ce qui fait enfin lire "verre qui courbe la lumière" plutôt que "panneau
+  flou avec un dégradé peint dessus". Présence physique renforcée par un
+  second panneau (`.hs-card-base`), un jumeau décalé derrière le coin
+  bas-droit qui simule l'épaisseur réelle du verre — **un vrai bug trouvé
+  et corrigé pendant la construction** : le premier essai positionnait ce
+  jumeau avec un `inset` asymétrique (`6px -4px -8px 4px`), qui change à
+  la fois la position ET la taille de la boîte ; un rayon de bordure en
+  valeurs fixes ne suit correctement un contour que si la boîte a
+  exactement la taille pour laquelle il a été réglé, donc les coins
+  rendaient visiblement décalés/pointus. Corrigé en gardant `inset: 0`
+  (boîte identique à la carte) et en déplaçant le jumeau via `transform:
+  translate()` à la place. Reflet mouse-tracké enrichi (deux couches
+  spéculaires : point chaud étroit à 64px + halo large à 240px, contre une
+  seule couche avant) et léger fil chromatique (bordures rouge/bleu à
+  ±0.6px et 0.05 d'opacité) sur les arêtes à fort contraste — un détail
+  d'optique réelle, volontairement au bord du perceptible.
+
+  **La lumière — poussée bien plus fort, et un vrai bug de position
+  corrigé.** Premier essai : cœur + halo positionnés en coordonnées de la
+  section entière (`right/top` en %), à une intensité calquée sur les
+  habitudes du reste du site (halo à 0.16 d'opacité) — quasiment invisible
+  une fois vérifié à l'écran, et en plus positionné dans le vide au-dessus
+  de la carte plutôt que collé à elle. Deux corrections : la source de
+  lumière (cœur + halo proche) devient un enfant direct du conteneur de la
+  carte (`-right-10 -top-14`), garantissant qu'elle reste collée à son
+  coin quelle que soit la largeur d'écran — c'est elle qui porte le
+  décalage entre étapes ; et son intensité est nettement relevée (`box-
+  shadow` à trois rayons superposés sur le cœur, dégradé à trois arrêts
+  sur le halo) puisque, contrairement à un fond sombre, une source de
+  lumière crédible a besoin de beaucoup plus d'intensité pour se voir du
+  tout sur un fond aussi clair que `bg-ciel`. Un second voile, très
+  discret et à l'échelle de toute la section (`.hs-light-halo`), reste à
+  taille fixe (`clamp()`) et à opacité basse pour teinter légèrement l'air
+  ambiant sans rien éclairer précisément.
+
+  **Un vrai bug de débordement mobile trouvé et corrigé.** Ce second voile
+  ambiant (`.hs-light-halo`), à 720px fixes, débordait largement d'un
+  viewport mobile de 390px et traversait le titre en haut de section — 
+  visible et confirmé par capture d'écran (le halo passait littéralement à
+  travers "Le modulaire bois"). Masqué sous `sm:` (`hidden sm:block`) et
+  borné par `clamp(360px, 55vw, 720px)` au-delà, pour qu'il reste
+  proportionné à des largeurs intermédiaires (tablette) sans jamais
+  redevenir plus grand que le viewport qui le contient.
+
+  **Entrée choreographiée.** La carte se matérialise au scroll
+  (`whileInView`, une fois) plutôt que d'être statique au chargement :
+  échelle 0.94→1, flou 14px→0, fondu, easing "expo-out"
+  (`[0.16, 1, 0.3, 1]`, la même famille de courbe que beaucoup de sites à
+  forte finition utilisent pour une décélération qui ne se sent jamais
+  mécanique). Pattern d'hydratation déjà établi et sûr (`whileInView`
+  démarre toujours dans l'état `initial`, identique sur le rendu serveur
+  et le premier rendu client avant hydratation, quel que soit
+  `prefers-reduced-motion` — aucun risque du type déjà rencontré/corrigé
+  sur le reflet mouse-tracké). Reconfirmé par `check-reduced-motion2.mjs` :
+  aucun nouveau mismatch d'hydratation propre à cette section.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
