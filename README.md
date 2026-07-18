@@ -1096,6 +1096,69 @@ npm run dev
   s'appuie donc à nouveau directement sur la connaissance du sujet
   (construction d'objets 3D en CSS, patterns de navigation premium)
   plutôt que sur l'inspection d'images générées.
+- **Notre histoire : l'objet 3D devient la carte, plus aucune navigation
+  séparée.** Retour client positif et explicite sur la direction ("l'objet
+  3D fonctionne beaucoup mieux que le soleil") avec la consigne de la
+  pousser jusqu'au bout plutôt que de la garder comme accompagnement à
+  côté d'une carte séparée : toutes les faces dans le même matériau Liquid
+  Glass (plus de variantes bronze/pierre), le contenu directement gravé
+  sur chaque face, suppression complète de la barre de navigation en
+  dessous.
+
+  **Un vrai bug trouvé et corrigé pendant la construction** : au premier
+  rendu, le texte des trois faces apparaissait superposé et mélangé,
+  certains fragments inversés en miroir ("4-12 semaines" lisible à
+  l'envers par-dessus "20 ans"). Cause : `.hs-object-face` n'avait pas
+  `backface-visibility: hidden`, donc le dos de chaque face tournée à
+  l'opposé de l'écran restait rendu — et comme le matériau Liquid Glass
+  est volontairement translucide, ce dos (avec son texte en miroir) se
+  voyait par transparence à travers la face avant. Corrigé en une ligne
+  (`backface-visibility: hidden` + préfixe `-webkit-`), revérifié à
+  l'écran sur les trois faces : plus aucun texte parasite.
+
+  **Unification du matériau.** L'ancienne carte séparée (`.hs-card`,
+  `GlassPanel`) disparaît ; sa recette complète (double dégradé,
+  réfraction SVG réelle `url(#glass-distortion)`, ombre à cinq couches,
+  fil chromatique, anneau de bord en gradient-border, reflet mouse-tracké)
+  est reprise telle quelle par `.hs-object-face`, appliquée identiquement
+  aux trois faces — plus aucune variation de teinte entre elles. L'objet
+  grandit en conséquence pour porter le texte (204px/280px de large,
+  mêmes dimensions que l'ancienne carte ; hauteur et rayon du prisme
+  recalculés en conséquence, `R = largeur / (2 × tan 60°)`).
+
+  **Navigation totalement absorbée par l'objet.** Les trois segments
+  numérotés du tour précédent disparaissent ; l'objet entier devient un
+  `<button>` — cliquer fait avancer d'une étape, la rotation de 120° est
+  elle-même la transition de contenu. Conséquence directe : le fondu/
+  rebond de texte qui accompagnait le changement de contenu sur l'ancienne
+  carte est retiré, il n'a plus de raison d'être quand le changement de
+  face fait déjà tout le travail visuel. Accessibilité : `aria-label`
+  dynamique sur le bouton décrivant l'étape courante et l'action
+  ("Étape 2 sur 3 : ... Cliquer pour voir l'étape suivante"), contenu de
+  chaque face marqué `aria-hidden` (redondant avec le label, et le texte
+  des faces non visibles ne doit pas être exposé aux lecteurs d'écran).
+
+  **Rotation d'ambiance retirée.** Le lent tour perpétuel du tour
+  précédent (48s par tour) avait du sens sur un petit objet purement
+  décoratif ; il n'en a plus sur l'élément qui porte maintenant le texte à
+  lire — un objet qui dérive en permanence aurait rendu la lecture
+  inconfortable. L'objet reste donc parfaitement stable entre deux
+  étapes ; seule l'inclinaison bornée au mouvement de la souris continue
+  de bouger.
+
+  **Passe de polish via les compétences `make-interfaces-feel-better` et
+  `frontend-design`** (ajoutées par le client en cours de session, avec
+  consigne explicite de les exploiter) : `-webkit-font-smoothing:
+  antialiased` ajouté globalement sur `html` (absent jusqu'ici, recommandé
+  pour un rendu net des polices sur macOS) ; `text-balance` sur le chiffre
+  de chaque face pour un retour à la ligne plus équilibré quand le texte
+  est long ("4–12 semaines") ; état tactile ajouté sur le bouton-objet,
+  absent jusqu'ici alors qu'il porte maintenant toute l'interaction
+  (`whileHover` léger agrandissement, `whileTap` compression — non
+  soumis à `prefers-reduced-motion`, cohérent avec le reste du site où un
+  effet piloté directement par la souris/le clic n'est pas ce que ce
+  réglage d'accessibilité vise). Vérifié qu'aucun `transition: all` ne
+  s'était introduit dans le CSS ajouté cette session (déjà absent).
 
 ## Audit du 2026-07-17 : bugs et corrections
 
