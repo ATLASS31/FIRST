@@ -1159,6 +1159,140 @@ npm run dev
   effet piloté directement par la souris/le clic n'est pas ce que ce
   réglage d'accessibilité vise). Vérifié qu'aucun `transition: all` ne
   s'était introduit dans le CSS ajouté cette session (déjà absent).
+- **Notre histoire : abandon complet de l'objet 3D CSS, pivot vers une
+  scène Three.js/React Three Fiber en temps réel — le tour le plus profond
+  sur cette section.** Trois échanges successifs avant la moindre ligne de
+  code.
+
+  **1. Critique stratégique, sans filtre.** Sur demande explicite du
+  client ("mets-toi à la place d'un juré Awwwards/FWA", "oublie les
+  contraintes actuelles, ne parle pas de faisabilité, arrête de penser
+  landing page"), audit honnête de pourquoi "Notre histoire" ne produisait
+  pas de "wow en 5 secondes" malgré plusieurs tours de polish : la section
+  restait fondamentalement une mise en page classique (texte + objet
+  décoratif) habillée de bons matériaux, pas une expérience. Proposition de
+  trois directions radicales inspirées d'un dream-team fictif
+  (Jony Ive/Apple Design, Active Theory, Dogstudio, Resn), puis reformulée
+  comme un moment de keynote Apple de 60 secondes.
+
+  **2. Premier concept retenu, puis corrigé sur le fond.** Un premier
+  concept ("anatomie du mur" : une coupe qui révèle couche par couche
+  l'ossature Douglas, l'isolant, le bardage) a été jugé "probablement la
+  meilleure proposition jusqu'ici" côté exécution, mais rejeté sur le fond
+  : "Bellora ne vend pas des matériaux. Bellora vend une maison. Bellora
+  vend une émotion, une nouvelle vie. Les matériaux doivent soutenir cette
+  émotion, pas devenir le sujet principal." Recentré sur ce qui fait rêver
+  un futur propriétaire plutôt qu'un architecte, tout en gardant la
+  philosophie de "démonstration physique" jugée juste — devenu
+  **"La maison qui vous ressemble"** : une séquence pilotée par le scroll
+  qui montre une pièce vide qui prend progressivement vie (première lumière
+  d'aube, un fauteuil qui capte la lumière, un module qui s'attache,
+  saisons qui défilent en accéléré pendant que la structure reste intacte,
+  une phrase finale unique). Validé ("ça me parle oui").
+
+  **3. Fondations avant construction.** Le client a explicitement demandé
+  de poser "les bonnes fondations pour ce chantier" avant toute
+  implémentation. Trois options de source de contenu ont été proposées
+  (visuels fixes organisés, tournage réel externe, vidéo continue générée
+  par IA) — toutes rejetées. Le client a lui-même proposé une quatrième
+  option : une véritable scène Three.js/React Three Fiber en temps réel,
+  "optimisée, avec quelques éléments seulement", et a demandé une
+  évaluation honnête (faisabilité, avantages/inconvénients, recommandation
+  personnelle pour un niveau Awwwards). Réponse : oui, c'est réaliste (React
+  19 du projet est compatible avec les dernières versions de `three` et
+  `@react-three/fiber` — vérifié via `npm view` avant toute installation ;
+  la contrainte webpack/StackBlitz du projet cible les bindings natifs, pas
+  les dépendances JS pures, donc aucun conflit), et c'est bien la
+  recommandation propre à privilégier pour viser Awwwards plutôt qu'une
+  vidéo pré-rendue qui ne serait jamais interactive. Validation explicite :
+  *"Oui, lance-toi sur le squelette minimal. Je valide clairement la
+  direction Three.js / React Three Fiber en temps réel, mais je veux qu'on
+  avance de manière très contrôlée."*
+
+  **Squelette minimal — phase 1 seulement, rien de plus.** Toute l'ancienne
+  mise en page (texte + carte/objet 3D CSS) est retirée, aucune ligne
+  gardée pour une direction explicitement abandonnée. `HouseScene.tsx`
+  (nouveau fichier, `src/components/notre-histoire/`) construit uniquement
+  le premier temps du storyboard validé : une coquille architecturale vide
+  (cinq plans en primitives — sol, mur du fond, deux murs latéraux, aucune
+  géométrie importée ni texture, dans l'esprit abstrait déjà établi sur le
+  reste du site) sous une lumière d'aube (une directionnelle chaude et
+  basse, une hémisphère douce, un ambiant faible), avec une caméra qui
+  dérive très légèrement selon la progression du scroll dans la section —
+  juste de quoi prouver que le pipeline scroll → scène 3D fonctionne
+  réellement, avant de lui confier la mise en scène complète des six temps
+  dans une phase ultérieure. Pas de fauteuil, pas de module qui s'ajoute,
+  pas de cycle des saisons à ce stade.
+
+  Trois décisions techniques structurent ce socle : import dynamique sans
+  SSR (`next/dynamic(..., { ssr: false })`, WebGL n'existe pas côté
+  serveur) ; isolation du poids (`HouseScene.tsx` est le seul fichier du
+  projet à importer `three`/`@react-three/fiber` — vérifié après un
+  build de production que les deux chunks concernés, ~730 Ko à eux deux,
+  n'apparaissent que dans le manifeste de chargement différé de
+  `NotreHistoire`, jamais dans le bundle d'aucune autre route) ; repli en
+  cascade avant même de tenter de charger la scène (`prefers-reduced-motion`
+  actif OU `getContext("webgl")` indisponible → panneau statique neutre à
+  la place, testé une seule fois au montage). Cohérent avec la règle déjà
+  établie sur ce projet : ne jamais faire dépendre la présence d'un nœud
+  DOM d'une valeur résolue différemment entre le rendu serveur et le
+  premier rendu client avant hydratation (`canRender3D` initialisé à
+  `false`, basculé uniquement dans un `useEffect` post-montage).
+
+  **Un bug de cadrage caméra trouvé et corrigé pendant la construction.**
+  Le premier essai de proportions (sol 9×7, caméra à distance 5.5, fov 38)
+  produisait un rendu illisible — deux aplats de couleur sans profondeur
+  visible, capturé à l'écran. Cause identifiée par le calcul : à cette
+  distance/fov, le mur du fond remplissait presque tout le cadre,
+  repoussant les murs latéraux hors champ ou à l'extrême bord. Corrigé en
+  resserrant la pièce à une échelle de diorama plus humaine (sol 5×4, murs
+  latéraux à x=±2.5, ouverture au premier plan en z=0) et en repositionnant
+  la caméra (`[-0.5, 0.3, 3.4]`, fov 44) — revérifié à l'écran : une pièce
+  intérieure correctement lisible, avec les deux murs latéraux qui
+  convergent visiblement en perspective (un éclairé, un dans l'ombre de la
+  directionnelle).
+
+  **Vérifications de la phase 1, une par une :**
+  - *Réactivité au scroll* : capture de la même zone de canevas à deux
+    progressions de scroll différentes, diff pixel par pixel (`Pillow`) —
+    différence confirmée (écart moyen 7.1, écart max 182 sur 0-255), la
+    caméra dérive donc réellement en fonction du scroll, pas seulement au
+    premier rendu.
+  - *Repli `prefers-reduced-motion`* : `page.emulateMedia({reducedMotion:
+    "reduce"})` — le panneau statique au dégradé neutre s'affiche à la
+    place du canevas, confirmé à l'écran ; aucune erreur d'hydratation
+    dans l'arbre `NotreHistoire`/`HouseScene` (la seule erreur d'hydratation
+    présente dans les logs vient du `Hero`, déjà documentée comme bug
+    pré-existant hors scope, tâche #94).
+  - *Mobile* (390×844) : aucun débordement horizontal
+    (`scrollWidth`/`clientWidth`), la coquille s'affiche correctement
+    empilée sous le texte.
+  - *Régression complète* : les 10 routes du site chargées en séquence,
+    zéro nouvelle erreur console — les seules erreurs restantes
+    (`ERR_TUNNEL_CONNECTION_FAILED`, `403`) viennent de médias Higgsfield
+    déjà générés avant ce tour et bloqués par la politique réseau de ce
+    sandbox (limitation déjà documentée), confirmé en isolant la requête en
+    échec (`d8j0ntlcm91z4.cloudfront.net/.../*.mp4`) — sans rapport avec
+    Three.js.
+  - *Build de production* : `next build` échoue sur une erreur TypeScript
+    dans `GlassPanel.tsx` (`TS2322`) — confirmé pré-existant et sans
+    rapport avec ce tour en rejouant le même build sur le commit d'avant
+    (`git stash` puis build : échec identique, ligne par ligne). Pour
+    quand même vérifier l'isolation du bundle malgré ce blocage,
+    `typescript.ignoreBuildErrors` a été activé temporairement le temps
+    d'un seul build d'inspection, puis immédiatement annulé (`next.config.ts`
+    revenu à l'identique, vérifié par `git diff` sans écart) — ce n'est pas
+    une correction, seulement un contournement local et non committé pour
+    lire le manifeste de chunks.
+
+  Le texte à gauche de la section (deux paragraphes sur l'ossature Douglas
+  et l'isolation RE2020) reste pour l'instant celui de l'ancienne version :
+  explicitement documenté en commentaire comme un placeholder temporaire,
+  pas la maquette finale — la vraie mise en page ("une seule phrase à la
+  fin", plein cadre) et les cinq temps restants du storyboard (premier
+  signe de vie, chaleur qui s'installe, module qui s'attache, saisons
+  accélérées, révélation finale) sont volontairement reportés à une
+  prochaine étape contrôlée, sur confirmation du client.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
