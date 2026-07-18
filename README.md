@@ -1293,6 +1293,94 @@ npm run dev
   signe de vie, chaleur qui s'installe, module qui s'attache, saisons
   accélérées, révélation finale) sont volontairement reportés à une
   prochaine étape contrôlée, sur confirmation du client.
+- **Notre histoire : validation technique de la phase 1, mais refus de la
+  direction artistique — retour en arrière volontaire avant de continuer à
+  coder.** Le client a validé le socle Three.js sans réserve, mais a
+  rejeté la coquille elle-même : *"ce que je vois aujourd'hui ressemble
+  davantage à une boîte vide qu'à une expérience premium [...] le problème
+  n'est pas Three.js, le problème est que cette scène ne raconte encore
+  rien."* Consigne explicite : ne plus écrire une seule ligne de code
+  avant de comparer quatre directions artistiques complètement
+  différentes sous forme de croquis simples.
+
+  **Comparatif présenté hors du dépôt, comme un Artifact HTML** — pas de
+  code produit dans cette passe, uniquement quatre concepts sous forme de
+  "planches" avec mini-storyboard en trois temps chacune (SVG, primitives
+  géométriques simples, pas de mesh 3D) : *L'écrin* (un module qui s'ouvre
+  comme un coffret précieux), *La coupe habitée* (une maison de poupée qui
+  s'entrouvre sur une pièce vécue, pas sur ses matériaux — la version
+  corrigée de l'idée "anatomie du mur" abandonnée plus haut), *La façade
+  qui émerge* (la brume, déjà signature du site, se retire sur une vraie
+  maison), *L'assemblage suspendu* (des modules qui s'assemblent en vol,
+  seule direction montrant littéralement "modulaire"). Recommandation
+  personnelle donnée en toute franchise à la fin du comparatif (penchant
+  pour "la coupe habitée").
+- **Direction retenue : fusion de deux concepts, sous contrainte de
+  retenue absolue façon Apple.** Le client a choisi *L'écrin* et
+  *L'assemblage suspendu*, avec un garde-fou explicite répété plusieurs
+  fois dans le message : *"Apple, pas démonstration technique [...]
+  Est-ce qu'Apple ferait ce choix si Apple vendait une maison ?"* — pas de
+  meubles visibles à l'ouverture, pas de "notice IKEA" si des éléments
+  s'assemblent. Proposition d'un récit fusionné en cinq temps validée
+  telle quelle : **Objet → Mystère → Ouverture → Révélation → Maison**.
+  Cahier des charges explicite pour toute la suite du chantier : très peu
+  d'éléments, beaucoup d'espace vide, matériaux irréprochables, lumière
+  exceptionnelle, mouvements extrêmement lents, aucun effet "wow" gratuit
+  — et consigne de consacrer plusieurs itérations à la seule
+  composition/matière/lumière avant d'ajouter la moindre narration.
+
+  **Itération 1 : uniquement le premier temps, "Objet".** L'ancienne
+  coquille architecturale (`HouseScene.tsx`) est entièrement supprimée,
+  remplacée par `MonolithScene.tsx` — un unique volume élancé et fermé, au
+  repos, sans couture visible (elle n'apparaîtra qu'à l'itération
+  "Ouverture"). Géométrie construite via `THREE.Shape` (un rectangle à
+  coins arrondis, quatre `quadraticCurveTo`) extrudée avec bevel
+  (`ExtrudeGeometry`) plutôt qu'un `BoxGeometry` brut — les arêtes
+  adoucies sont ce qui distingue un objet "irréprochable" d'un pavé
+  générique. `MeshPhysicalMaterial` avec un `clearcoat` modéré pour une
+  matière lisse et dense plutôt que plastique.
+
+  **Un vrai bug de lumière trouvé et corrigé en cours de réglage.** Le
+  premier rendu était uniformément "lavé" — un dégradé gris clair couvrant
+  toute la face plutôt qu'un reflet contenu. Cause de fond : une lumière
+  directionnelle (rayons parallèles) donne, sur une face plane, un reflet
+  spéculaire strictement uniforme sur toute la surface — impossible d'y
+  dessiner un reflet localisé comme en photographie produit. Remplacée par
+  une **`RectAreaLight`** (source rectangulaire avec une vraie position et
+  une vraie taille, via `RectAreaLightUniformsLib.init()`), dont le reflet
+  se contient naturellement en un dégradé le long d'une arête. En isolant
+  chaque source une par une (tout à zéro, puis une seule à la fois) pour
+  diagnostiquer la persistance du "lavage", un second bug est apparu :
+  `scene.environment` (un environnement de réflexion généré localement via
+  `RoomEnvironment`/`PMREMGenerator`, sans HDRI externe) continuait
+  d'éclairer fortement le matériau même avec `envMapIntensity={0}` sur le
+  `MeshPhysicalMaterial` — retirer entièrement `scene.environment` a fait
+  chuter l'objet à un noir quasi total, confirmant qu'il était le vrai
+  responsable. Plutôt que de creuser plus loin cette interaction
+  (`envMapIntensity` non respecté), l'environnement synthétique a été
+  purement et simplement retiré du chantier : plus simple, entièrement
+  déterministe, cohérent avec l'esprit "très peu d'éléments" appliqué
+  aussi aux sources de lumière elles-mêmes. L'éclairage final ne repose
+  que sur quatre sources explicites (`RectAreaLight` chaude en clé,
+  directionnelle froide très faible en contre-jour, ambiante discrète,
+  directionnelle zénithale douce pour l'ombre de contact).
+
+  **Composition resserrée après un premier cadrage bien trop serré** — le
+  tout premier essai remplissait ~93% de la hauteur du cadre, à l'opposé
+  de "beaucoup d'espace vide" (demande explicite) ; caméra reculée
+  (`fov 30`, distance 8.2 au lieu de 4.3) pour un objet qui n'occupe plus
+  qu'une fraction du cadre, entouré de vide silencieux. Repli
+  `prefers-reduced-motion`/sans WebGL mis à jour pour refléter le nouveau
+  parti pris sombre (dégradé anthracite au lieu de l'ancien dégradé clair
+  hérité de la coquille architecturale).
+
+  **Vérifications :** `tsc --noEmit` et `eslint` propres (seule l'erreur
+  `GlassPanel.tsx` déjà documentée comme pré-existante subsiste) ;
+  vérifié à l'écran que le repli `prefers-reduced-motion` affiche bien le
+  nouveau panneau sombre sans canevas dans la section (aucune régression
+  d'hydratation propre à `NotreHistoire`) ; mobile 390×844 sans
+  débordement horizontal ; régression complète sur les 10 routes du
+  site, aucune nouvelle erreur console.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
