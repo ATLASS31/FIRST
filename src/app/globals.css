@@ -382,117 +382,140 @@ body {
    la lumière", "améliore encore la qualité du Liquid Glass, qui reste le
    point le plus faible de la section"). */
 
-/* Champ de lumière — remplace toute la scène géométrique précédente.
-   Ancré au conteneur de la carte plutôt qu'à la section entière (voir
-   `NotreHistoire.tsx`) : le premier essai positionnait la lumière "au
-   dessus de la carte" en coordonnées de section, ce qui la plaçait en
-   réalité dans le vide au-dessus, avec à peine un débordement visible sur
-   le coin de la carte — corrigé en la rendant enfant direct du wrapper de
-   la carte (`-right-10 -top-14`), collée à son coin. Deux calques (cœur
-   net + halo moyen) à des intensités volontairement hautes : le premier
-   essai (opacité 0.4/0.16) était quasiment invisible sur le fond clair de
-   la section — sur cette page, contrairement à un fond sombre, une source
-   de lumière crédible a besoin de beaucoup plus d'intensité pour se voir
-   du tout. */
-.hs-light-group {
+/* Objet 3D — remplace le champ de lumière du tour précédent. Retour
+   client : un halo chaud posé sur un fond clair "attire l'œil mais
+   n'apporte pas de valeur" ; demande explicite d'un véritable volume qui
+   change d'orientation à chaque étape plutôt qu'un halo qui se décale.
+   Prisme triangulaire en CSS 3D pur (`transform-style: preserve-3d`,
+   aucune dépendance WebGL/Three.js ajoutée — le projet n'en avait aucune,
+   et un moteur 3D complet pour un seul élément décoratif aurait été
+   disproportionné face à ce qu'un prisme CSS peut déjà livrer
+   honnêtement). Perspective posée sur `.hs-object-scene`, chaque couche de
+   rotation sur son propre axe (voir le commentaire détaillé dans
+   `NotreHistoire.tsx`) pour composer sans conflit : inclinaison souris →
+   rotation d'étape (un tiers de tour exact, 120°, une face différente
+   fait face à l'écran) → rotation d'ambiance continue très lente. */
+.hs-object-scene {
   position: relative;
-  width: 1px;
-  height: 1px;
+  width: 130px;
+  height: 150px;
+  perspective: 700px;
   pointer-events: none;
 }
 
-.hs-light-core {
+.hs-object-tilt,
+.hs-object-step,
+.hs-object-idle {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 16px;
-  height: 16px;
-  margin: -8px;
-  border-radius: 999px;
-  background: radial-gradient(circle, #fffaf0 0%, #ffe2ab 45%, #f3c892 75%, transparent 100%);
-  box-shadow:
-    0 0 20px 4px rgba(255, 226, 171, 0.9),
-    0 0 60px 18px rgba(243, 200, 146, 0.55),
-    0 0 120px 40px rgba(243, 200, 146, 0.28);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
 }
 
-.hs-light-bloom {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 340px;
-  height: 340px;
-  margin: -170px;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 234, 194, 0.5) 0%,
-    rgba(243, 200, 146, 0.26) 40%,
-    transparent 72%
-  );
-}
-
-/* Voile ambiant à l'échelle de la section — beaucoup plus discret que le
-   cœur/halo collés à la carte, juste de quoi teinter très légèrement l'air
-   autour plutôt qu'éclairer quoi que ce soit précisément. Position fixe
-   (ne se décale pas selon l'étape active, contrairement au cœur/halo).
-   Masqué sous `sm:` (voir NotreHistoire.tsx) : à taille fixe, il débordait
-   largement du viewport mobile et traversait le titre en haut de section —
-   `clamp()` limite aussi sa taille sur les largeurs intermédiaires (tablette)
-   où la mise en page reste une seule colonne étroite. */
-.hs-light-halo {
-  position: absolute;
-  right: 4%;
-  top: -6%;
-  width: clamp(360px, 55vw, 720px);
-  height: clamp(360px, 55vw, 720px);
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(246, 217, 166, 0.14) 0%, transparent 62%);
-  pointer-events: none;
-}
-
-/* Lueur au sol sous la carte — remplace les anciens "reflets sur les
-   volumes". Statique (pas de mouvement propre), très diffuse : une trace
-   de lumière qui touche terre, pas une eau ni un reflet architectural. */
-.hs-light-ground {
-  position: absolute;
-  left: 50%;
-  bottom: 4%;
-  width: 480px;
-  height: 140px;
-  transform: translateX(-38%);
-  background: radial-gradient(50% 100% at 50% 100%, rgba(243, 200, 146, 0.14) 0%, transparent 60%);
-  filter: blur(20px);
-  pointer-events: none;
-}
-
-@keyframes hs-light-breathe {
-  0%,
-  100% {
-    opacity: 0.75;
-    transform: scale(1);
+@keyframes hs-object-spin {
+  from {
+    transform: rotateY(0deg);
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.05);
+  to {
+    transform: rotateY(360deg);
   }
 }
 
-.hs-light-bloom,
-.hs-light-halo {
-  animation: hs-light-breathe 10s ease-in-out infinite;
-}
-
-.hs-light-halo {
-  animation-duration: 16s;
-  animation-delay: -4s;
+.hs-object-idle {
+  animation: hs-object-spin 48s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hs-light-bloom,
-  .hs-light-halo {
+  .hs-object-idle {
     animation: none;
   }
+}
+
+.hs-object-face {
+  position: absolute;
+  width: 66px;
+  height: 88px;
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.hs-object-face:nth-child(1) {
+  transform: rotateY(0deg) translateZ(19px);
+}
+
+.hs-object-face:nth-child(2) {
+  transform: rotateY(120deg) translateZ(19px);
+}
+
+.hs-object-face:nth-child(3) {
+  transform: rotateY(240deg) translateZ(19px);
+}
+
+@media (min-width: 640px) {
+  .hs-object-face {
+    width: 88px;
+    height: 118px;
+  }
+
+  .hs-object-face:nth-child(1) {
+    transform: rotateY(0deg) translateZ(25.5px);
+  }
+
+  .hs-object-face:nth-child(2) {
+    transform: rotateY(120deg) translateZ(25.5px);
+  }
+
+  .hs-object-face:nth-child(3) {
+    transform: rotateY(240deg) translateZ(25.5px);
+  }
+}
+
+/* Trois matières distinctes plutôt qu'une répétition de la même face :
+   verre clair, bronze chaud (écho du laiton), pierre neutre — une
+   variation qui donne à chaque face sa propre identité sans devenir
+   kitsch ou trop littérale ("structure en bois" évoquée sans reproduire
+   un grain de bois figuratif). */
+.hs-face-glass {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.68) 0%, rgba(232, 238, 232, 0.28) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -12px 20px rgba(120, 100, 70, 0.06);
+}
+
+.hs-face-bronze {
+  background: linear-gradient(160deg, #e8c48f 0%, #ad8a55 100%);
+  border: 1px solid rgba(255, 240, 210, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 220, 0.5), inset 0 -14px 22px rgba(90, 65, 30, 0.22);
+}
+
+.hs-face-stone {
+  background: linear-gradient(160deg, #ede6d8 0%, #c9bca2 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -14px 22px rgba(90, 78, 55, 0.14);
+}
+
+.hs-object-face-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.35) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* Ombre de contact — ancre l'objet dans la composition plutôt que de le
+   laisser flotter sans repère. Statique, pas de mouvement propre. */
+.hs-object-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 84px;
+  height: 20px;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 100% at 50% 50%, rgba(90, 78, 55, 0.22) 0%, transparent 75%);
+  filter: blur(6px);
+  pointer-events: none;
 }
 
 /* Panneau jumeau décalé derrière la carte — simule l'épaisseur réelle du
@@ -589,9 +612,13 @@ body {
   pointer-events: none;
 }
 
-/* Halo externe — capte la lumière du champ juste au-dessus plutôt que de
-   rayonner uniformément : biaisé vers le haut, là où se trouve
-   `.hs-light-group`. */
+/* Halo externe — glow d'élévation ambiante biaisé vers le haut plutôt que
+   rayonnant uniformément, comme si la carte captait une lumière de studio
+   implicite venant du dessus. Le champ de lumière visible du tour
+   précédent (halo chaud posé à côté de la carte) a été retiré — "attire
+   l'œil mais n'apporte pas de valeur" — mais la convention d'éclairage
+   (source implicite en haut) reste, portée uniquement par ce halo discret
+   et par l'anneau de bord ci-dessous. */
 .hs-card::after {
   content: "";
   position: absolute;
@@ -622,10 +649,10 @@ body {
    réduite du padding) combinés en `exclude` ne laissent visible que
    l'anneau de la largeur du padding. Contrairement à `border` ou
    `box-shadow`, ça permet un dégradé conique — l'intensité varie tout
-   autour du contour, avec un pic net orienté vers `.hs-light-group` (la
-   source de lumière, en haut à droite du conteneur) et une tombée rapide
-   de part et d'autre, comme un vrai bord de verre qui n'accroche
-   fortement la lumière que d'un seul côté. */
+   autour du contour, avec un pic net orienté en haut à droite (la même
+   convention d'éclairage de studio implicite que `.hs-card::after`) et une
+   tombée rapide de part et d'autre, comme un vrai bord de verre qui
+   n'accroche fortement la lumière que d'un seul côté. */
 .hs-card-rim {
   position: absolute;
   inset: 0;
@@ -650,45 +677,49 @@ body {
   pointer-events: none;
 }
 
-/* Rail de progression — deuxième refonte (voir NotreHistoire.tsx pour le
-   contexte complet). La piste devient une rainure gravée : `box-shadow`
-   interne seul, aucun `border`/fond qui la ferait lire comme un trait
-   dessiné. */
-.hs-rail-track {
-  background: rgba(26, 22, 20, 0.05);
-  box-shadow:
-    inset 0 1px 2px rgba(26, 22, 20, 0.09),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+/* Navigation par étapes numérotées — troisième refonte de ce composant.
+   Le rail à bille de verre du tour précédent (piste gravée + marqueur qui
+   glisse, sans repère numéroté visible) était trop abstrait : retour
+   client "on ne comprend pas immédiatement combien il y a d'étapes, où
+   l'on se situe". Trois segments numérotés, toujours visibles, répondent
+   directement : le nombre total se lit d'un coup d'œil (trois segments),
+   la position actuelle par le contraste net entre `.hs-step` et
+   `.hs-step-active` (fond, halo, couleur du chiffre), la progression par
+   le liseré `.hs-step-progress` qui se remplit sous le segment actif. */
+.hs-step {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 1px 3px rgba(26, 22, 20, 0.06);
+  overflow: hidden;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    color 0.3s ease;
 }
 
-/* Marqueur — une bille de verre avec son propre reflet plutôt qu'un aplat
-   radial : un dégradé de base (même famille chromatique que la lumière),
-   un reflet interne décalé en haut-gauche (`.hs-rail-marker-shine`,
-   séparé pour pouvoir varier sa position sans toucher au dégradé de
-   base), et une ombre portée propre qui l'ancre dans la rainure plutôt que
-   de flotter au-dessus. */
-.hs-rail-marker {
-  position: relative;
-  width: 13px;
-  height: 13px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, #fffaf0 0%, #f3d9a8 45%, #e0ab68 85%);
-  box-shadow:
-    0 1px 2px rgba(120, 90, 50, 0.35),
-    0 0 0 5px rgba(232, 185, 120, 0.13),
-    0 0 18px 4px rgba(232, 185, 120, 0.38);
-  pointer-events: none;
+.hs-step:hover {
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
-.hs-rail-marker-shine {
+.hs-step-active {
+  background: linear-gradient(160deg, rgba(255, 250, 240, 0.92) 0%, rgba(243, 217, 168, 0.58) 100%);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 10px 22px -10px rgba(173, 138, 85, 0.4),
+    0 0 0 1px rgba(232, 185, 120, 0.28);
+}
+
+/* Liseré de progression — recalé à zéro à chaque changement d'étape
+   (`key={active}` côté React, voir NotreHistoire.tsx), qu'il vienne du
+   clic ou de l'autoplay, pour ne jamais montrer une progression qui ne
+   correspond pas au temps réel restant avant le prochain changement. */
+.hs-step-progress {
   position: absolute;
-  left: 18%;
-  top: 14%;
-  width: 40%;
-  height: 40%;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  filter: blur(0.5px);
+  left: 0;
+  bottom: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, rgba(232, 185, 120, 0.75), rgba(243, 200, 146, 0.95));
 }
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du

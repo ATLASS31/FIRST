@@ -19,35 +19,96 @@ const FIGURES = [
   { value: "100%", label: "fabriqué en France" },
 ];
 
-// Décalage de la lumière selon l'étape active — le seul élément conservé
-// tel quel de la version précédente ("le seul élément que j'aime
-// vraiment"). Ce n'est plus un soleil dans un paysage : c'est la source de
-// lumière qui éclaire la carte elle-même, ce qui rend le lien beaucoup
-// plus direct qu'avant (la carte captait la lumière d'une scène lointaine ;
-// ici la lumière est juste derrière elle).
-const LIGHT_OFFSETS = [
-  { x: -20, y: 12 },
-  { x: 4, y: -10 },
-  { x: 24, y: 6 },
-];
-
 const EASE_PREMIUM = [0.16, 1, 0.3, 1] as const;
 
+// Prisme triangulaire : trois faces à 120° les unes des autres. Largeur,
+// hauteur et rayon (distance du centre à chaque face, R = W / (2 * tan(60°))
+// pour un triangle équilatéral régulier) sont posés en CSS pur
+// (`.hs-object-face:nth-child`, voir globals.css) plutôt que calculés ici :
+// la valeur ne dépend que du breakpoint, une media query suffit, pas besoin
+// de la recalculer en JS ni de la faire transiter par un style inline.
+const FACE_MATERIALS = ["hs-face-glass", "hs-face-bronze", "hs-face-stone"] as const;
+
 /**
- * Deuxième repartie complète de cette section (la première refonte
- * remplaçait un paysage low-poly par des volumes architecturaux abstraits
- * — jugés "posés là sans intention", "froids", ne dégageant "ni
- * architecture, ni luxe, ni élégance"). Sur demande explicite du client,
- * on repart d'une page blanche plutôt que d'itérer encore sur cette
- * direction : "je préfère une proposition radicalement différente qu'une
- * nouvelle amélioration de cette version". Toute forme géométrique
- * figurative (volumes, plans de sol, faîtages) est supprimée. Il ne reste
- * que de la lumière et une seule carte, la lumière et le verre étant les
- * deux points sur lesquels le client a explicitement demandé de pousser
- * ("pousse énormément le travail sur la lumière", "améliore encore la
- * qualité du Liquid Glass, qui reste le point le plus faible").
+ * Troisième repartie sur cette section. Le "soleil" du tour précédent —
+ * seul élément que le client disait vouloir garder à l'origine — est
+ * finalement retiré à son tour : en pratique, un halo chaud posé sur un
+ * fond clair "attire l'œil mais n'apporte pas de valeur". Consigne
+ * explicite : plus de halo lumineux, un véritable objet 3D qui
+ * "raconte quelque chose" en changeant d'orientation à chaque étape.
+ *
+ * Construit en CSS 3D pur (`transform-style: preserve-3d`, pas de
+ * WebGL/Three.js) : le projet n'a aucune dépendance 3D, et ajouter un
+ * moteur WebGL pour un seul élément décoratif aurait été disproportionné
+ * (poids, complexité SSR, risque) par rapport à ce qu'un prisme en CSS
+ * peut déjà livrer honnêtement — un vrai volume à trois faces, profondeur
+ * réelle, rotation réelle, pas une image qui simule la 3D.
+ *
+ * Trois couches de rotation superposées plutôt qu'une seule, chacune sur
+ * son propre axe pour ne jamais entrer en conflit :
+ * 1. Inclinaison au mouvement de la souris (`rotateX` piloté par une
+ *    `MotionValue` externe via `style`) — Framer Motion ne peut pas à la
+ *    fois recevoir une valeur externe et l'animer lui-même sur la même
+ *    propriété du même élément, d'où la séparation en couches.
+ * 2. Rotation d'étape (`rotateY`, `animate`, ressort) — un tiers de tour
+ *    exact par étape (120°), pour qu'une face différente fasse
+ *    précisément face à l'écran à chaque changement : "révéler une autre
+ *    face" au sens propre, pas une métaphore.
+ * 3. Rotation d'ambiance continue, très lente, en CSS pur
+ *    (`@keyframes`) — l'objet ne s'arrête jamais complètement, comme un
+ *    objet exposé sous une lumière qui tourne doucement. Coupée sous
+ *    `prefers-reduced-motion` sans aucun risque d'hydratation puisqu'elle
+ *    ne dépend que d'une media query, jamais de JS.
  */
-function useLightPointer() {
+function Object3D({
+  active,
+  prefersReducedMotion,
+  sx,
+  sy,
+}: {
+  active: number;
+  prefersReducedMotion: boolean | null;
+  sx: ReturnType<typeof useSpring>;
+  sy: ReturnType<typeof useSpring>;
+}) {
+  const tiltX = useTransform(sy, [0, 1], [10, -10]);
+  const parallaxX = useTransform(sx, [0, 1], [-6, 6]);
+
+  return (
+    <div className="hs-object-scene" aria-hidden>
+      <motion.div
+        className="hs-object-tilt"
+        style={{ rotateX: tiltX, x: parallaxX }}
+      >
+        <motion.div
+          className="hs-object-step"
+          animate={{ rotateY: -active * 120 }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 70, damping: 14, mass: 1 }
+          }
+        >
+          <div className="hs-object-idle">
+            {FACE_MATERIALS.map((materialClass) => (
+              <div key={materialClass} className={`hs-object-face ${materialClass}`}>
+                <span className="hs-object-face-edge" />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+      <div className="hs-object-shadow" />
+    </div>
+  );
+}
+
+/**
+ * Pointeur souris sur toute la section — pilote l'inclinaison de l'objet
+ * 3D (voir `Object3D`). Distinct du pointeur de la carte
+ * (`useCardPointer`) : repères différents (section entière vs carte).
+ */
+function useScenePointer() {
   const ref = useRef<HTMLElement>(null);
   const rafRef = useRef<number | null>(null);
   const latestPoint = useRef({ x: 0, y: 0 });
@@ -89,7 +150,7 @@ function useLightPointer() {
 
 /**
  * Pointeur souris pour la carte — identique en structure à
- * `useLightPointer` mais mesuré contre la carte elle-même (repère
+ * `useScenePointer` mais mesuré contre la carte elle-même (repère
  * différent), throttlé à une mise à jour par frame comme partout ailleurs
  * sur le site (`TiltCard.tsx`).
  */
@@ -139,11 +200,11 @@ export default function NotreHistoire() {
   const { ref: cardRef, sx, sy, handleMove, handleLeave } = useCardPointer();
   const {
     ref: sectionRef,
-    sx: lightSx,
-    sy: lightSy,
-    handleMove: handleSectionMove,
-    handleLeave: handleSectionLeave,
-  } = useLightPointer();
+    sx: sceneSx,
+    sy: sceneSy,
+    handleMove: handleSceneMove,
+    handleLeave: handleSceneLeave,
+  } = useScenePointer();
 
   const shineX = useTransform(sx, [0, 1], ["0%", "100%"]);
   const shineY = useTransform(sy, [0, 1], ["0%", "100%"]);
@@ -153,9 +214,6 @@ export default function NotreHistoire() {
   const shineBackground = useMotionTemplate`radial-gradient(64px circle at ${shineX} ${shineY}, rgba(255,255,255,0.6), transparent 45%), radial-gradient(240px circle at ${shineX} ${shineY}, rgba(255,255,255,0.22), transparent 65%)`;
   const rotateX = useTransform(sy, [0, 1], [4, -4]);
   const rotateY = useTransform(sx, [0, 1], [-4, 4]);
-
-  const lightParallaxX = useTransform(lightSx, [0, 1], [-10, 10]);
-  const lightParallaxY = useTransform(lightSy, [0, 1], [-7, 7]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -169,23 +227,10 @@ export default function NotreHistoire() {
   return (
     <section
       ref={sectionRef}
-      onMouseMove={handleSectionMove}
-      onMouseLeave={handleSectionLeave}
+      onMouseMove={handleSceneMove}
+      onMouseLeave={handleSceneLeave}
       className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24"
     >
-      {/* Champ de lumière — plus aucune forme figurative, seulement une
-          source de lumière chaude qui éclaire la carte depuis le
-          haut-droite, se décale selon l'étape active, et respire très
-          légèrement au mouvement de la souris sur toute la section. */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{ x: lightParallaxX, y: lightParallaxY }}
-      >
-        <div className="hs-light-halo hidden sm:block" />
-        <div className="hs-light-ground" />
-      </motion.div>
-
       <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
@@ -210,29 +255,20 @@ export default function NotreHistoire() {
         </div>
 
         <div className="flex min-w-0 flex-col items-center">
-          {/* Carte unique — plus de rotation entre trois emplacements, un
-              seul objet fixe dont seul le contenu change. "Je préfère une
-              seule carte absolument parfaite plutôt que plusieurs bonnes
-              idées." */}
-          <div className="relative mt-8">
-            {/* Source de lumière — ancrée au conteneur de la carte (pas à
-                la section) pour garantir qu'elle reste visuellement collée
-                au coin haut-droit de l'objet qu'elle éclaire, quelle que
-                soit la largeur d'écran. C'est elle qui porte le décalage
-                entre étapes ("le seul élément que j'aime vraiment"). */}
-            <motion.div
-              aria-hidden
-              className="hs-light-group pointer-events-none absolute -right-6 -top-10 sm:-right-10 sm:-top-14"
-              animate={{ x: LIGHT_OFFSETS[active].x, y: LIGHT_OFFSETS[active].y }}
-              transition={
-                prefersReducedMotion
-                  ? { duration: 0 }
-                  : { type: "spring", stiffness: 45, damping: 16 }
-              }
-            >
-              <div className="hs-light-bloom" />
-              <div className="hs-light-core" />
-            </motion.div>
+          {/* Objet 3D — accompagne les transitions entre étapes en
+              révélant une face différente à chaque changement, plutôt
+              qu'un halo lumineux qui se contentait de se décaler. */}
+          <Object3D
+            active={active}
+            prefersReducedMotion={prefersReducedMotion}
+            sx={sceneSx}
+            sy={sceneSy}
+          />
+
+          {/* Carte unique — un seul objet fixe dont seul le contenu
+              change. "Je préfère une seule carte absolument parfaite
+              plutôt que plusieurs bonnes idées." */}
+          <div className="relative mt-6">
             <div aria-hidden className="hs-card-base" />
             <motion.div
               ref={cardRef}
@@ -257,11 +293,7 @@ export default function NotreHistoire() {
                     exclude` entre la boîte pleine et la boîte réduite du
                     padding) plutôt qu'un reflet diagonal posé sur toute la
                     face. Un vrai bord de verre s'éclaire sur son pourtour,
-                    pas en bande diagonale à travers le centre — c'est ce
-                    detail qui manquait pour lire "épaisseur réelle" plutôt
-                    que "reflet peint". L'intensité varie tout autour via
-                    un conic-gradient dont le pic est orienté vers la
-                    source de lumière (haut-droite), pas uniforme. */}
+                    pas en bande diagonale à travers le centre. */}
                 <div aria-hidden className="hs-card-rim" />
                 <motion.div
                   aria-hidden
@@ -297,54 +329,48 @@ export default function NotreHistoire() {
             </motion.div>
           </div>
 
-          {/* Rail de progression — deuxième refonte. La première version
-              (piste plate + trois points gris + un marqueur qui glisse)
-              restait un pattern de stepper très reconnaissable — "un
-              composant de maquette Figma" au retour client. Ce qui rend un
-              stepper immédiatement identifiable comme un composant d'UI,
-              ce n'est pas la piste, ce sont les points : trois cercles
-              discrets sont un vocabulaire d'interface universel. Ils
-              disparaissent entièrement (les cibles de clic restent,
-              invisibles). La piste elle-même devient une rainure gravée
-              (ombre interne, pas un trait plat posé dessus) plutôt qu'une
-              ligne dessinée, et le marqueur devient une bille de verre
-              avec son propre reflet plutôt qu'un aplat radial — le seul
-              repère visuel restant est une goutte de lumière qui glisse
-              dans un creux, pas un point d'étape parmi d'autres. */}
-          <div className="mt-10 flex w-full max-w-[240px] items-center gap-4 sm:mt-12">
-            <div className="hs-rail-track relative h-2 flex-1 rounded-full">
-              <motion.div
-                className="hs-rail-marker absolute top-1/2"
-                animate={{
-                  left: `${(active / (FIGURES.length - 1)) * 100}%`,
-                }}
-                transition={
-                  prefersReducedMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 260, damping: 28, mass: 0.7 }
-                }
-                style={{ translateX: "-50%", translateY: "-50%" }}
-              >
-                <span className="hs-rail-marker-shine" />
-              </motion.div>
-              {FIGURES.map((f, i) => (
+          {/* Navigation par étapes numérotées — remplace le rail à bille
+              de verre du tour précédent, jugé illisible ("on ne comprend
+              pas immédiatement combien il y a d'étapes, où l'on se
+              situe"). Trois segments numérotés visibles en permanence
+              répondent directement aux trois questions posées par le
+              client : le nombre total (trois segments, un coup d'œil), la
+              position actuelle (le segment actif se détache nettement,
+              fond et halo dorés), la progression (fin liseré qui se
+              remplit sous le segment actif, calé sur la durée réelle de
+              l'autoplay — remis à zéro à chaque changement, qu'il vienne
+              du clic ou de l'autoplay). */}
+          <div className="mt-8 flex items-center gap-2.5 sm:mt-10">
+            {FIGURES.map((f, i) => {
+              const isActive = i === active;
+              return (
                 <button
                   key={f.label}
                   type="button"
                   onClick={() => setActive(i)}
-                  aria-label={`${f.value} ${f.label}`}
-                  aria-pressed={i === active}
-                  className="absolute top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${(i / (FIGURES.length - 1)) * 100}%` }}
-                />
-              ))}
-            </div>
-            <p className="shrink-0 text-xs tabular-nums text-encre-douce">
-              <span className="font-semibold text-laiton">
-                {String(active + 1).padStart(2, "0")}
-              </span>{" "}
-              / {String(FIGURES.length).padStart(2, "0")}
-            </p>
+                  aria-label={`Étape ${i + 1} sur ${FIGURES.length} : ${f.value} ${f.label}`}
+                  aria-pressed={isActive}
+                  className={`hs-step relative flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-semibold sm:h-12 sm:w-12 ${
+                    isActive ? "hs-step-active text-encre" : "text-encre-douce"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.span
+                      key={active}
+                      className="hs-step-progress"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={
+                        prefersReducedMotion
+                          ? { duration: 0 }
+                          : { duration: AUTOPLAY_MS / 1000, ease: "linear" }
+                      }
+                    />
+                  )}
+                  <span className="relative z-10">{String(i + 1).padStart(2, "0")}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

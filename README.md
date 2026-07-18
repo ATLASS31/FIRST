@@ -1035,6 +1035,67 @@ npm run dev
   déjà en place — un temps de rebond très bref qui simule une impulsion
   physique reçue par un objet réel, plutôt qu'un simple changement d'état
   d'interface.
+- **Notre histoire : le soleil retiré, un vrai objet 3D à la place ;
+  navigation entièrement repensée.** Retour client honnête : "je ne
+  trouve toujours pas ça beau" pour la version précédente n'était que la
+  moitié du message — cette fois le champ de lumière lui-même est mis en
+  cause ("un gros halo jaune posé sur le fond... attire l'œil mais
+  n'apporte pas de valeur"), alors que c'était l'unique élément conservé
+  du tour d'avant. Consigne : le retirer complètement, le remplacer par un
+  "véritable objet 3D" qui change d'orientation à chaque étape plutôt
+  qu'un halo qui se décale — et repenser entièrement la navigation, jugée
+  illisible ("on ne comprend pas immédiatement combien il y a d'étapes, où
+  l'on se situe").
+
+  **Objet 3D — un vrai prisme, pas une image qui simule la 3D.** Construit
+  en CSS 3D pur (`transform-style: preserve-3d`, `rotateY`/`translateZ` —
+  aucune dépendance WebGL/Three.js ajoutée : le projet n'en avait aucune,
+  et un moteur 3D complet pour un seul élément décoratif aurait été
+  disproportionné face à ce qu'un prisme CSS peut déjà livrer
+  honnêtement). Trois faces rectangulaires disposées à 120° les unes des
+  autres (rayon `R = largeur / (2 × tan 60°)`, la formule standard pour un
+  triangle équilatéral régulier), chacune dans une matière différente
+  (verre clair, bronze chaud écho du laiton, pierre neutre) — une
+  variation qui évite la répétition sans devenir kitsch ni reproduire
+  littéralement un grain de bois. Trois couches de rotation superposées,
+  chacune sur son propre axe pour ne jamais entrer en conflit : inclinaison
+  au mouvement de la souris (`rotateX` en `style`, MotionValue externe),
+  rotation d'étape (`rotateY`, `animate`, ressort, exactement 120° par
+  étape — une face différente fait face à l'écran à chaque changement,
+  "révéler une autre face" au sens propre plutôt qu'en métaphore), rotation
+  d'ambiance continue très lente en CSS pur (`@keyframes`, 48s par tour,
+  coupée sous `prefers-reduced-motion` sans risque d'hydratation puisque
+  purement CSS). Vérifié à l'écran sur les trois étapes : chaque face se
+  distingue nettement (glass/bronze/stone), et le changement d'étape laisse
+  voir un fin liseré de la face adjacente sur le bord — la confirmation que
+  c'est un vrai volume tourné, pas un simple fondu entre trois images.
+
+  **Navigation — troisième refonte, cette fois autour de la lisibilité
+  plutôt que de l'esthétique seule.** Le rail à bille de verre du tour
+  précédent était visuellement raffiné mais n'affichait aucun repère
+  numéroté : il fallait deviner combien d'étapes existaient. Remplacé par
+  trois segments numérotés (`01`/`02`/`03`), toujours visibles, qui
+  répondent aux trois questions posées explicitement par le client dans
+  le même ordre : le nombre total d'étapes (trois segments, lisible en
+  un coup d'œil, sans avoir à lire quoi que ce soit), l'étape active
+  (contraste net `.hs-step` / `.hs-step-active` — fond, halo, couleur du
+  chiffre), la progression (`.hs-step-progress`, un liseré qui se remplit
+  sous le segment actif, calé sur `AUTOPLAY_MS`, remis à zéro à chaque
+  changement qu'il vienne du clic ou de l'autoplay — vérifié par script,
+  largeur croissante confirmée entre `t=0` et `t=2300ms`). Le "01/03"
+  textuel séparé, déjà présent dans les deux versions précédentes de ce
+  composant, disparaît : les segments numérotés portent maintenant
+  eux-mêmes cette information, pas de répétition entre deux éléments.
+
+  **Recherche visuelle Higgsfield, même limitation que le tour
+  précédent** : nouvelle tentative de génération de référence
+  (composants d'interface premium, objets 3D haut de gamme) avant
+  d'itérer, comme demandé explicitement. Le CDN qui héberge les résultats
+  Higgsfield reste bloqué par la politique réseau de ce sandbox (déjà
+  documenté juste au-dessus pour la première tentative) — l'implémentation
+  s'appuie donc à nouveau directement sur la connaissance du sujet
+  (construction d'objets 3D en CSS, patterns de navigation premium)
+  plutôt que sur l'inspection d'images générées.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
