@@ -210,13 +210,6 @@ export default function NotreHistoire() {
         </div>
 
         <div className="flex min-w-0 flex-col items-center">
-          <p className="self-start text-sm text-encre-douce">
-            <span className="font-semibold text-laiton">
-              {String(active + 1).padStart(2, "0")}
-            </span>{" "}
-            / {String(FIGURES.length).padStart(2, "0")}
-          </p>
-
           {/* Carte unique — plus de rotation entre trois emplacements, un
               seul objet fixe dont seul le contenu change. "Je préfère une
               seule carte absolument parfaite plutôt que plusieurs bonnes
@@ -259,6 +252,17 @@ export default function NotreHistoire() {
                 rounded="rounded-[52px_28px_56px_22px]"
                 className="hs-card w-[204px] px-8 py-10 text-center sm:w-[280px] sm:px-11 sm:py-12"
               >
+                {/* Anneau de bord — trace le contour exact de la carte
+                    (technique du "gradient border" : `mask-composite:
+                    exclude` entre la boîte pleine et la boîte réduite du
+                    padding) plutôt qu'un reflet diagonal posé sur toute la
+                    face. Un vrai bord de verre s'éclaire sur son pourtour,
+                    pas en bande diagonale à travers le centre — c'est ce
+                    detail qui manquait pour lire "épaisseur réelle" plutôt
+                    que "reflet peint". L'intensité varie tout autour via
+                    un conic-gradient dont le pic est orienté vers la
+                    source de lumière (haut-droite), pas uniforme. */}
+                <div aria-hidden className="hs-card-rim" />
                 <motion.div
                   aria-hidden
                   className="hs-card-shine"
@@ -266,12 +270,16 @@ export default function NotreHistoire() {
                 />
                 <motion.div
                   key={active}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 6, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={
                     prefersReducedMotion
                       ? { duration: 0 }
-                      : { duration: 0.5, delay: 0.08, ease: EASE_PREMIUM }
+                      : {
+                          opacity: { duration: 0.5, delay: 0.08, ease: EASE_PREMIUM },
+                          y: { duration: 0.5, delay: 0.08, ease: EASE_PREMIUM },
+                          scale: { type: "spring", stiffness: 300, damping: 14, delay: 0.08 },
+                        }
                   }
                 >
                   <p className="text-3xl font-semibold leading-snug text-encre sm:text-5xl">
@@ -289,41 +297,54 @@ export default function NotreHistoire() {
             </motion.div>
           </div>
 
-          {/* Rail de progression — remplace la timeline à trois cartes
-              fantômes. Une seule piste, un seul marqueur lumineux qui
-              glisse (même teinte que la lumière de la carte, pour que les
-              deux se sentent connectés), trois cibles de clic invisibles. */}
-          <div className="relative mt-10 h-6 w-full max-w-[220px] sm:mt-12">
-            <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-encre/8" />
-            <motion.div
-              className="hs-rail-marker absolute top-1/2"
-              animate={{
-                left: `${(active / (FIGURES.length - 1)) * 100}%`,
-              }}
-              transition={
-                prefersReducedMotion
-                  ? { duration: 0 }
-                  : { type: "spring", stiffness: 260, damping: 28, mass: 0.7 }
-              }
-              style={{ translateX: "-50%", translateY: "-50%" }}
-            />
-            {FIGURES.map((f, i) => (
-              <button
-                key={f.label}
-                type="button"
-                onClick={() => setActive(i)}
-                aria-label={`${f.value} ${f.label}`}
-                aria-pressed={i === active}
-                className="absolute top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-                style={{ left: `${(i / (FIGURES.length - 1)) * 100}%` }}
+          {/* Rail de progression — deuxième refonte. La première version
+              (piste plate + trois points gris + un marqueur qui glisse)
+              restait un pattern de stepper très reconnaissable — "un
+              composant de maquette Figma" au retour client. Ce qui rend un
+              stepper immédiatement identifiable comme un composant d'UI,
+              ce n'est pas la piste, ce sont les points : trois cercles
+              discrets sont un vocabulaire d'interface universel. Ils
+              disparaissent entièrement (les cibles de clic restent,
+              invisibles). La piste elle-même devient une rainure gravée
+              (ombre interne, pas un trait plat posé dessus) plutôt qu'une
+              ligne dessinée, et le marqueur devient une bille de verre
+              avec son propre reflet plutôt qu'un aplat radial — le seul
+              repère visuel restant est une goutte de lumière qui glisse
+              dans un creux, pas un point d'étape parmi d'autres. */}
+          <div className="mt-10 flex w-full max-w-[240px] items-center gap-4 sm:mt-12">
+            <div className="hs-rail-track relative h-2 flex-1 rounded-full">
+              <motion.div
+                className="hs-rail-marker absolute top-1/2"
+                animate={{
+                  left: `${(active / (FIGURES.length - 1)) * 100}%`,
+                }}
+                transition={
+                  prefersReducedMotion
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 260, damping: 28, mass: 0.7 }
+                }
+                style={{ translateX: "-50%", translateY: "-50%" }}
               >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
-                    i === active ? "bg-transparent" : "bg-encre/20"
-                  }`}
+                <span className="hs-rail-marker-shine" />
+              </motion.div>
+              {FIGURES.map((f, i) => (
+                <button
+                  key={f.label}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  aria-label={`${f.value} ${f.label}`}
+                  aria-pressed={i === active}
+                  className="absolute top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${(i / (FIGURES.length - 1)) * 100}%` }}
                 />
-              </button>
-            ))}
+              ))}
+            </div>
+            <p className="shrink-0 text-xs tabular-nums text-encre-douce">
+              <span className="font-semibold text-laiton">
+                {String(active + 1).padStart(2, "0")}
+              </span>{" "}
+              / {String(FIGURES.length).padStart(2, "0")}
+            </p>
           </div>
         </div>
       </div>

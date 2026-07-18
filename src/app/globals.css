@@ -617,19 +617,78 @@ body {
   mix-blend-mode: soft-light;
 }
 
-/* Marqueur du rail de progression — un point lumineux qui glisse plutôt
-   qu'un point qui change simplement d'état, dans la même teinte que le
-   champ de lumière au-dessus (les deux se lisent comme une seule et même
-   source, pas deux éléments décoratifs indépendants). */
-.hs-rail-marker {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: radial-gradient(circle, #fff4de 0%, #e8b978 70%);
-  box-shadow:
-    0 0 0 4px rgba(232, 185, 120, 0.14),
-    0 0 16px 3px rgba(232, 185, 120, 0.4);
+/* Anneau de bord — technique du "gradient border" : l'élément peint un
+   dégradé sur toute sa boîte, puis deux masques (boîte pleine et boîte
+   réduite du padding) combinés en `exclude` ne laissent visible que
+   l'anneau de la largeur du padding. Contrairement à `border` ou
+   `box-shadow`, ça permet un dégradé conique — l'intensité varie tout
+   autour du contour, avec un pic net orienté vers `.hs-light-group` (la
+   source de lumière, en haut à droite du conteneur) et une tombée rapide
+   de part et d'autre, comme un vrai bord de verre qui n'accroche
+   fortement la lumière que d'un seul côté. */
+.hs-card-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.1) 0deg,
+    rgba(255, 255, 255, 0.1) 20deg,
+    rgba(255, 255, 255, 0.95) 48deg,
+    rgba(255, 255, 255, 0.15) 76deg,
+    rgba(255, 255, 255, 0.06) 190deg,
+    rgba(255, 250, 240, 0.22) 235deg,
+    rgba(255, 255, 255, 0.06) 280deg,
+    rgba(255, 255, 255, 0.1) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   pointer-events: none;
+}
+
+/* Rail de progression — deuxième refonte (voir NotreHistoire.tsx pour le
+   contexte complet). La piste devient une rainure gravée : `box-shadow`
+   interne seul, aucun `border`/fond qui la ferait lire comme un trait
+   dessiné. */
+.hs-rail-track {
+  background: rgba(26, 22, 20, 0.05);
+  box-shadow:
+    inset 0 1px 2px rgba(26, 22, 20, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Marqueur — une bille de verre avec son propre reflet plutôt qu'un aplat
+   radial : un dégradé de base (même famille chromatique que la lumière),
+   un reflet interne décalé en haut-gauche (`.hs-rail-marker-shine`,
+   séparé pour pouvoir varier sa position sans toucher au dégradé de
+   base), et une ombre portée propre qui l'ancre dans la rainure plutôt que
+   de flotter au-dessus. */
+.hs-rail-marker {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fffaf0 0%, #f3d9a8 45%, #e0ab68 85%);
+  box-shadow:
+    0 1px 2px rgba(120, 90, 50, 0.35),
+    0 0 0 5px rgba(232, 185, 120, 0.13),
+    0 0 18px 4px rgba(232, 185, 120, 0.38);
+  pointer-events: none;
+}
+
+.hs-rail-marker-shine {
+  position: absolute;
+  left: 18%;
+  top: 14%;
+  width: 40%;
+  height: 40%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  filter: blur(0.5px);
 }
 
 /* Reflet ambiant et reflet au survol — remis à niveau (audit du

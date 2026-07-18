@@ -968,6 +968,73 @@ npm run dev
   `prefers-reduced-motion` — aucun risque du type déjà rencontré/corrigé
   sur le reflet mouse-tracké). Reconfirmé par `check-reduced-motion2.mjs` :
   aucun nouveau mismatch d'hydratation propre à cette section.
+- **Notre histoire : passe de finition sur la timeline et la carte** —
+  retour client après la refonte lumière/carte : "clairement mieux", mais
+  toujours pas l'effet "wow" recherché, avec deux points précis pointés du
+  doigt. "La timeline en bas est très faible visuellement, elle ressemble
+  à un composant de maquette Figma" et "le matériau [de la carte] peut
+  encore énormément progresser". Consigne explicite : ne plus chercher de
+  nouvelles idées, uniquement pousser la qualité d'exécution des deux
+  éléments existants — et s'inspirer de références premium (dont
+  Higgsfield) avant d'itérer.
+
+  **Recherche visuelle via Higgsfield, avec une limite technique
+  rencontrée et documentée** : une image de référence (rendu macro d'un
+  objet en verre premium, éclairage studio, style photographie produit
+  Apple) a été générée via `mcp__higgsfield__generate_image`
+  (`nano_banana_pro`). Le job aboutit bien côté Higgsfield (URL renvoyée),
+  mais le CDN qui héberge le résultat (`*.cloudfront.net`) est bloqué par
+  la politique réseau de cet environnement sandboxé — confirmé via
+  `/root/.ccr/__agentproxy/status` (`connect_rejected`, 403 sur le CONNECT)
+  aussi bien en `curl` direct qu'en `WebFetch`. Une limitation déjà
+  documentée plus haut dans ce fichier pour d'autres visuels Higgsfield du
+  site, ici rencontrée pour la première fois sur une image générée comme
+  simple référence de travail plutôt que comme asset destiné au site.
+  Plutôt que de bloquer sur cette étape, la suite s'appuie directement sur
+  la connaissance du rendu du verre premium et de la photographie produit
+  haut de gamme plutôt que sur l'inspection pixel de l'image générée.
+
+  **Timeline — pourquoi elle lisait comme un composant de maquette.** Le
+  diagnostic : ce n'est pas la piste qui trahit un "pattern UI", ce sont
+  les points. Trois cercles discrets côte à côte est un vocabulaire
+  d'interface immédiatement reconnaissable (stepper/wizard), quel que soit
+  le soin apporté au reste. Les points disparaissent entièrement (les
+  cibles de clic restent, invisibles, `h-8 w-8` par-dessus la piste). La
+  piste elle-même passe d'un trait plat (`bg-encre/8`, 1px) à une rainure
+  gravée : `box-shadow` interne seul (`.hs-rail-track`), qui lit comme un
+  creux dans la matière plutôt qu'une ligne dessinée par-dessus. Le
+  marqueur passe d'un aplat radial à une bille de verre à deux couches
+  (dégradé de base + reflet interne décalé en haut-gauche,
+  `.hs-rail-marker-shine`, séparé pour pouvoir ajuster sa position
+  indépendamment) avec une ombre qui l'ancre dans la rainure. Le "01/03"
+  quitte sa position isolée au-dessus de la carte pour venir se poser à
+  côté du rail — un seul repère de progression plutôt que deux qui se
+  répètent (nombre en haut + timeline en bas, doublon supprimé).
+
+  **Carte — l'anneau de bord, ce qui manquait pour "un vrai objet en
+  verre".** Diagnostic : le reflet diagonal existant (`.hs-card::before`)
+  traverse toute la face de la carte à 118°, une bande large qui lit comme
+  "reflet peint sur une surface plate" plutôt que "bord qui capte la
+  lumière" — un vrai bord de verre s'éclaire sur son pourtour, pas en
+  diagonale à travers le centre. Nouvelle couche, `.hs-card-rim` : la
+  technique du "gradient border" (`padding` égal à l'épaisseur voulue,
+  `mask-composite: exclude` entre la boîte pleine et la boîte réduite du
+  padding) fait apparaître un anneau fin qui suit exactement le contour —
+  y compris les quatre rayons différents de `rounded-[52px_28px_56px_22px]`,
+  vérifié à l'écran sans couture ni décalage visible à aucun des quatre
+  coins. Un `conic-gradient` fait varier l'intensité tout autour plutôt
+  qu'un anneau uniforme : un pic net orienté vers `.hs-light-group` (la
+  lumière, en haut à droite), une tombée rapide de part et d'autre — le
+  bord ne s'illumine fortement que du côté qui fait face à la lumière,
+  comme un vrai chant de verre, confirmé visuellement au coin opposé
+  (bas-gauche) qui reste discret sans jamais paraître coupé net.
+
+  **Micro-interaction ajoutée** : au changement de contenu (chiffre/
+  libellé), un léger rebond d'échelle (0.985 → 1, ressort
+  `stiffness: 300, damping: 14`) se superpose au fondu/décalage vertical
+  déjà en place — un temps de rebond très bref qui simule une impulsion
+  physique reçue par un objet réel, plutôt qu'un simple changement d'état
+  d'interface.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
