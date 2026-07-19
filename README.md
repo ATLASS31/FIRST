@@ -1466,6 +1466,58 @@ npm run dev
   commentaire dans `NotreHistoire.tsx` pour ne pas se perdre d'ici à ce que
   les temps "Ouverture"/"Révélation"/"Maison" soient construits — aucun
   changement de comportement ni de rendu dans ce tour.
+- **Notre histoire : troisième passe sur "Objet" — "je ne ressens pas
+  encore l'effet objet d'exception".** Le client valide la répartition des
+  trois preuves fortes dans la future narration, mais refuse
+  explicitement de passer à "Mystère"/"Ouverture" tant que ce premier
+  temps n'est pas exceptionnel — pas pour ajouter des fonctionnalités,
+  pour pousser l'exécution sur quatre axes (silhouette, matière, lumière,
+  composition), plus une demande précise : trois variantes de silhouette
+  réelles à comparer avant de choisir.
+
+  **Matière et lumière poussées plus loin sur le volume déjà validé**
+  (committé, applicable quelle que soit la silhouette retenue) : le grain
+  de bois passe à deux fréquences superposées (larges bandes douces pour
+  la profondeur du veinage + traits fins pour le micro-détail, toujours
+  généré localement) ; `clearcoat` remonté à 0.68 avec `clearcoatRoughness`
+  abaissé à 0.07 pour des micro-reflets plus nets ("les micro-reflets du
+  vernis", demande explicite) ; une deuxième lame de lumière (`RimRectLight`,
+  froide, très faible) ajoutée du côté opposé à la clé — la forme se lit
+  maintenant par deux arêtes distinctes plutôt qu'un unique dégradé sur la
+  face ("une lumière qui révèle les arêtes plutôt qu'elle n'éclaire
+  l'objet", demande explicite). Caméra rapprochée (distance 6.7 contre
+  8.2) pour donner plus de présence à l'objet dans le cadre sans perdre le
+  vide qui l'entoure.
+
+  **Trois silhouettes réelles construites pour comparaison, une seule
+  committée.** Plutôt que des croquis abstraits comme pour le comparatif
+  précédent, cette fois trois vrais volumes rendus dans la scène — même
+  matière, même lumière, même composition, seule la géométrie change —
+  pour que la comparaison soit honnête. *La Stèle* (A, la géométrie déjà
+  en place, un rectangle élancé sur socle) ; *Le Fuseau* (B, le corps
+  effilé progressivement vers le sommet via une manipulation directe des
+  sommets du maillage — chaque vertex de `bodyGeometry` réévalué après
+  extrusion, mis à l'échelle en X/Z selon sa hauteur normalisée,
+  `geo.computeVertexNormals()` pour que l'éclairage reste correct sur la
+  nouvelle forme) ; *Le Biseau* (C, un sommet tranché en un seul plan
+  incliné — obtenu en dessinant directement un profil 2D asymétrique,
+  `wedgeShape`, avec un coin supérieur plus haut que l'autre, plutôt qu'en
+  déformant après coup). Les trois rendues et comparées côte à côte dans
+  un second Artifact (même identité visuelle que le premier comparatif,
+  cohérence de série). Recommandation personnelle donnée sur C — la seule
+  des trois qui gagne à la fois sur la reconnaissance en silhouette pure
+  et sur l'évocation architecturale sans dessiner littéralement une
+  maison. Seule la géométrie A (déjà en place, avec la matière/lumière
+  améliorées) reste committée à l'issue de ce tour : B et C existent
+  uniquement comme code exploratoire non conservé, le temps de produire
+  les captures — pas de code mort laissé dans le dépôt pour deux
+  directions pas encore choisies.
+
+  **Vérifié à chaque variante** avant de passer à la suivante (`tsc
+  --noEmit`, `eslint`, capture d'écran) puis une dernière fois sur l'état
+  final committé (A + matière/lumière/composition améliorées) : repli
+  `prefers-reduced-motion` et rendu mobile toujours sans régression,
+  régression complète sur les 10 routes sans nouvelle erreur.
 
 ## Audit du 2026-07-17 : bugs et corrections
 

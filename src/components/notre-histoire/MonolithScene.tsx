@@ -12,14 +12,13 @@ const OBJECT_COLOR = "#2a2116";
 
 /**
  * Itération 1 d'un chantier délibérément fractionné en plusieurs passes,
- * deuxième passe de réglage. Toujours uniquement le premier temps du récit
- * validé — "Objet → Mystère → Ouverture → Révélation → Maison" — un volume
- * unique au repos, sans couture, sans scroll. Retour client détaillé après
- * la première version ("une planche, pas un objet iconique") : cette passe
- * ne change ni la narration ni la structure du chantier, seulement
- * l'exécution — proportions, matière, lumière, atmosphère, tension —
- * exactement le travail que le client a demandé de faire avant de passer à
- * la moindre animation.
+ * troisième passe de réglage — toujours uniquement le premier temps du
+ * récit validé ("Objet"), toujours sans couture, sans scroll. Le client a
+ * validé la direction générale mais demande une itération supplémentaire
+ * avant de passer à "Mystère"/"Ouverture" : silhouette, matière, lumière,
+ * composition poussées plus loin, jusqu'à un objet devant lequel "on
+ * pourrait s'arrêter quelques secondes sans ressentir le besoin que
+ * quelque chose se passe".
  */
 function roundedRectShape(width: number, height: number, radius: number) {
   const w = width / 2;
@@ -37,13 +36,10 @@ function roundedRectShape(width: number, height: number, radius: number) {
   return shape;
 }
 
-/* Grain de bois procédural, très discret — dessiné une fois sur un canvas
-   hors-écran plutôt qu'importé (aucune texture externe à charger, cohérent
-   avec l'absence de dépendance réseau déjà retenue pour l'éclairage). Fond
-   gris moyen (= multiplicateur neutre pour roughnessMap/bumpMap), traits
-   verticaux clairs et sombres à faible opacité pour un veinage qui ne se
-   voit vraiment que là où la lumière rase la surface — jamais comme un
-   motif imprimé. */
+/* Grain de bois procédural, deux fréquences superposées (larges bandes
+   douces pour la profondeur du veinage + traits fins et nets pour le
+   micro-détail) — "presque imperceptible mais présent" (demande
+   explicite). Toujours généré localement, aucune texture externe. */
 function createWoodGrainTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 128;
@@ -52,12 +48,23 @@ function createWoodGrainTexture(): THREE.CanvasTexture {
   ctx.fillStyle = "rgb(140,140,140)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  for (let i = 0; i < 260; i++) {
+  // Bandes larges, douces — la profondeur du veinage.
+  for (let i = 0; i < 26; i++) {
     const x = Math.random() * canvas.width;
-    const dark = Math.random() > 0.48;
-    const alpha = 0.05 + Math.random() * 0.12;
+    const w = 6 + Math.random() * 14;
+    const alpha = 0.03 + Math.random() * 0.05;
+    const dark = Math.random() > 0.5;
+    ctx.fillStyle = dark ? `rgba(0,0,0,${alpha})` : `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(x - w / 2, 0, w, canvas.height);
+  }
+
+  // Traits fins, nets — le micro-détail.
+  for (let i = 0; i < 320; i++) {
+    const x = Math.random() * canvas.width;
+    const dark = Math.random() > 0.46;
+    const alpha = 0.05 + Math.random() * 0.13;
     ctx.strokeStyle = dark ? `rgba(0,0,0,${alpha})` : `rgba(255,255,255,${alpha})`;
-    ctx.lineWidth = 0.4 + Math.random() * 1.6;
+    ctx.lineWidth = 0.3 + Math.random() * 1.3;
     const wobble = (Math.random() - 0.5) * 10;
     ctx.beginPath();
     ctx.moveTo(x, 0);
@@ -79,15 +86,9 @@ function createWoodGrainTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/* Écrin — deux volumes plutôt qu'un seul, séparés d'un fin joint creux :
-   un socle légèrement plus large que le corps au-dessus, comme une
-   plinthe. "Ne pas être littéral" (demande explicite) — ce n'est ni une
-   maison ni une façade dessinée, juste la proportion classique d'un socle
-   qui porte un corps, le genre de détail qui fait qu'un volume fermé
-   évoque déjà une architecture plutôt qu'une boîte, un livre ou une
-   enceinte. Chanfreins nettement plus présents qu'à la première passe
-   (jugée "une planche") : l'arête doit accrocher la lumière, pas
-   simplement exister. */
+/* Écrin — corps élancé sur un socle légèrement plus large, séparés d'un
+   fin joint creux (proportion de plinthe, "ne pas être littéral" demande
+   explicite). Chanfreins présents, arête qui accroche la lumière. */
 function Monolith() {
   const grain = useMemo(() => createWoodGrainTexture(), []);
 
@@ -132,13 +133,13 @@ function Monolith() {
     () =>
       new THREE.MeshPhysicalMaterial({
         color: new THREE.Color(OBJECT_COLOR),
-        roughness: 0.38,
+        roughness: 0.34,
         roughnessMap: grain,
         bumpMap: grain,
-        bumpScale: 0.0015,
+        bumpScale: 0.002,
         metalness: 0.02,
-        clearcoat: 0.55,
-        clearcoatRoughness: 0.12,
+        clearcoat: 0.68,
+        clearcoatRoughness: 0.07,
       }),
     [grain]
   );
@@ -155,10 +156,9 @@ function Monolith() {
   );
 }
 
-/* Sol très sombre — l'objet lévite de quelques millimètres (échelle scène)
-   au-dessus, juste assez pour qu'un fin trait de vide sépare son ombre de
-   contact du socle lui-même ("comme s'il était précieux", demande
-   explicite) sans pour autant paraître en apesanteur complète. */
+/* Sol très sombre — l'objet lévite de quelques millimètres au-dessus,
+   juste assez pour qu'un fin trait de vide sépare son ombre de contact du
+   socle lui-même. */
 function Ground() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.28, 0]} receiveShadow>
@@ -169,11 +169,7 @@ function Ground() {
 }
 
 /* Halo atmosphérique — un unique sprite en dégradé radial, en fusion
-   additive, placé derrière l'objet du côté de la clé lumineuse. Pas un
-   élément supplémentaire à proprement parler ("je ne rajouterais surtout
-   pas des éléments", demande explicite) : une ambiance, pas un objet — un
-   seul plan, une seule texture générée localement, pour guider le regard
-   plutôt que pour décorer. */
+   additive, placé derrière l'objet du côté de la clé lumineuse. */
 function createHaloTexture(): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
@@ -204,14 +200,12 @@ function Halo() {
   );
 }
 
-/* Lumière quasi entièrement construite autour d'une seule idée : ne
-   révéler qu'une arête et laisser le reste disparaître ("presque comme
-   une publicité Hermès ou B&O", demande explicite). La clé n'est plus un
-   large panneau mais une lame étroite et rasante — un reflet net le long
-   d'un bord plutôt qu'un dégradé large sur toute la face. Ambiant et
-   contre-jour ramenés très bas : à la première passe ils avaient été
-   remontés pour compenser un rendu trop sombre, au prix du contraste qui
-   fait justement la dramaturgie recherchée ici. */
+/* Lumière sculpturale — deux lames étroites plutôt qu'une seule, chacune
+   dédiée à une arête différente ("qui révèle les arêtes plutôt qu'elle
+   n'éclaire l'objet", demande explicite). La clé (gauche, chaude, forte)
+   reste dominante ; une deuxième lame beaucoup plus faible et froide vient
+   dessiner un second reflet sur le bord opposé — la forme se lit par ses
+   arêtes, pas par un dégradé unique sur la face. */
 function KeyRectLight() {
   const ref = useRef<THREE.RectAreaLight>(null);
   useEffect(() => {
@@ -224,8 +218,26 @@ function KeyRectLight() {
       position={[-2.2, 1.0, 2.6]}
       width={0.16}
       height={2.5}
-      intensity={400}
+      intensity={420}
       color="#ffd9a8"
+    />
+  );
+}
+
+function RimRectLight() {
+  const ref = useRef<THREE.RectAreaLight>(null);
+  useEffect(() => {
+    ref.current?.lookAt(0, 0.05, 0);
+  }, []);
+
+  return (
+    <rectAreaLight
+      ref={ref}
+      position={[2.6, 0.7, 1.6]}
+      width={0.12}
+      height={2.2}
+      intensity={70}
+      color="#cfe0f0"
     />
   );
 }
@@ -234,11 +246,11 @@ function StudioLight() {
   return (
     <>
       <KeyRectLight />
-      <directionalLight position={[3.2, 0.8, -3.4]} intensity={0.05} color="#dbe4f2" />
-      <ambientLight intensity={0.02} />
+      <RimRectLight />
+      <ambientLight intensity={0.018} />
       <directionalLight
         position={[-1.2, 5, 1.4]}
-        intensity={0.14}
+        intensity={0.13}
         color="#f3ead9"
         castShadow
         shadow-mapSize={[1024, 1024]}
@@ -254,11 +266,11 @@ export default function MonolithScene() {
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [0, 0.28, 8.2], fov: 30 }}
+        camera={{ position: [0, 0.26, 6.7], fov: 30 }}
         gl={{ antialias: true }}
       >
         <color attach="background" args={[VOID_COLOR]} />
-        <fogExp2 attach="fog" args={[VOID_COLOR, 0.05]} />
+        <fogExp2 attach="fog" args={[VOID_COLOR, 0.055]} />
         <Suspense fallback={null}>
           <StudioLight />
           <Halo />
@@ -266,16 +278,14 @@ export default function MonolithScene() {
           <Ground />
         </Suspense>
       </Canvas>
-      {/* Vignettage CSS — pas un effet décoratif, un guide pour l'œil vers
-          le centre du cadre (demande explicite : "pas pour faire joli,
-          pour guider le regard"). Fait en CSS plutôt qu'en post-traitement
-          WebGL : aucun coût de rendu, aucune dépendance supplémentaire. */}
+      {/* Vignettage CSS — guide l'œil vers le centre du cadre, aucun coût
+          de rendu WebGL. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 75% 70% at 50% 46%, transparent 45%, rgba(0,0,0,0.45) 100%)",
+            "radial-gradient(ellipse 75% 70% at 50% 46%, transparent 42%, rgba(0,0,0,0.48) 100%)",
         }}
       />
     </div>
