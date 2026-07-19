@@ -11,14 +11,16 @@ const VOID_COLOR = "#0d0a08";
 const OBJECT_COLOR = "#2a2116";
 
 /**
- * Itération 1 d'un chantier délibérément fractionné en plusieurs passes,
- * troisième passe de réglage — toujours uniquement le premier temps du
- * récit validé ("Objet"), toujours sans couture, sans scroll. Le client a
- * validé la direction générale mais demande une itération supplémentaire
- * avant de passer à "Mystère"/"Ouverture" : silhouette, matière, lumière,
- * composition poussées plus loin, jusqu'à un objet devant lequel "on
- * pourrait s'arrêter quelques secondes sans ressentir le besoin que
- * quelque chose se passe".
+ * Itération 1 d'un chantier délibérément fractionné en plusieurs passes —
+ * toujours uniquement le premier temps du récit validé ("Objet"), toujours
+ * sans couture, sans scroll. Silhouette tranchée : trois variantes réelles
+ * ("La Stèle" ici, "Le Fuseau" effilé, "Le Biseau" à sommet incliné) ont
+ * été construites et comparées côte à côte, même matière/lumière/
+ * composition, avant de choisir. Recommandation donnée en faveur du
+ * Biseau (silhouette la plus reconnaissable et la plus évocatrice
+ * d'architecture) mais le client a tranché explicitement pour "La Stèle"
+ * ("franchement je valide A") — c'est cette géométrie qui reste, les deux
+ * autres n'ont existé que le temps du comparatif, jamais committées.
  */
 function roundedRectShape(width: number, height: number, radius: number) {
   const w = width / 2;
@@ -86,9 +88,10 @@ function createWoodGrainTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/* Écrin — corps élancé sur un socle légèrement plus large, séparés d'un
-   fin joint creux (proportion de plinthe, "ne pas être littéral" demande
-   explicite). Chanfreins présents, arête qui accroche la lumière. */
+/* Écrin — "La Stèle", silhouette validée par le client : corps élancé sur
+   un socle légèrement plus large, séparés d'un fin joint creux (proportion
+   de plinthe, "ne pas être littéral" demande explicite). Chanfreins
+   présents, arête qui accroche la lumière. */
 function Monolith() {
   const grain = useMemo(() => createWoodGrainTexture(), []);
 

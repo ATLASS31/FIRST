@@ -1518,6 +1518,14 @@ npm run dev
   final committé (A + matière/lumière/composition améliorées) : repli
   `prefers-reduced-motion` et rendu mobile toujours sans régression,
   régression complète sur les 10 routes sans nouvelle erreur.
+- **Notre histoire : silhouette tranchée — "La Stèle" validée.** Réponse
+  du client au comparatif des trois variantes : *"franchement je valide
+  A"* — contre ma recommandation (qui penchait pour le Biseau). Rien à
+  changer dans le rendu, la géométrie A était déjà la seule committée
+  dans le dépôt ; les commentaires de `MonolithScene.tsx` sont mis à jour
+  pour documenter la décision (nom "La Stèle" donné à la géométrie,
+  recommandation notée, choix final du client explicite) plutôt que de
+  laisser le fichier parler d'un choix encore ouvert.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
