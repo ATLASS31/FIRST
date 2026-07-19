@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 
@@ -9,18 +9,50 @@ RectAreaLightUniformsLib.init();
 
 const VOID_COLOR = "#0d0a08";
 const OBJECT_COLOR = "#2a2116";
+const GLOW_COLOR = "#ffb774";
+
+const BODY_WIDTH = 1.15;
+const BODY_HEIGHT = 1.72;
+const BODY_DEPTH = 0.95;
+const BASE_WIDTH = 1.24;
+const BASE_HEIGHT = 0.32;
+const BASE_DEPTH = 1.02;
+const GAP = 0.022;
+const LEVITATE = 0.035;
+const GROUND_Y = -1.28;
+const BASE_Y = GROUND_Y + LEVITATE + BASE_HEIGHT / 2;
+const BODY_Y = BASE_Y + BASE_HEIGHT / 2 + GAP + BODY_HEIGHT / 2;
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 /**
- * Itération 1 d'un chantier délibérément fractionné en plusieurs passes —
- * toujours uniquement le premier temps du récit validé ("Objet"), toujours
- * sans couture, sans scroll. Silhouette tranchée : trois variantes réelles
- * ("La Stèle" ici, "Le Fuseau" effilé, "Le Biseau" à sommet incliné) ont
- * été construites et comparées côte à côte, même matière/lumière/
- * composition, avant de choisir. Recommandation donnée en faveur du
- * Biseau (silhouette la plus reconnaissable et la plus évocatrice
- * d'architecture) mais le client a tranché explicitement pour "La Stèle"
- * ("franchement je valide A") — c'est cette géométrie qui reste, les deux
- * autres n'ont existé que le temps du comparatif, jamais committées.
+ * Itération 2 : premier temps scrollé — "Mystère → Ouverture". Silhouette
+ * "La Stèle" validée par le client ("franchement je valide A") après
+ * comparaison de trois variantes réelles ; matière/lumière/composition
+ * déjà travaillées à l'itération 1. Le client a confirmé être satisfait de
+ * l'état "Objet" ("oui go") : ce fichier construit maintenant les deux
+ * temps suivants du récit en cinq temps — "Une couture apparaît. Le volume
+ * s'ouvre très lentement. Une lumière chaude s'en échappe." — rien de plus
+ * à ce stade : ni "Révélation" (les éléments qui s'assemblent en
+ * architecture) ni "Maison" (la signature "100 % fabriqué en France"),
+ * volontairement laissés à une prochaine itération contrôlée.
+ *
+ * Le corps ("La Stèle") est maintenant scindé en deux moitiés qui se
+ * touchent exactement au repos — indiscernables d'un seul volume plein,
+ * "Objet" et "Mystère" doivent rester visuellement identiques tant que le
+ * scroll n'a pas commencé. La progression de scroll (même schéma que le
+ * squelette initial : `getBoundingClientRect` throttlé par
+ * `requestAnimationFrame`, lu dans `useFrame` plutôt que via un state React
+ * pour ne jamais re-render tout l'arbre R3F au pixel scrollé) pilote deux
+ * choses dans la moitié basse de la course : une fine ligne de lumière
+ * chaude qui apparaît le long de la couture (0 → 40 % du scroll de la
+ * section) ; puis une rotation très lente des deux moitiés autour de cette
+ * même couture, comme deux portes qui s'entrouvrent, laissant s'échapper
+ * la lumière qu'on vient de voir naître (40 % → 100 %). Angle maximal
+ * volontairement faible (9°) : ce n'est que le tout début de l'ouverture,
+ * pas la révélation de l'intérieur.
  */
 function roundedRectShape(width: number, height: number, radius: number) {
   const w = width / 2;
@@ -36,6 +68,45 @@ function roundedRectShape(width: number, height: number, radius: number) {
   shape.lineTo(-w, -h + radius);
   shape.quadraticCurveTo(-w, -h, -w + radius, -h);
   return shape;
+}
+
+/* Profil d'une moitié du corps : arête extérieure arrondie (chanfrein),
+   arête de couture (x=0, le pivot de la "porte") laissée droite — c'est
+   elle qui doit lire comme une coupe nette, pas comme un bord fini. */
+function halfBodyShape(halfWidth: number, height: number, radius: number, side: "left" | "right") {
+  const h = height / 2;
+  const sign = side === "right" ? 1 : -1;
+  const shape = new THREE.Shape();
+  shape.moveTo(0, -h);
+  shape.lineTo(sign * (halfWidth - radius), -h);
+  shape.quadraticCurveTo(sign * halfWidth, -h, sign * halfWidth, -h + radius);
+  shape.lineTo(sign * halfWidth, h - radius);
+  shape.quadraticCurveTo(sign * halfWidth, h, sign * (halfWidth - radius), h);
+  shape.lineTo(0, h);
+  shape.lineTo(0, -h);
+  return shape;
+}
+
+function buildHalfGeometry(side: "left" | "right") {
+  const shape = halfBodyShape(BODY_WIDTH / 2, BODY_HEIGHT, 0.055, side);
+  // Pas de chanfrein d'extrusion (bevelEnabled) sur les moitiés : ce
+  // chanfrein s'applique à tout le pourtour du profil, y compris l'arête
+  // de couture (x=0) — qui n'a pourtant aucune courbure dans le tracé 2D.
+  // Deux moitiés dont les chanfreins de couture se touchent forment une
+  // arête convexe qui accroche fortement la lumière, visible même au
+  // repos (bug trouvé à l'écran : un trait clair au centre de l'objet,
+  // identique à l'état fermé et ouvert — la preuve qu'il vient de la
+  // géométrie, pas de l'animation). L'arrondi des coins extérieurs dans
+  // le tracé 2D (`radius` ci-dessus) suffit à donner une arête douce vue
+  // de face ; la couture elle-même reste une coupe franche, cohérente
+  // avec l'idée d'une coupure nette plutôt qu'un bord fini.
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: BODY_DEPTH,
+    bevelEnabled: false,
+    curveSegments: 32,
+  });
+  geo.translate(0, 0, -BODY_DEPTH / 2);
+  return geo;
 }
 
 /* Grain de bois procédural, deux fréquences superposées (larges bandes
@@ -88,40 +159,77 @@ function createWoodGrainTexture(): THREE.CanvasTexture {
   return texture;
 }
 
-/* Écrin — "La Stèle", silhouette validée par le client : corps élancé sur
-   un socle légèrement plus large, séparés d'un fin joint creux (proportion
-   de plinthe, "ne pas être littéral" demande explicite). Chanfreins
-   présents, arête qui accroche la lumière. */
-function Monolith() {
-  const grain = useMemo(() => createWoodGrainTexture(), []);
+function MonolithBody({
+  progressRef,
+  material,
+}: {
+  progressRef: React.RefObject<number>;
+  material: THREE.MeshPhysicalMaterial;
+}) {
+  const leftGeometry = useMemo(() => buildHalfGeometry("left"), []);
+  const rightGeometry = useMemo(() => buildHalfGeometry("right"), []);
 
-  const bodyWidth = 1.15;
-  const bodyHeight = 1.72;
-  const bodyDepth = 0.95;
-  const baseWidth = 1.24;
-  const baseHeight = 0.32;
-  const baseDepth = 1.02;
-  const gap = 0.022;
-  const levitate = 0.035;
+  const leftRef = useRef<THREE.Mesh>(null);
+  const rightRef = useRef<THREE.Mesh>(null);
+  const glowLightRef = useRef<THREE.PointLight>(null);
+  const glowPlaneRef = useRef<THREE.Mesh>(null);
 
-  const bodyGeometry = useMemo(() => {
-    const shape = roundedRectShape(bodyWidth, bodyHeight, 0.055);
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: bodyDepth,
-      bevelEnabled: true,
-      bevelThickness: 0.05,
-      bevelSize: 0.05,
-      bevelSegments: 10,
-      curveSegments: 32,
-    });
-    geo.center();
-    return geo;
-  }, []);
+  useFrame(() => {
+    const raw = Math.min(1, Math.max(0, progressRef.current));
+    // Le corps est vertical-centré dans la section : par construction, le
+    // haut de la section entre dans le cadre bien avant que le volume
+    // lui-même ne soit lisible à l'écran. Décaler les deux phases plus
+    // loin dans la course (au lieu de 0→0.4 et 0.4→1) laisse un vrai
+    // temps "Objet" fermé une fois l'objet effectivement visible, avant
+    // que "Mystère" ne commence — vérifié à l'écran, pas seulement en
+    // théorie (un premier réglage 0→0.4/0.4→1 montrait la couture déjà
+    // allumée dès que l'objet apparaissait à l'écran).
+    const seamT = Math.max(0, Math.min(1, (raw - 0.35) / 0.3));
+    const openT = Math.max(0, Math.min(1, (raw - 0.65) / 0.35));
+    const openEased = easeInOutCubic(openT);
+    const maxAngle = THREE.MathUtils.degToRad(9);
 
+    if (leftRef.current) leftRef.current.rotation.y = maxAngle * openEased;
+    if (rightRef.current) rightRef.current.rotation.y = -maxAngle * openEased;
+
+    const glowIntensity = seamT * 1 + openEased * 7;
+    if (glowLightRef.current) glowLightRef.current.intensity = glowIntensity;
+    if (glowPlaneRef.current) {
+      const mat = glowPlaneRef.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = Math.min(1, seamT * 0.55 + openEased * 0.85);
+    }
+  });
+
+  return (
+    <group position={[0, BODY_Y, 0]}>
+      <mesh ref={leftRef} geometry={leftGeometry} material={material} castShadow receiveShadow />
+      <mesh ref={rightRef} geometry={rightGeometry} material={material} castShadow receiveShadow />
+      {/* La lumière qui "s'échappe" de la couture — une lame fine et un
+          point light très localisé, tous deux à intensité nulle au repos. */}
+      <mesh ref={glowPlaneRef} position={[0, 0, BODY_DEPTH / 2 + 0.08]}>
+        <planeGeometry args={[0.05, BODY_HEIGHT * 0.92]} />
+        <meshBasicMaterial color={GLOW_COLOR} transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <pointLight
+        ref={glowLightRef}
+        position={[0, 0, BODY_DEPTH / 2 + 0.08]}
+        color={GLOW_COLOR}
+        intensity={0}
+        distance={1.6}
+        decay={2}
+      />
+    </group>
+  );
+}
+
+/* Socle — reste immobile pendant toute la séquence : c'est l'ancrage
+   architectural, ce n'est pas lui qui "s'ouvre". Partage le même matériau
+   que le corps (une seule texture de grain générée, pas une par pièce). */
+function Base({ material }: { material: THREE.MeshPhysicalMaterial }) {
   const baseGeometry = useMemo(() => {
-    const shape = roundedRectShape(baseWidth, baseHeight, 0.05);
+    const shape = roundedRectShape(BASE_WIDTH, BASE_HEIGHT, 0.05);
     const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: baseDepth,
+      depth: BASE_DEPTH,
       bevelEnabled: true,
       bevelThickness: 0.045,
       bevelSize: 0.045,
@@ -132,30 +240,8 @@ function Monolith() {
     return geo;
   }, []);
 
-  const material = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(OBJECT_COLOR),
-        roughness: 0.34,
-        roughnessMap: grain,
-        bumpMap: grain,
-        bumpScale: 0.002,
-        metalness: 0.02,
-        clearcoat: 0.68,
-        clearcoatRoughness: 0.07,
-      }),
-    [grain]
-  );
-
-  const groundY = -1.28;
-  const baseY = groundY + levitate + baseHeight / 2;
-  const bodyY = baseY + baseHeight / 2 + gap + bodyHeight / 2;
-
   return (
-    <group>
-      <mesh geometry={bodyGeometry} material={material} position={[0, bodyY, 0]} castShadow receiveShadow />
-      <mesh geometry={baseGeometry} material={material} position={[0, baseY, 0]} castShadow receiveShadow />
-    </group>
+    <mesh geometry={baseGeometry} material={material} position={[0, BASE_Y, 0]} castShadow receiveShadow />
   );
 }
 
@@ -164,7 +250,7 @@ function Monolith() {
    socle lui-même. */
 function Ground() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.28, 0]} receiveShadow>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
       <planeGeometry args={[14, 14]} />
       <meshStandardMaterial color="#0a0806" roughness={1} />
     </mesh>
@@ -204,11 +290,9 @@ function Halo() {
 }
 
 /* Lumière sculpturale — deux lames étroites plutôt qu'une seule, chacune
-   dédiée à une arête différente ("qui révèle les arêtes plutôt qu'elle
-   n'éclaire l'objet", demande explicite). La clé (gauche, chaude, forte)
-   reste dominante ; une deuxième lame beaucoup plus faible et froide vient
-   dessiner un second reflet sur le bord opposé — la forme se lit par ses
-   arêtes, pas par un dégradé unique sur la face. */
+   dédiée à une arête différente. La clé (gauche, chaude, forte) reste
+   dominante ; une deuxième lame beaucoup plus faible et froide vient
+   dessiner un second reflet sur le bord opposé. */
 function KeyRectLight() {
   const ref = useRef<THREE.RectAreaLight>(null);
   useEffect(() => {
@@ -264,8 +348,54 @@ function StudioLight() {
 }
 
 export default function MonolithScene() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef(0);
+  const grain = useMemo(() => createWoodGrainTexture(), []);
+  const woodMaterial = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(OBJECT_COLOR),
+        roughness: 0.34,
+        roughnessMap: grain,
+        bumpMap: grain,
+        bumpScale: 0.002,
+        metalness: 0.02,
+        clearcoat: 0.68,
+        clearcoatRoughness: 0.07,
+      }),
+    [grain]
+  );
+
+  useEffect(() => {
+    let rafId: number | null = null;
+
+    const updateProgress = () => {
+      rafId = null;
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const raw = (viewportH - rect.top) / (viewportH + rect.height);
+      progressRef.current = Math.min(1, Math.max(0, raw));
+    };
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(updateProgress);
+    };
+
+    updateProgress();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   return (
-    <div className="absolute inset-0">
+    <div ref={containerRef} className="absolute inset-0">
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -277,7 +407,8 @@ export default function MonolithScene() {
         <Suspense fallback={null}>
           <StudioLight />
           <Halo />
-          <Monolith />
+          <MonolithBody progressRef={progressRef} material={woodMaterial} />
+          <Base material={woodMaterial} />
           <Ground />
         </Suspense>
       </Canvas>

@@ -1526,6 +1526,80 @@ npm run dev
   pour documenter la décision (nom "La Stèle" donné à la géométrie,
   recommandation notée, choix final du client explicite) plutôt que de
   laisser le fichier parler d'un choix encore ouvert.
+- **Notre histoire : itération 2, premier temps scrollé — "Mystère →
+  Ouverture".** Le client a confirmé être satisfait de l'état "Objet"
+  ("oui go") : premier chantier de scroll réel depuis le pivot Three.js,
+  construisant les deux temps suivants du récit — *"Une couture apparaît.
+  Le volume s'ouvre très lentement. Une lumière chaude s'en échappe."*
+  Rien au-delà : ni "Révélation" (les éléments qui s'assemblent en
+  architecture) ni "Maison" (la signature finale), volontairement laissés
+  à une prochaine itération contrôlée.
+
+  **Le corps ("La Stèle") est scindé en deux moitiés** qui se touchent
+  exactement au repos — indiscernables d'un seul volume plein tant que le
+  scroll n'a pas commencé. Chaque moitié est un profil dessiné en 2D avec
+  une arête de couture franche (x=0, sans courbure) et un bord extérieur
+  arrondi, extrudé sans chanfrein de profondeur (voir bug ci-dessous).
+  Rotation de chaque moitié autour de sa propre couture (l'origine locale
+  de sa géométrie n'est pas recentrée en X, contrairement à `geo.center()`
+  habituel) — comme deux portes qui s'entrouvrent, angle maximal
+  volontairement faible (9°, "ce n'est que le tout début de l'ouverture").
+  Progression de scroll réintroduite avec le même schéma que le squelette
+  initial (`getBoundingClientRect` throttlé par `requestAnimationFrame`,
+  lu dans `useFrame` plutôt que via un state React).
+
+  **Trois bugs réels trouvés et corrigés en vérifiant à l'écran, pas
+  seulement en théorie :**
+  - *Aucune évolution visible malgré une progression de scroll
+    correcte.* Premier essai à 9° : rotation et lueur strictement
+    invisibles à l'écran quel que soit le scroll, alors que les logs de
+    debug confirmaient des valeurs cohérentes. Angle temporairement monté
+    à 35° pour isoler le problème : la rotation devenait visible, prouvant
+    que le mécanisme fonctionnait — le seuil de 9° était simplement trop
+    fin pour se voir sur une capture, pas un bug.
+  - *La lueur elle-même restait invisible même à intensité 40 (au lieu de
+    ~1.6 prévu).* La lame et le point light étaient positionnés légèrement
+    à l'intérieur du chanfrein du volume fermé — donc occultés par la
+    propre géométrie de l'objet. Repositionnés nettement en avant du plan
+    frontal (`BODY_DEPTH / 2 + 0.08` plutôt que `+ 0.03`), confirmé visible
+    à l'écran avant de rebaisser l'intensité à une valeur réellement
+    subtile.
+  - *Un trait clair permanent au centre de l'objet, identique à l'état
+    fermé et à l'état ouvert* — donc indépendant de l'animation, la preuve
+    qu'il venait de la géométrie et non du scroll. Cause : le chanfrein
+    d'`ExtrudeGeometry` s'applique à tout le pourtour du profil, y compris
+    l'arête de couture (pourtant droite dans le tracé 2D) ; deux moitiés
+    dont les chanfreins de couture se touchent forment une arête convexe
+    qui accroche fortement la lumière. Corrigé en désactivant
+    `bevelEnabled` sur les moitiés — l'arrondi des coins extérieurs dans
+    le tracé 2D suffit à garder une arête douce vue de face.
+  - *Une "lueur" visible même avant tout scroll*, qui a fait suspecter un
+    autre bug — en réalité un artefact de méthode de test :
+    `elementHandle.screenshot()` de Playwright fait défiler l'élément
+    entièrement dans le cadre avant de capturer, changeant silencieusement
+    la position de scroll réelle par rapport à celle vérifiée juste avant
+    via les logs de debug. Confirmé en isolant un test par capture de page
+    complète (sans laisser Playwright déplacer le scroll) : au repos réel,
+    aucune lueur.
+  - *Seuils de phase recalés après un vrai test de visibilité.* Le corps
+    est centré verticalement dans la section : avec un premier découpage
+    naïf (0→40 % pour "Mystère", 40→100 % pour "Ouverture" sur toute la
+    traversée de la section), la couture était déjà à moitié allumée dès
+    que l'objet devenait réellement visible à l'écran. Décalé à 35→65 %
+    et 65→100 % : l'objet reste fermé un vrai moment après être devenu
+    lisible, avant que "Mystère" ne commence — vérifié en calculant le
+    scroll nécessaire pour que la carte (centrée dans la section) devienne
+    pleinement visible, qui coïncide avec le nouveau seuil de 35 %.
+
+  **Nettoyage** : le grain de bois et le matériau, dupliqués entre le
+  corps et le socle dans un premier temps, sont maintenant générés une
+  seule fois dans `MonolithScene` et partagés par les deux.
+
+  **Vérifications** : `tsc --noEmit`/`eslint` propres (seule l'erreur
+  `GlassPanel.tsx` déjà documentée comme pré-existante subsiste) ; repli
+  `prefers-reduced-motion` et rendu mobile revérifiés après le refactor
+  du matériau partagé, régression complète sur les 10 routes sans
+  nouvelle erreur.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
