@@ -1601,6 +1601,122 @@ npm run dev
   du matériau partagé, régression complète sur les 10 routes sans
   nouvelle erreur.
 
+## Pivot complet : "Traverser la forêt Bellora" (prototype)
+
+Demande explicite et sans ambiguïté du client, après validation de l'objet
+("La Stèle") et du début de narration "Mystère → Ouverture" : abandon total
+de toute la direction "monolithe" — *"Je veux qu'on abandonne complètement
+la direction actuelle avec le monolithe sombre, la couture lumineuse et
+l'ambiance presque noire. Je ne veux plus essayer de réparer cette idée."*
+`MonolithScene.tsx` est supprimé dans son intégralité (`rm`), aucune ligne
+réutilisée — la direction elle-même était rejetée, pas seulement son
+exécution.
+
+**Nouveau concept** : le visiteur ne regarde plus un objet isolé, il
+traverse un paysage. Séquence en quatre temps pilotée en continu par le
+scroll : la forêt → le passage qui s'ouvre (les arbres s'écartent, avancée
+caméra) → la clairière et le lac → les informations Bellora en panneaux
+Liquid Glass "flottants" dans le paysage. Direction artistique : lumineuse,
+naturelle, premium, apaisante — référence Apple pour la précision et le
+contrôle du mouvement, mais une identité organique/architecturale plutôt
+que minérale. Liste d'exclusion explicite du client, à ne jamais
+réintroduire : fond noir, ambiance mystérieuse, monolithe, scène produit
+sombre, forêt cartoon/jeu vidéo, excès de détails, cartes blanches
+classiques, animations rapides.
+
+**Portée volontairement limitée à un prototype**, demande explicite avant
+de construire toute la scène : caméra + une quinzaine d'arbres + une
+lumière + le lac + un seul panneau Liquid Glass (sur les trois prévus à
+terme), pour valider la sensation de déplacement, la lumière, la
+profondeur et le comportement du scroll avant d'ajouter le reste.
+
+**Section épinglée** (`NotreHistoire.tsx`) : technique standard sans
+dépendance supplémentaire — un conteneur `height: 400vh` enveloppe un
+panneau `sticky top-0 h-screen`. Tant que le conteneur défile, le panneau
+reste collé en haut du viewport ; une fois son bas atteint, il se détache
+naturellement et le scroll normal reprend — ce qui satisfait directement
+l'exigence du client ("libération de la section une fois la séquence
+terminée") sans code dédié. Un seul `progressRef` (0→1 sur toute la course
+de la section) est calculé une fois par un handler de scroll throttlé en
+`requestAnimationFrame`, puis distribué par deux canaux qui contournent
+tous les deux le state React (même discipline que sur tout le reste du
+site — jamais de re-render au pixel scrollé) : lu dans `useFrame` côté
+scène R3F, et appliqué en mutation directe de style (`opacity`/`transform`)
+sur le panneau Liquid Glass, un élément DOM ordinaire superposé au canvas.
+
+**Le panneau Liquid Glass n'est pas en 3D.** Refaire la transparence, le
+flou d'arrière-plan et les reflets subtils en WebGL (matériaux de
+transmission + render target) aurait été une reconstruction coûteuse d'un
+système déjà approuvé et utilisé partout ailleurs sur le site. Le panneau
+réutilise directement `GlassPanel` (`tone="light"`, classe `.glass` :
+`backdrop-filter: blur(13px) saturate(180%)`), positionné en overlay
+absolu au-dessus du `<canvas>`.
+
+**Scène 3D** (`ForestScene.tsx`, nouveau fichier) : arbres low poly traités
+de façon architecturale plutôt que jeu vidéo — tronc en cylindre à 5
+segments, double cône à 6 segments pour la canopée, `flatShading` partout,
+palette naturelle sourde. Chaque arbre a une position de repos et un
+`useFrame` qui l'écarte progressivement (écartement asymétrique par arbre
+via un `partAmount` aléatoire, pas un mouvement uniforme mécanique) sur la
+tranche de progression 0.20–0.55. La caméra avance en ligne continue de
+`z=6.5` à `z=-15` sur 85 % de la progression puis se stabilise pendant que
+le panneau glass apparaît. Un brouillard linéaire (`THREE.Fog`) recule
+(`far` 15→42) entre 0.30 et 0.75 pour donner la sensation d'ouverture vers
+la clairière. Éclairage naturel : un soleil directionnel qui se réchauffe
+et s'intensifie à l'approche du lac, une hémisphère (ciel/sol) pour le
+rebond extérieur, un ambiant très faible en appoint — volontairement aucune
+source "spectaculaire".
+
+**Repli adapté à une section épinglée.** Contrairement aux itérations
+précédentes, le repli `prefers-reduced-motion`/pas de WebGL ne peut pas se
+contenter de remplacer le contenu 3D à l'intérieur du même conteneur
+`400vh` — ça forcerait un utilisateur en repli à défiler quatre écrans
+vides pour rien. `canRender3D === false` fait donc bifurquer tout le
+rendu vers une section de hauteur normale, non épinglée, avec les 3 preuves
+en pastilles `GlassPanel` — une branche de retour anticipé, pas juste un
+enfant conditionnel.
+
+**Deux bugs réels trouvés et corrigés en vérifiant à l'écran :**
+- *Le lac n'apparaissait dans aucune capture, à aucun moment de la
+  séquence.* Le plan de sol (`Ground`, opaque, `y=0`) recouvrait
+  entièrement l'emplacement du lac (`y=-0.02` à l'origine, donc *en
+  dessous* du sol) depuis l'angle de vue plongeant de la caméra — le sol
+  passait devant, jamais le lac derrière. Corrigé en remontant le lac à
+  `y=0.03`, légèrement au-dessus du sol, pour qu'il le recouvre
+  visuellement comme un vrai plan d'eau.
+- *Une ligne d'horizon dure entre le ciel pâle et le sol sombre*, au lieu
+  d'un fondu atmosphérique progressif. Cause identifiée à tort au premier
+  passage comme un problème de brouillard (le sol s'arrêtait à une
+  distance encore dans la plage active du brouillard, créant un bord net) —
+  corrigé une première fois en agrandissant le sol (`PlaneGeometry(70,
+  130)`) pour que son bord physique tombe toujours bien au-delà de la
+  portée maximale du brouillard. La bande dure a persisté malgré tout : la
+  vraie cause était le frustum de la `shadow-camera` du soleil directionnel,
+  resté sur ses valeurs par défaut Three.js (une boîte orthographique
+  d'environ ±5 unités) — minuscule face à un sol de 70×130 et à une caméra
+  qui parcourt une trentaine d'unités en z. Tout ce qui tombait hors de
+  cette petite boîte échantillonnait un texel de bord de la shadow map,
+  produisant une bande sombre nette exactement à la frontière du frustum.
+  Corrigé en donnant des bornes explicites et généreuses
+  (`shadow-camera-left/right/top/bottom/near/far`) couvrant toute
+  l'étendue visible de la scène — revérifié à `0.5`, `0.7`, `0.9` et `1.0`
+  de la progression : fondu doux, plus de ligne dure.
+
+**Vérifications** : `tsc --noEmit`/`eslint` propres (seule l'erreur
+`GlassPanel.tsx` déjà documentée comme pré-existante subsiste) ; séquence
+complète revérifiée à l'écran sur `[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]` de la
+progression (lac visible, horizon adouci, panneau glass qui apparaît
+progressivement en fin de course) ; repli `prefers-reduced-motion` revérifié
+(section normale, non épinglée, 3 pastilles glass, aucun canvas forêt) ;
+rendu mobile (390×844) revérifié ; régression complète sur les 10 routes
+sans nouvelle erreur.
+
+**Portée non construite à ce stade, sur demande explicite** : les deux
+autres panneaux Liquid Glass ("4–12 semaines", "100 % France"), tout
+raffinement supplémentaire sur la lumière/la matière/la composition — en
+attente du retour du client sur ce premier prototype avant d'aller plus
+loin.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
