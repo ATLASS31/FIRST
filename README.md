@@ -1869,6 +1869,72 @@ changer parce que la version animée ne montre plus les mêmes informations)
 et rendu mobile (390×844) revérifiés ; régression complète sur les 10
 routes sans nouvelle erreur.
 
+## Forêt Bellora : exécution finale — retrait des maisons, vraies cartes gammes
+
+Recadrage net du client après le round précédent, qui avait dérivé vers un
+concept intermédiaire (montagnes, maisons simplifiées) non demandé :
+*"le concept est déjà validé [...] je ne cherche plus une nouvelle idée
+[...] ne cherche plus à inventer, cherche à perfectionner."* Un aller-retour
+supplémentaire (concept statique publié en Artifact pour proposer une
+nouvelle direction) a d'ailleurs été explicitement recadré par le client
+comme une itération de trop — le déroulé (forêt → la caméra avance → les
+arbres s'écartent → le lac → les trois cartes gammes au-dessus du lac →
+le scroll continue) était déjà acquis depuis plusieurs rounds ; la seule
+tâche restante était l'exécution.
+
+**Les trois volumes architecturaux simplifiés disparaissent.** *"Les
+espèces de cubes blancs [...] ça casse tout [...] soit on montre les
+vraies maisons, soit on ne montre rien, mais certainement pas des
+cubes."* `HouseCluster`, `House`, `wallMaterial`, `roofMaterial` sont
+supprimés en bloc de `ForestScene.tsx` — c'était par ailleurs le poste le
+plus coûteux de la scène (douze meshes, deux matériaux transparents mutés
+à chaque frame), donc un gain de performance net au passage, pas seulement
+un choix esthétique.
+
+**Les vraies cartes gammes reviennent, au-dessus du lac.** *"Les cartes
+existent déjà"* — `NotreHistoire.tsx` importe directement `GAMMES` de
+`lib/gammes.ts` (mêmes photos, mêmes intitulés, mêmes liens que
+`GammesPreview`) plutôt que d'inventer un nouveau contenu ou une nouvelle
+mise en page de carte. Trois cartes Liquid Glass compactes (photo 4:5,
+badge nom, tagline) apparaissent en cascade au-dessus du lac — chacune
+avec un seuil de révélation décalé (`CARD_REVEAL_STAGGER`, 0.06 de
+progression par carte) pour un enchaînement plutôt qu'un pop synchrone des
+trois à la fois — et pointent vers les vraies pages `/gamme-*`. Chaque
+carte reprend le même bob vertical très lent et le même reflet sous la
+carte déjà utilisés pour le panneau KPI du round "passe qualité" (revenus
+avec cette itération), avec un piège déjà connu évité dès l'écriture :
+le transform de révélation piloté par le scroll (JS, sur le `<Link>`) et
+le bob piloté par CSS (`@keyframes forest-card-float`) sont posés sur deux
+éléments DOM distincts (un conteneur interne pour le bob) — sur le même
+élément, l'animation CSS écraserait le transform inline à chaque frame,
+un bug déjà rencontré et documenté au round précédent pour le panneau
+unique, donc anticipé ici avant même de tester à l'écran.
+
+**Arbres légèrement affinés, pas redessinés** — la consigne était de
+perfectionner, pas de réinventer une quatrième fois : les profils
+`LatheGeometry` sont resserrés (rayons de couronne réduits d'environ
+20-25 %) pour un rendu plus "fin et géométrique", et leur nombre réduit
+de neuf à sept pour plus d'air et un budget de rendu plus serré.
+
+**Caméra recentrée sur le lac** : sans maisons au-delà, l'arrêt final de
+la caméra recule de `z = -24` à `z = -19`, directement au-dessus du lac
+plutôt que de continuer vers un point vide — cohérent avec le déroulé où
+la révélation se joue "au-dessus du lac", pas plus loin.
+
+**Vérifications** : `tsc --noEmit`/`eslint` propres (seule l'erreur
+`GlassPanel.tsx` pré-existante subsiste) ; séquence complète revérifiée à
+l'écran sur `[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]` de la progression (lac
+visible, cascade des trois cartes confirmée) ; repli
+`prefers-reduced-motion` et rendu mobile (390×844) revérifiés — les trois
+cartes s'alignent proprement côte à côte même en 390px de large ;
+régression complète sur les 10 routes sans nouvelle erreur. Les photos des
+trois cartes n'ont pas pu être vérifiées visuellement dans ce bac à
+sable — le CDN Higgsfield qui les héberge y est bloqué (limitation
+pré-existante, déjà documentée), donc les captures d'écran montrent le
+texte alternatif à la place de l'image ; le code utilise `next/image`
+exactement comme `GammesPreview.tsx`, qui affiche ces mêmes images
+correctement en production.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de

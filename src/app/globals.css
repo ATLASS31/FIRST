@@ -531,3 +531,31 @@ body {
   }
 }
 
+/* Cartes gammes "flottantes" au-dessus du lac (forêt Bellora, fin de
+   séquence) : un bob vertical très lent et de faible amplitude, jamais un
+   gadget — juste la sensation d'objets suspendus au-dessus de l'eau
+   plutôt que posés. `animation-delay` est réglé par carte en inline style
+   (`NotreHistoire.tsx`) pour que les trois ne respirent jamais en
+   parfaite unisson. Ces cartes n'existent que quand `canRender3D` est
+   vrai (déjà conditionné par `!prefersReducedMotion`), mais la garde
+   ci-dessous reste posée par cohérence avec le reste du fichier. */
+@keyframes forest-card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.forest-card-float {
+  animation: forest-card-float 6.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forest-card-float {
+    animation: none;
+  }
+}
+

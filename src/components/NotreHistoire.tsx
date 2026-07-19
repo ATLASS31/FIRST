@@ -1,46 +1,42 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
+import { GAMMES } from "@/lib/gammes";
 
 /**
- * Huitième reprise — la traversée de la forêt Bellora est validée comme
- * narration ("pour la première fois, je comprends pourquoi la 3D est
- * présente"), mais deux changements structurants sur demande explicite du
- * client :
+ * Neuvième reprise — recadrage du client après le round précédent : "le
+ * concept est déjà validé [...] ne cherche plus à inventer, cherche à
+ * perfectionner." Le déroulé reste exactement celui déjà construit (forêt
+ * → la caméra avance → les arbres s'écartent → le lac → les trois cartes
+ * gammes au-dessus du lac → le scroll continue) ; seule la fin de séquence
+ * change de nature.
  *
- * 1. **Plus de panneau Liquid Glass "20 ans de garantie".** Cette section
- *    précède directement `GammesPreview` sur la page d'accueil
- *    (`page.tsx`) — la traversée devient la transition naturelle vers les
- *    trois vraies fiches gamme plutôt qu'un doublon d'information (le
- *    chiffre "20 ans" existe déjà ailleurs : `SavoirFaire.tsx`,
- *    `Procede.tsx`). La scène 3D (`ForestScene.tsx`) se termine sur trois
- *    volumes architecturaux qui émergent dans la clairière, sans texte —
- *    "je ne veux pas d'un décor, je veux une ambiance" — puis la section
- *    se détache et le scroll normal continue directement dans
- *    `GammesPreview`, qui porte le texte et les liens.
- * 2. **Un seul canal de scroll désormais**, pas deux : sans panneau DOM à
- *    piloter, `progressRef` (lu dans `useFrame`) suffit — la mutation de
- *    style d'un `panelRef` séparé, utile le round précédent, a disparu
- *    avec le panneau lui-même.
+ * Les trois volumes architecturaux simplifiés du round précédent
+ * disparaissent ("les espèces de cubes blancs [...] ça casse tout [...]
+ * soit on montre les vraies maisons, soit on ne montre rien, mais
+ * certainement pas des cubes"). À la place : les trois vraies cartes
+ * gammes (`GAMMES` de `lib/gammes.ts` — mêmes photos, mêmes intitulés,
+ * mêmes liens que `GammesPreview`, "les cartes existent déjà", aucune
+ * nouvelle carte inventée ici) apparaissent en cascade au-dessus du lac,
+ * dans un panneau Liquid Glass chacune, puis la section se détache et le
+ * scroll normal continue directement dans `GammesPreview` juste en
+ * dessous — qui reste la version "grille" complète (survol, highlights),
+ * cette apparition-ci n'est qu'un teaser qui pointe vers les mêmes pages.
  *
- * **Section épinglée** (inchangé) : un conteneur `400vh` enveloppe un
- * panneau `sticky top-0 h-screen` — tant que le conteneur défile, le
- * panneau reste collé en haut du viewport ; une fois son bas atteint, il
- * se détache et le défilement normal reprend directement dans
- * `GammesPreview`, juste en dessous dans le DOM.
+ * Un troisième canal de style DOM s'ajoute donc à `progressRef` : trois
+ * refs de carte (`cardRefs`), chacune mutée directement par le même
+ * gestionnaire de scroll throttlé, avec un seuil décalé par carte pour
+ * une cascade plutôt qu'une apparition synchrone des trois à la fois —
+ * toujours sans passer par le state React.
  *
- * **Repli inchangé dans son principe** : si `prefers-reduced-motion` est
- * actif ou si le navigateur ne peut pas fournir de contexte WebGL, la
- * section bascule vers une hauteur normale (pas de `400vh`, pas
- * d'épinglage) et présente directement les preuves fortes en glass — ce
- * contenu de repli n'a pas de raison de changer juste parce que la version
- * animée ne montre plus de chiffres : c'est un repli d'accessibilité, pas
- * une version raccourcie de la même expérience. `canRender3D` reste
- * `false` côté serveur et au tout premier rendu client pour que les deux
- * rendus soient strictement identiques avant hydratation.
+ * **Section épinglée et repli** inchangés dans leur principe (cf. rounds
+ * précédents) : conteneur `400vh` + panneau `sticky`, repli statique en
+ * glass si `prefers-reduced-motion` ou pas de WebGL.
  */
 const ForestScene = dynamic(() => import("./notre-histoire/ForestScene"), {
   ssr: false,
@@ -75,6 +71,13 @@ function ProofPoints() {
   );
 }
 
+/* Seuil de révélation décalé par carte (cascade plutôt que synchrone) :
+   la fenêtre se termine pile quand la progression atteint 1 pour la
+   dernière carte — la révélation se termine avec la séquence, pas avant. */
+const CARD_REVEAL_SPAN = 0.18;
+const CARD_REVEAL_STAGGER = 0.06;
+const CARD_REVEAL_START = 1 - CARD_REVEAL_SPAN - CARD_REVEAL_STAGGER * (GAMMES.length - 1);
+
 export default function NotreHistoire() {
   const prefersReducedMotion = useReducedMotion();
   const [canRender3D, setCanRender3D] = useState(false);
@@ -85,6 +88,7 @@ export default function NotreHistoire() {
 
   const pinRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0);
+  const cardRefs = useRef<Array<HTMLAnchorElement | null>>([]);
 
   useEffect(() => {
     if (!canRender3D) return;
@@ -97,7 +101,17 @@ export default function NotreHistoire() {
       const rect = el.getBoundingClientRect();
       const total = rect.height - window.innerHeight;
       const raw = total > 0 ? -rect.top / total : 0;
-      progressRef.current = Math.min(1, Math.max(0, raw));
+      const clamped = Math.min(1, Math.max(0, raw));
+      progressRef.current = clamped;
+
+      cardRefs.current.forEach((card, i) => {
+        if (!card) return;
+        const start = CARD_REVEAL_START + i * CARD_REVEAL_STAGGER;
+        const t = Math.max(0, Math.min(1, (clamped - start) / CARD_REVEAL_SPAN));
+        const eased = t * t * (3 - 2 * t);
+        card.style.opacity = String(eased);
+        card.style.transform = `translateY(${(1 - eased) * 26}px) scale(${0.96 + eased * 0.04})`;
+      });
     };
 
     const onScroll = () => {
@@ -138,6 +152,57 @@ export default function NotreHistoire() {
     <section ref={pinRef} className="relative" style={{ height: "400vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <ForestScene progressRef={progressRef} />
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-[9%] flex justify-center gap-4 px-4 sm:gap-6">
+          {GAMMES.map((gamme, i) => (
+            <Link
+              key={gamme.slug}
+              ref={(node) => {
+                cardRefs.current[i] = node;
+              }}
+              href={gamme.href}
+              className="pointer-events-auto relative block w-[clamp(112px,15vw,192px)]"
+              style={{ opacity: 0, transform: "translateY(26px) scale(0.96)" }}
+            >
+              {/* Le bob CSS (`forest-card-float`) vit sur ce conteneur
+                  interne, séparé du `<Link>` qui porte le transform de
+                  révélation piloté par le scroll (JS, ci-dessus) — sinon
+                  l'animation CSS et la mutation JS s'écrasent l'une
+                  l'autre en se disputant la même propriété `transform`
+                  sur le même élément. */}
+              <div className="forest-card-float" style={{ animationDelay: `${i * 0.6}s` }}>
+                <GlassPanel tone="light" sheen rounded="rounded-2xl" className="p-2 shadow-xl transition-transform duration-300 hover:-translate-y-1">
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
+                    <Image
+                      src={gamme.imageUrl}
+                      alt={`Maison Bellora, gamme ${gamme.name}`}
+                      fill
+                      sizes="(min-width: 640px) 15vw, 30vw"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-encre/80 via-encre/10 to-transparent" />
+                    <span className={`glass absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-semibold text-${gamme.accent} sm:text-[10px]`}>
+                      {gamme.name}
+                    </span>
+                  </div>
+                  <div className="px-1 py-1.5">
+                    <p className="truncate text-[10px] leading-tight text-encre-douce sm:text-xs">
+                      {gamme.cardTagline}
+                    </p>
+                  </div>
+                </GlassPanel>
+                <div
+                  aria-hidden
+                  className="glass absolute inset-x-0 top-[calc(100%+2px)] h-1/2 origin-top scale-y-[-1] rounded-2xl opacity-15 blur-md"
+                  style={{
+                    maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
+                    WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
+                  }}
+                />
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   );

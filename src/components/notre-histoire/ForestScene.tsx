@@ -12,43 +12,42 @@ function easeInOutCubic(t: number) {
 }
 
 /**
- * Troisième passe sur la forêt Bellora — pas un changement de matériaux
- * cette fois, un changement de référence. Retour explicite du client : la
- * traversée fonctionne comme narration, mais l'exécution "évoque un
- * prototype Blender ou Unity", pas une visualisation d'architecture. Deux
- * décisions structurantes en plus de la question esthétique :
+ * Quatrième passe — recadrage important du client : "le concept est déjà
+ * validé [...] je ne cherche plus une nouvelle idée. Ne cherche plus à
+ * inventer. Cherche à perfectionner." Le déroulé (forêt → la caméra
+ * avance → les arbres s'écartent → le lac → les trois cartes gammes
+ * au-dessus du lac → le scroll continue) est figé. Deux choses de la
+ * passe précédente sont donc retirées, pas parce qu'elles étaient ratées
+ * techniquement, mais parce qu'elles ajoutaient des éléments non demandés
+ * ("je ne veux pas de nouvelles montagnes, de nouvelles maisons
+ * simplifiées, de nouveaux concepts ou de nouvelles cartes") :
  *
- * 1. **Fin de séquence repensée.** Plus de panneau Liquid Glass "20 ans
- *    de garantie" (ce chiffre existe déjà ailleurs sur le site —
- *    `SavoirFaire.tsx`, `Procede.tsx` — rien n'est perdu à l'enlever
- *    d'ici). À la place : trois volumes architecturaux très simples
- *    émergent dans la clairière, au-delà du lac — Primaire, Premium,
- *    Prestige, sans étiquette ni texte ("je ne veux pas d'un décor, je
- *    veux une ambiance"). `NotreHistoire.tsx` place cette section juste
- *    au-dessus de `GammesPreview` sur la page d'accueil : la séquence
- *    devient la transition naturelle vers les vraies fiches gamme
- *    (nom, visuel, lien) plutôt qu'un doublon d'information.
- * 2. **Les arbres ne glissent plus.** Demande explicite : "imagine que la
- *    caméra avance, et que les arbres s'écartent naturellement comme si
- *    le chemin existait déjà". Le corridor est donc statique — chaque
- *    arbre a une position fixe, resserrée près de l'entrée et de plus en
- *    plus large en profondeur — et seule la caméra avance. Aucun arbre
- *    n'anime plus sa position au scroll (l'ancien `useFrame` par arbre a
- *    disparu) : le mouvement perçu vient uniquement du déplacement de la
- *    caméra à travers un lieu qui existait déjà, jamais d'un objet qui se
- *    déplace lui-même — plus sobre et, concrètement, moins de travail par
- *    frame (neuf arbres statiques plutôt que quinze qui écrivent leur
- *    position à chaque frame).
+ * - **Les trois volumes architecturaux ont disparu.** "Les espèces de
+ *   cubes blancs [...] ça casse tout." Le client a raison : une maison
+ *   Bellora réduite à une boîte + une dalle retire de la valeur à la vraie
+ *   photo. La règle qu'il pose est nette — "soit on montre les vraies
+ *   maisons, soit on ne montre rien, mais certainement pas des cubes." Ici
+ *   : on ne montre rien dans la scène 3D elle-même. Les vraies maisons
+ *   reviennent via trois cartes DOM au-dessus du lac (`NotreHistoire.tsx`,
+ *   `GAMMES` de `lib/gammes.ts`) — "les cartes existent déjà", donc aucune
+ *   nouvelle carte n'est inventée ici, seulement leur mise en scène.
+ * - **Toute idée de montagne à l'horizon est abandonnée** avant même
+ *   d'être codée — proposée dans un concept intermédiaire, explicitement
+ *   refusée par le client au tour suivant ("je ne veux pas de nouvelles
+ *   montagnes").
  *
- * Sur l'esthétique elle-même — "les arbres doivent devenir des objets de
- * design", référence Luxigon/Apple plutôt que "low poly" — les arbres ne
- * sont plus des empilements de primitives standard (cône + cône +
- * cylindre) mais des silhouettes dessinées au profil (`LatheGeometry`,
- * tronc et couronne chacun un seul profil 2D révolu) : une forme sculptée
- * continue plutôt que des pièces de kit assemblées. Le nombre d'arbres est
- * réduit (quinze → neuf) et l'espacement augmenté — "le paysage doit être
- * extrêmement minimaliste" — pour que chaque silhouette se lise comme un
- * objet posé avec soin plutôt que comme un remplissage de décor.
+ * Le reste (corridor statique, caméra seule en mouvement, arbres en
+ * `LatheGeometry`, lac en miroir) est conservé dans son principe — la
+ * consigne est d'en perfectionner l'exécution (matière, lumière, teintes,
+ * minutage), pas de le réinventer une quatrième fois. Arbres légèrement
+ * affinés (profils plus étroits) et réduits à sept (neuf → sept) pour
+ * plus d'air et un budget de rendu plus serré ; la caméra s'arrête
+ * maintenant au-dessus du lac (`z = -19`, là où se joue la révélation des
+ * cartes) plutôt que de continuer vers l'ancien emplacement des maisons.
+ * Performance explicitement prioritaire sur tout raffinement visuel en
+ * cas de conflit — d'où la suppression nette plutôt qu'un simple
+ * allègement des trois volumes, qui étaient le poste le plus coûteux de
+ * la scène (douze meshes, matériaux transparents mutés à chaque frame).
  */
 
 /* --- Géométries partagées, un seul jeu par forme, révolues au tour à
@@ -70,10 +69,10 @@ const trunkGeometry = new THREE.LatheGeometry(
 const conifierCanopyGeometry = new THREE.LatheGeometry(
   [
     new THREE.Vector2(0, 0),
-    new THREE.Vector2(0.46, 0.07),
-    new THREE.Vector2(0.29, 0.64),
-    new THREE.Vector2(0.1, 1.02),
-    new THREE.Vector2(0, 1.14),
+    new THREE.Vector2(0.36, 0.07),
+    new THREE.Vector2(0.23, 0.66),
+    new THREE.Vector2(0.08, 1.08),
+    new THREE.Vector2(0, 1.22),
   ],
   8
 );
@@ -81,11 +80,11 @@ const conifierCanopyGeometry = new THREE.LatheGeometry(
 const roundedCanopyGeometry = new THREE.LatheGeometry(
   [
     new THREE.Vector2(0, 0),
-    new THREE.Vector2(0.4, 0.1),
-    new THREE.Vector2(0.58, 0.42),
-    new THREE.Vector2(0.5, 0.72),
-    new THREE.Vector2(0.2, 0.92),
-    new THREE.Vector2(0, 1.0),
+    new THREE.Vector2(0.32, 0.1),
+    new THREE.Vector2(0.46, 0.44),
+    new THREE.Vector2(0.4, 0.76),
+    new THREE.Vector2(0.16, 0.96),
+    new THREE.Vector2(0, 1.04),
   ],
   9
 );
@@ -93,10 +92,10 @@ const roundedCanopyGeometry = new THREE.LatheGeometry(
 const slenderCanopyGeometry = new THREE.LatheGeometry(
   [
     new THREE.Vector2(0, 0),
-    new THREE.Vector2(0.16, 0.05),
-    new THREE.Vector2(0.14, 0.92),
-    new THREE.Vector2(0.05, 1.36),
-    new THREE.Vector2(0, 1.44),
+    new THREE.Vector2(0.12, 0.05),
+    new THREE.Vector2(0.1, 0.98),
+    new THREE.Vector2(0.035, 1.44),
+    new THREE.Vector2(0, 1.52),
   ],
   6
 );
@@ -172,7 +171,7 @@ function Tree({ spec }: { spec: TreeSpec }) {
 }
 
 function Forest() {
-  const trees = useMemo(() => generateTrees(9), []);
+  const trees = useMemo(() => generateTrees(7), []);
   return (
     <>
       {trees.map((spec, i) => (
@@ -207,72 +206,6 @@ function Ground() {
   const material = useMemo(() => new THREE.MeshStandardMaterial({ color: "#8b8873", roughness: 1 }), []);
   return (
     <mesh geometry={geometry} material={material} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -20]} receiveShadow />
-  );
-}
-
-/* Trois volumes architecturaux très simples — Primaire (un seul corps),
-   Premium (un corps plus généreux), Prestige (deux corps, une aile
-   attachée) — jamais plus qu'une boîte + une dalle de toit fine. Aucune
-   étiquette : l'ambiance porte l'émotion, `GammesPreview` juste en
-   dessous porte l'information. Elles "émergent" : opacité et une légère
-   montée depuis le sol, toutes deux pilotées par la progression, jamais
-   avant que la clairière ne soit largement ouverte. */
-const wallMaterial = new THREE.MeshStandardMaterial({ color: "#e7ddc8", roughness: 0.82, transparent: true });
-const roofMaterial = new THREE.MeshStandardMaterial({ color: "#3b3227", roughness: 0.55, transparent: true });
-
-function House({
-  position,
-  scale,
-  wing,
-  progressRef,
-}: {
-  position: [number, number, number];
-  scale: number;
-  wing: boolean;
-  progressRef: React.RefObject<number>;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
-  const materials = useMemo(() => [wallMaterial.clone(), roofMaterial.clone(), wallMaterial.clone(), roofMaterial.clone()], []);
-
-  useFrame(() => {
-    if (!groupRef.current) return;
-    const raw = Math.min(1, Math.max(0, progressRef.current));
-    const revealT = easeInOutCubic(Math.max(0, Math.min(1, (raw - 0.78) / 0.22)));
-    materials.forEach((m) => {
-      m.opacity = revealT;
-    });
-    groupRef.current.position.y = position[1] + (1 - revealT) * -0.4;
-  });
-
-  return (
-    <group ref={groupRef} position={position} scale={scale}>
-      <mesh position={[0, 0.75, 0]} material={materials[0]} castShadow receiveShadow>
-        <boxGeometry args={[3.0, 1.5, 2.0]} />
-      </mesh>
-      <mesh position={[0, 1.56, 0]} material={materials[1]} castShadow>
-        <boxGeometry args={[3.34, 0.12, 2.34]} />
-      </mesh>
-      {wing && (
-        <>
-          <mesh position={[2.1, 0.5, 0.3]} material={materials[2]} castShadow receiveShadow>
-            <boxGeometry args={[1.9, 1.0, 1.7]} />
-          </mesh>
-          <mesh position={[2.1, 1.06, 0.3]} material={materials[3]} castShadow>
-            <boxGeometry args={[2.2, 0.1, 2.0]} />
-          </mesh>
-        </>
-      )}
-    </group>
-  );
-}
-
-function HouseCluster({ progressRef }: { progressRef: React.RefObject<number> }) {
-  return (
-    <>
-      <House position={[-5.6, 0, -43]} scale={0.85} wing={false} progressRef={progressRef} />
-      <House position={[0.6, 0, -48]} scale={1.08} wing={true} progressRef={progressRef} />
-      <House position={[6.2, 0, -44]} scale={0.96} wing={false} progressRef={progressRef} />
-    </>
   );
 }
 
@@ -342,10 +275,10 @@ function CameraRig({ progressRef }: { progressRef: React.RefObject<number> }) {
   useFrame(({ camera }) => {
     const raw = Math.min(1, Math.max(0, progressRef.current));
     const eased = easeInOutCubic(raw);
-    const z = THREE.MathUtils.lerp(6.5, -24, eased);
-    const y = THREE.MathUtils.lerp(1.5, 1.9, eased);
+    const z = THREE.MathUtils.lerp(6.5, -19, eased);
+    const y = THREE.MathUtils.lerp(1.5, 1.85, eased);
     camera.position.set(0, y, z);
-    camera.lookAt(0, 1.05, z - 9);
+    camera.lookAt(0, 1.05, z - 8);
   });
   return null;
 }
@@ -363,7 +296,6 @@ export default function ForestScene({ progressRef }: { progressRef: React.RefObj
           <Forest />
           <Lake />
           <Ground />
-          <HouseCluster progressRef={progressRef} />
         </Suspense>
       </Canvas>
     </div>
