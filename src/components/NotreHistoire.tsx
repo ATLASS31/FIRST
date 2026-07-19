@@ -6,54 +6,41 @@ import { useReducedMotion } from "framer-motion";
 import GlassPanel from "./GlassPanel";
 
 /**
- * Septième reprise sur cette section — abandon total et explicite de la
- * direction précédente ("le monolithe sombre, la couture lumineuse et
- * l'ambiance presque noire [...] je ne veux plus essayer de réparer cette
- * idée"). Nouveau concept, radicalement différent : "traverser la forêt
- * Bellora" — une traversée continue pilotée par le scroll, pas un objet
- * isolé. Ambiance lumineuse, naturelle, apaisante ; low poly traité de
- * façon architecturale (jamais jeu vidéo, jamais cartoon). Toute l'ancienne
- * scène (`MonolithScene.tsx`, le corps scindé en deux moitiés, la couture,
- * le vide sombre) est supprimée dans son intégralité — aucune ligne
- * réutilisée, direction explicitement rejetée par le client.
+ * Huitième reprise — la traversée de la forêt Bellora est validée comme
+ * narration ("pour la première fois, je comprends pourquoi la 3D est
+ * présente"), mais deux changements structurants sur demande explicite du
+ * client :
  *
- * **Où en est ce fichier aujourd'hui — prototype minimal, demande
- * explicite.** "Je veux d'abord un prototype très simple [...] pas besoin
- * de construire toute la scène immédiatement." Seuls les trois premiers
- * temps du récit en quatre temps sont construits (forêt → passage qui
- * s'ouvre → clairière et lac), plus un seul panneau Liquid Glass (sur les
- * trois prévus à terme) pour valider la sensation de déplacement, la
- * lumière, la profondeur et le comportement du scroll avant d'ajouter le
- * reste. Les deux autres informations ("4–12 semaines", "100 % fabriqué en
- * France") restent pour une prochaine itération, une fois cette base
- * validée.
+ * 1. **Plus de panneau Liquid Glass "20 ans de garantie".** Cette section
+ *    précède directement `GammesPreview` sur la page d'accueil
+ *    (`page.tsx`) — la traversée devient la transition naturelle vers les
+ *    trois vraies fiches gamme plutôt qu'un doublon d'information (le
+ *    chiffre "20 ans" existe déjà ailleurs : `SavoirFaire.tsx`,
+ *    `Procede.tsx`). La scène 3D (`ForestScene.tsx`) se termine sur trois
+ *    volumes architecturaux qui émergent dans la clairière, sans texte —
+ *    "je ne veux pas d'un décor, je veux une ambiance" — puis la section
+ *    se détache et le scroll normal continue directement dans
+ *    `GammesPreview`, qui porte le texte et les liens.
+ * 2. **Un seul canal de scroll désormais**, pas deux : sans panneau DOM à
+ *    piloter, `progressRef` (lu dans `useFrame`) suffit — la mutation de
+ *    style d'un `panelRef` séparé, utile le round précédent, a disparu
+ *    avec le panneau lui-même.
  *
- * **Section épinglée** (demande explicite : "la section doit être épinglée
- * pendant toute la séquence"). Technique standard, sans dépendance
- * supplémentaire : un conteneur "grand" (`400vh`) enveloppe un panneau
- * `sticky top-0 h-screen` — tant que le conteneur défile, le panneau reste
- * collé en haut du viewport, donnant tout le temps de scroll nécessaire à
- * la séquence ; une fois le bas du conteneur atteint, le panneau se
- * détache naturellement et le défilement normal reprend (le point 6 de la
- * demande, "libération de la section", découle directement de cette
- * mécanique — aucun code dédié n'est nécessaire).
+ * **Section épinglée** (inchangé) : un conteneur `400vh` enveloppe un
+ * panneau `sticky top-0 h-screen` — tant que le conteneur défile, le
+ * panneau reste collé en haut du viewport ; une fois son bas atteint, il
+ * se détache et le défilement normal reprend directement dans
+ * `GammesPreview`, juste en dessous dans le DOM.
  *
- * Progression de scroll calculée une fois ici (même schéma que les
- * itérations précédentes : `getBoundingClientRect` throttlé par
- * `requestAnimationFrame`) puis partagée par deux canaux distincts, chacun
- * lu sans passer par le state React : `progressRef` pour la scène R3F (lu
- * dans `useFrame`), et une mutation directe du style du panneau Liquid
- * Glass (`panelRef`, un élément DOM ordinaire) — aucun des deux ne
- * déclenche de re-render à chaque pixel scrollé.
- *
- * **Repli en cascade inchangé dans son principe, mais adapté à une section
- * épinglée.** Si `prefers-reduced-motion` est actif ou si le navigateur ne
- * peut pas fournir de contexte WebGL, la section entière bascule vers une
- * hauteur normale (pas de `400vh`, pas d'épinglage — un utilisateur en
- * repli n'a aucune raison de défiler quatre écrans pour rien) et présente
- * directement les preuves fortes en glass, sans scène 3D. `canRender3D`
- * reste `false` côté serveur et au tout premier rendu client (avant
- * hydratation) pour que les deux rendus soient strictement identiques.
+ * **Repli inchangé dans son principe** : si `prefers-reduced-motion` est
+ * actif ou si le navigateur ne peut pas fournir de contexte WebGL, la
+ * section bascule vers une hauteur normale (pas de `400vh`, pas
+ * d'épinglage) et présente directement les preuves fortes en glass — ce
+ * contenu de repli n'a pas de raison de changer juste parce que la version
+ * animée ne montre plus de chiffres : c'est un repli d'accessibilité, pas
+ * une version raccourcie de la même expérience. `canRender3D` reste
+ * `false` côté serveur et au tout premier rendu client pour que les deux
+ * rendus soient strictement identiques avant hydratation.
  */
 const ForestScene = dynamic(() => import("./notre-histoire/ForestScene"), {
   ssr: false,
@@ -97,7 +84,6 @@ export default function NotreHistoire() {
   }, [prefersReducedMotion]);
 
   const pinRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0);
 
   useEffect(() => {
@@ -111,14 +97,7 @@ export default function NotreHistoire() {
       const rect = el.getBoundingClientRect();
       const total = rect.height - window.innerHeight;
       const raw = total > 0 ? -rect.top / total : 0;
-      const clamped = Math.min(1, Math.max(0, raw));
-      progressRef.current = clamped;
-
-      if (panelRef.current) {
-        const panelT = Math.max(0, Math.min(1, (clamped - 0.82) / 0.18));
-        panelRef.current.style.opacity = String(panelT);
-        panelRef.current.style.transform = `translateY(${(1 - panelT) * 18}px)`;
-      }
+      progressRef.current = Math.min(1, Math.max(0, raw));
     };
 
     const onScroll = () => {
@@ -159,39 +138,6 @@ export default function NotreHistoire() {
     <section ref={pinRef} className="relative" style={{ height: "400vh" }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <ForestScene progressRef={progressRef} />
-        <div
-          ref={panelRef}
-          className="pointer-events-none absolute inset-x-0 bottom-[14%] flex justify-center"
-          style={{ opacity: 0, transform: "translateY(18px)" }}
-        >
-          {/* Bob vertical très lent (CSS, `forest-panel-float`) sur un
-              conteneur séparé du transform piloté par le scroll (JS,
-              posé sur le parent ci-dessus) — les deux animations restent
-              indépendantes plutôt que de s'écraser l'une l'autre. Le
-              second bloc, flouté/estompé/inversé, évoque un reflet dans
-              le lac sans dupliquer de texte lisible à l'envers. */}
-          <div className="relative forest-panel-float">
-            <GlassPanel
-              tone="light"
-              sheen
-              rounded="rounded-3xl"
-              className="px-9 py-6 text-center shadow-xl"
-            >
-              <p className="text-xs uppercase tracking-wide text-encre-douce">
-                Garantie
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-encre">20 ans</p>
-            </GlassPanel>
-            <div
-              aria-hidden
-              className="glass absolute inset-x-0 top-[calc(100%+2px)] h-1/2 origin-top scale-y-[-1] rounded-3xl opacity-20 blur-md"
-              style={{
-                maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
-                WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
-              }}
-            />
-          </div>
-        </div>
       </div>
     </section>
   );

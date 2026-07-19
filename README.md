@@ -1793,6 +1793,82 @@ DOM via `getComputedStyle` (nom d'animation, durée, itération infinie,
 `prefers-reduced-motion` et rendu mobile (390×844) revérifiés ; régression
 complète sur les 10 routes sans nouvelle erreur.
 
+## Forêt Bellora : refonte "visualisation architecturale" + transition vers les gammes
+
+La narration est validée par le client ("pour la première fois, je
+comprends pourquoi la 3D est présente"), mais l'exécution reste jugée trop
+"prototype Blender ou Unity". Nouvelle référence donnée explicitement :
+visualisation d'architecture premium (Apple, studios comme Luxigon), plus
+jamais "low poly" comme horizon. Deux décisions structurantes en plus de
+la question esthétique, toutes deux appliquées dans ce round :
+
+**1. Fin de séquence entièrement repensée.** Le panneau Liquid Glass "20
+ans de garantie" disparaît — ce chiffre existe déjà ailleurs sur le site
+(`SavoirFaire.tsx`, `Procede.tsx`), rien n'est perdu à l'enlever d'ici. À
+la place, la scène se termine sur **trois volumes architecturaux qui
+émergent dans la clairière**, au-delà du lac, sans aucune étiquette ni
+texte — *"je ne veux pas d'un décor, je veux une ambiance"*.
+`NotreHistoire.tsx` place cette section juste au-dessus de
+`GammesPreview` sur `page.tsx` : la traversée devient la transition
+naturelle vers les trois vraies fiches gamme (nom, visuel, lien) plutôt
+qu'un doublon d'information — confirmé en lisant l'ordre des sections sur
+la page d'accueil avant de coder quoi que ce soit. Le panneau `panelRef`
+et son canal de scroll séparé disparaissent avec lui : un seul
+`progressRef` suffit maintenant.
+
+**2. Les arbres ne glissent plus latéralement.** Demande explicite :
+*"imagine que la caméra avance, et que les arbres s'écartent naturellement
+comme si le chemin existait déjà"*. Le corridor est donc **statique** —
+chaque arbre a une position fixe (resserrée près de l'entrée, de plus en
+plus large en profondeur) — et seule la caméra avance sur toute la course
+du scroll, avec une légère montée en fin de parcours. Aucun `useFrame` par
+arbre : le mouvement perçu vient uniquement du déplacement de la caméra à
+travers un lieu qui existait déjà, jamais d'un objet qui s'anime
+lui-même — plus sobre, et concrètement moins de travail par frame (neuf
+arbres statiques plutôt que quinze qui écrivaient leur position à chaque
+frame).
+
+**Les arbres deviennent des "objets de design"** plutôt que des
+empilements de primitives standard : chaque tronc et chaque couronne est
+un seul profil 2D révolu (`THREE.LatheGeometry`) — une silhouette
+sculptée continue, dessinée une fois, plutôt que des pièces de kit
+(cône + cône + cylindre) assemblées. Trois archétypes (conifère élancé,
+forme arrondie, colonne fine) partagent leurs géométries/matériaux au
+niveau du module. Le nombre d'arbres est réduit de quinze à neuf et
+l'espacement augmenté — *"le paysage doit être extrêmement minimaliste"*
+— pour que chaque silhouette se lise comme un objet posé avec soin plutôt
+que comme un remplissage de décor.
+
+**Trois volumes architecturaux très simples** (`HouseCluster`,
+`ForestScene.tsx`) : jamais plus qu'une boîte + une dalle de toit fine,
+walls pâles (`#e7ddc8`) contre une toiture sombre (`#3b3227`) — le
+contraste clair/sombre d'une vraie photo d'architecture, qui les fait
+ressortir nettement de la palette verte/khaki du paysage. Le plus grand
+volume ("Prestige") a une aile attachée pour suggérer une composition
+plus sophistiquée, toujours avec seulement des boîtes. Ils "émergent" :
+opacité et une légère montée depuis le sol, toutes deux pilotées par la
+progression (0.78→1.0), jamais avant que la clairière ne soit largement
+ouverte.
+
+**Bug trouvé et corrigé à l'écran** : au premier rendu du corridor
+statique, l'arbre le plus proche de l'entrée occupait tout le bord gauche
+de l'écran — un immense aplat sombre méconnaissable, pas un arbre. Cause :
+le point de départ du corridor (`z = 5`) plaçait le premier arbre à
+seulement 0.5–2.5 unités de la position de départ de la caméra (`z =
+6.5`), largement trop près pour le champ de vision (52°) à cette
+distance. Corrigé en reculant le point de départ du corridor (`z = 2.5`)
+et en resserrant légèrement l'échelle maximale des arbres proches ; revérifié
+à l'écran, cadrage normal restauré.
+
+**Vérifications** : `tsc --noEmit`/`eslint` propres (seule l'erreur
+`GlassPanel.tsx` pré-existante subsiste) ; séquence complète revérifiée à
+l'écran sur `[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]` de la progression avant et
+après le correctif de cadrage ; repli `prefers-reduced-motion` (inchangé,
+toujours les preuves fortes en glass — un repli d'accessibilité n'a pas à
+changer parce que la version animée ne montre plus les mêmes informations)
+et rendu mobile (390×844) revérifiés ; régression complète sur les 10
+routes sans nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
