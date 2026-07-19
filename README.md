@@ -1381,6 +1381,72 @@ npm run dev
   d'hydratation propre à `NotreHistoire`) ; mobile 390×844 sans
   débordement horizontal ; régression complète sur les 10 routes du
   site, aucune nouvelle erreur console.
+- **Notre histoire : deuxième passe de réglage sur le monolithe — "une
+  planche, pas un objet iconique".** Retour détaillé du client sur cinq
+  points précis après la première version de l'itération 1, plus une
+  réserve conceptuelle de fond. Aucun changement de structure ni de
+  narration — uniquement l'exécution, exactement le travail que le client
+  avait demandé de faire avant d'ajouter la moindre animation.
+
+  **Proportions et chanfreins.** Le volume est désormais construit en deux
+  pièces plutôt qu'une seule : un corps élancé posé sur un socle légèrement
+  plus large (1.24 contre 1.15 de largeur), séparés par un fin joint creux
+  — une proportion de plinthe classique en architecture/ébénisterie.
+  Chanfreins multipliés par ~3 (`bevelSize`/`bevelThickness` 0.05 contre
+  0.016) et segments de courbure doublés (10 contre 6) pour une arête qui
+  accroche vraiment la lumière plutôt que d'exister à peine.
+
+  **Réserve conceptuelle — "il y a quelque chose d'architectural
+  là-dedans".** Le socle plus large que le corps est la réponse directe à
+  cette demande : ni une maison ni une façade dessinée ("pas besoin d'être
+  littéral", demande explicite), juste la proportion qu'un œil reconnaît
+  inconsciemment comme relevant du bâti plutôt que de l'objet manufacturé
+  pur (boîte, livre, enceinte).
+
+  **Matière — grain de bois procédural.** Un `THREE.CanvasTexture` généré
+  une fois en mémoire (fond gris neutre, traits verticaux clairs/sombres à
+  très faible opacité, tracé en `bezierCurveTo` pour un veinage légèrement
+  irrégulier plutôt que des lignes droites mécaniques) branché à la fois
+  en `roughnessMap` et en `bumpMap` (`bumpScale` 0.0015, quasi
+  imperceptible en lumière plate, mais qui accroche différemment sous un
+  éclairage rasant) — toujours zéro dépendance réseau, cohérent avec le
+  choix déjà fait pour l'éclairage. `clearcoat` remonté à 0.55 avec un
+  `clearcoatRoughness` abaissé à 0.12 pour un vernis plus net.
+
+  **Lumière — dramaturgie façon photographie produit.** La clé
+  (`RectAreaLight`) resserrée à une largeur de 0.16 (contre 0.9) pour
+  devenir une lame de lumière plutôt qu'un panneau large, intensité
+  fortement relevée en compensation (jusqu'à 400) pour qu'elle reste
+  perceptible malgré sa taille réduite. Contre-jour et ambiant — remontés
+  à la passe précédente pour compenser un rendu jugé trop sombre — ramenés
+  au contraire beaucoup plus bas (`ambientLight` 0.02, contre-jour 0.05) :
+  le compromis clarté/contraste tranché cette fois nettement du côté du
+  contraste, conformément à "laisser le reste disparaître".
+
+  **Atmosphère — un halo, pas un élément.** Un unique sprite en dégradé
+  radial (généré via `canvas.createRadialGradient`, fusion additive,
+  `depthWrite={false}`) placé derrière l'objet du côté de la clé lumineuse
+  — une ambiance, pas un objet supplémentaire, conformément à "je ne
+  rajouterais surtout pas des éléments". Un vignettage en CSS pur (dégradé
+  radial semi-transparent sur un calque superposé au canevas, aucun coût
+  de rendu WebGL) referme le cadre vers le centre.
+
+  **Tension — lévitation de quelques millimètres.** L'objet est surélevé
+  d'un petit décalage constant au-dessus du sol (`levitate = 0.035`, à
+  l'échelle de la scène), assez pour qu'un mince trait de vide sépare sa
+  base de son ombre de contact — "comme s'il était précieux" — sans
+  perdre l'ancrage au sol obtenu à la passe précédente.
+
+  **Vérifié à l'écran** après chaque réglage plutôt qu'en une seule passe
+  — un premier essai de resserrement de la clé lumineuse (largeur 0.16,
+  intensité 130, position éloignée) n'a produit aucun reflet visible du
+  tout sur l'objet (vérifié par échantillonnage de pixels sur toute la
+  face : aucune variation), la lumière étant trop loin et trop étroite
+  pour porter jusqu'à la surface ; repositionnée plus proche et intensité
+  remontée à 400 pour obtenir un dégradé net et perceptible depuis l'arête
+  gauche. `tsc --noEmit` et `eslint` propres, repli `prefers-reduced-motion`
+  et rendu mobile revérifiés sans régression, régression complète sur les
+  10 routes sans nouvelle erreur.
 
 ## Audit du 2026-07-17 : bugs et corrections
 
