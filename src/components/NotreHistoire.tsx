@@ -164,17 +164,33 @@ export default function NotreHistoire() {
           className="pointer-events-none absolute inset-x-0 bottom-[14%] flex justify-center"
           style={{ opacity: 0, transform: "translateY(18px)" }}
         >
-          <GlassPanel
-            tone="light"
-            sheen
-            rounded="rounded-3xl"
-            className="px-9 py-6 text-center shadow-xl"
-          >
-            <p className="text-xs uppercase tracking-wide text-encre-douce">
-              Garantie
-            </p>
-            <p className="mt-1 text-3xl font-semibold text-encre">20 ans</p>
-          </GlassPanel>
+          {/* Bob vertical très lent (CSS, `forest-panel-float`) sur un
+              conteneur séparé du transform piloté par le scroll (JS,
+              posé sur le parent ci-dessus) — les deux animations restent
+              indépendantes plutôt que de s'écraser l'une l'autre. Le
+              second bloc, flouté/estompé/inversé, évoque un reflet dans
+              le lac sans dupliquer de texte lisible à l'envers. */}
+          <div className="relative forest-panel-float">
+            <GlassPanel
+              tone="light"
+              sheen
+              rounded="rounded-3xl"
+              className="px-9 py-6 text-center shadow-xl"
+            >
+              <p className="text-xs uppercase tracking-wide text-encre-douce">
+                Garantie
+              </p>
+              <p className="mt-1 text-3xl font-semibold text-encre">20 ans</p>
+            </GlassPanel>
+            <div
+              aria-hidden
+              className="glass absolute inset-x-0 top-[calc(100%+2px)] h-1/2 origin-top scale-y-[-1] rounded-3xl opacity-20 blur-md"
+              style={{
+                maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
+                WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
+              }}
+            />
+          </div>
         </div>
       </div>
     </section>

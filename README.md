@@ -1717,6 +1717,82 @@ raffinement supplémentaire sur la lumière/la matière/la composition — en
 attente du retour du client sur ce premier prototype avant d'aller plus
 loin.
 
+## Forêt Bellora : passe qualité ("ça fonctionne" → "c'est beau")
+
+Retour du client sur le prototype : la sensation de déplacement et le
+principe de la traversée sont validés ("pour la première fois, je comprends
+pourquoi la 3D est présente"), mais l'exécution visuelle ne l'est pas —
+arbres "très Unity 2015", sol plat et gris, lumière blanche et uniforme,
+ombres dures, Liquid Glass qui ne dialogue pas avec le décor. Rôle donné
+explicitement pour cette passe, via le nouveau skill `3d-web-experience` :
+matériaux, lumière, atmosphère, profondeur, performance — jamais de
+particules, de bloom, de lens flare ni d'animation gadget. Direction
+demandée : *"visualisation d'architecture premium, pas jeu vidéo low
+poly"*, palette scandinave (ciel crème, brume chaude, verts désaturés,
+troncs chauds, lumière de fin d'après-midi).
+
+**Palette repensée** : ciel `#f4ead9` (crème chaud, contre `#eef2ea`
+froid), sol `#8c8a70` (khaki désaturé, contre le vert sombre `#4a5240`
+précédent), canopées en verts sourds (`#78876a`/`#8c9a7c`/`#828f6e`),
+troncs plus chauds (`#8a6a4a`). Le brouillard suit la même teinte que le
+ciel, comme avant.
+
+**Lumière** : le soleil directionnel passe d'une position haute et neutre
+à une position basse et dorée (fin d'après-midi, `position={[-9, 3.6,
+4]}`), avec deux teintes chaudes (jamais froides) entre lesquelles il
+transitionne selon le scroll — seules l'intensité et l'ampleur changent à
+l'approche de la clairière, jamais la "température". `ambientLight` et
+`hemisphereLight` relevés pour adoucir le contraste des ombres, jugées
+trop dures ; `shadow-radius` + `Canvas shadows="soft"` (PCFSoftShadowMap)
+pour un flou d'ombre au lieu d'un bord dur.
+
+**Arbres — trois archétypes au lieu d'un seul gabarit répété**
+(`ForestScene.tsx`) : conifère (double cône affiné), feuillu arrondi
+(icosaèdre bas-poly sur tronc court — silhouette ronde inédite jusqu'ici),
+colonnaire élancé (cône unique haut et fin). Répartition aléatoire
+pondérée (58 % / 24 % / 18 %) plus une rotation Y aléatoire par arbre pour
+casser l'effet "copié-collé" des facettes. Géométries et matériaux
+définis une seule fois au niveau du module et partagés par toutes les
+instances plutôt que recréés par arbre (perf : un seul jeu de buffers GPU
+par archétype, pas quinze jeux dupliqués — l'occasion de corriger au
+passage un gaspillage déjà présent dans le prototype).
+
+**Le lac devient le point focal**, demande explicite du client ("le lac
+pourrait devenir le héros") : `MeshReflectorMaterial` (`@react-three/drei`,
+nouvelle dépendance) remplace le `MeshStandardMaterial` plat du prototype
+— un miroir qui reflète en temps réel le ciel et les arbres, flouté pour
+rester calme plutôt que net. **Premier réglage trouvé trop flou à
+l'écran** (`mixBlur={9}`) : le lac ne se distinguait plus du sol, juste un
+ovale pâle sans aucun reflet visible — corrigé en ramenant `mixBlur` à
+`2.2` et en resserrant le blur du reflet (`[140, 70]`), ce qui laisse
+apparaître les silhouettes des arbres reflétées, vérifié à l'écran.
+Teinte du lac volontairement plus fraîche/bleutée (`#a9c2bd`) que le reste
+de la palette chaude — un vrai plan d'eau lit plus froid que la terre et
+le ciel autour, ce contraste doux le rend lisible comme eau plutôt que
+comme un patch de terrain pâle voisin de la même couleur.
+
+**Le panneau Liquid Glass "flotte"** (`NotreHistoire.tsx`) : un bob
+vertical très lent (`forest-panel-float`, 7 s, ±7 px, `globals.css`) sur
+un conteneur séparé du transform piloté par le scroll (JS, sur le parent),
+pour que les deux animations ne s'écrasent pas l'une l'autre. Un reflet
+sous la carte évoque sa présence au-dessus du lac sans reconstruire de
+synchronisation 3D-DOM complexe : un second bloc `aria-hidden`, stylé avec
+la même classe `.glass`, inversé verticalement (`scale-y-[-1]`, via la
+propriété CSS `scale` en Tailwind v4 — pas `transform`, vérifié par
+`getComputedStyle`), flouté et estompé en dégradé — vide de tout contenu
+pour ne jamais dupliquer de texte lisible à l'envers.
+
+**Vérifications** : `@react-three/drei` ajouté (`npm install`) ;
+`tsc --noEmit`/`eslint` propres (seule l'erreur `GlassPanel.tsx`
+pré-existante subsiste) ; séquence complète revérifiée à l'écran sur
+`[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]` de la progression après le réglage du
+lac (reflets des arbres visibles, panneau qui apparaît en fin de course) ;
+classe d'animation et bloc de reflet confirmés présents et actifs dans le
+DOM via `getComputedStyle` (nom d'animation, durée, itération infinie,
+`scale` calculé) plutôt que supposés à partir du seul code source ; repli
+`prefers-reduced-motion` et rendu mobile (390×844) revérifiés ; régression
+complète sur les 10 routes sans nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de

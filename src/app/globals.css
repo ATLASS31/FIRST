@@ -531,3 +531,29 @@ body {
   }
 }
 
+/* Panneau Liquid Glass "flottant" au-dessus du lac (forêt Bellora) : un
+   bob vertical très lent et de faible amplitude — jamais un gadget, juste
+   la sensation d'un objet suspendu dans l'air plutôt que posé. Ce panneau
+   n'existe que quand `canRender3D` est vrai (déjà conditionné par
+   `!prefersReducedMotion` dans NotreHistoire.tsx), mais la garde ci-dessous
+   reste posée par cohérence avec le reste du fichier. */
+@keyframes forest-panel-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.forest-panel-float {
+  animation: forest-panel-float 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forest-panel-float {
+    animation: none;
+  }
+}
+
