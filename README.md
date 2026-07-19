@@ -1447,6 +1447,25 @@ npm run dev
   gauche. `tsc --noEmit` et `eslint` propres, repli `prefers-reduced-motion`
   et rendu mobile revérifiés sans régression, régression complète sur les
   10 routes sans nouvelle erreur.
+- **Notre histoire : les trois preuves fortes de l'ancien `KeyFigures`
+  verrouillées dans la narration future — aucun code touché ce tour.** Le
+  client a remarqué leur disparition (20 ans de garantie, 4–12 semaines de
+  livraison, 100 % fabriqué en France — retirées avec le reste de l'ancien
+  `KeyFigures` pendant le pivot vers la scène 3D) et a été clair : elles
+  restent des arguments essentiels, mais ne doivent plus jamais revenir
+  sous forme de bloc de statistiques alignées. Consigne : chacune doit être
+  *découverte* au moment précis où elle prend sens dans le récit en cinq
+  temps plutôt qu'énumérée sur la page — "20 ans" pendant "Mystère" quand
+  la matière et la durabilité se ressentent, "4–12 semaines" pendant
+  "Ouverture" au moment où le module s'assemble ou où le temps s'accélère,
+  "100 % fabriqué en France" en toute fin de "Maison" comme une signature
+  discrète gravée dans le bois plutôt qu'affichée. Racontées, pas
+  énumérées. Comme le chantier en est toujours à l'itération 1
+  (composition/matière/lumière de l'état "Objet" seul, aucune narration ni
+  copie encore écrite), cette exigence est simplement consignée en
+  commentaire dans `NotreHistoire.tsx` pour ne pas se perdre d'ici à ce que
+  les temps "Ouverture"/"Révélation"/"Maison" soient construits — aucun
+  changement de comportement ni de rendu dans ce tour.
 
 ## Audit du 2026-07-17 : bugs et corrections
 

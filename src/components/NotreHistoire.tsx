@@ -30,6 +30,20 @@ import { useReducedMotion } from "framer-motion";
  * retouché : la priorité de cette itération est uniquement l'objet
  * lui-même.
  *
+ * **Contenu verrouillé pour les temps à venir — ne pas oublier au moment
+ * d'écrire la narration.** Les trois preuves fortes de l'ancien
+ * `KeyFigures` (20 ans de garantie, 4–12 semaines de livraison, 100 %
+ * fabriqué en France) ne doivent pas réapparaître comme un bloc de
+ * statistiques alignées : le client veut qu'elles soient *découvertes*,
+ * révélées chacune au moment où elle prend du sens dans le récit —
+ * **20 ans** pendant "Mystère"/l'ouverture, quand la matière et la
+ * durabilité se ressentent (le grain du bois, le vernis) ; **4–12
+ * semaines** pendant "Ouverture", au moment où le module s'assemble ou où
+ * la transformation s'accélère ; **100 % fabriqué en France** en toute
+ * fin, pendant "Maison", comme une signature discrète gravée dans le bois
+ * ou intégrée à l'objet plutôt qu'affichée. Racontées, pas énumérées.
+ *
+
  * Trois décisions techniques, inchangées depuis le socle initial :
  * 1. **Import dynamique sans SSR.** `next/dynamic(..., { ssr: false })` :
  *    Three.js a besoin d'un vrai contexte WebGL, qui n'existe pas côté
