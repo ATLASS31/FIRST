@@ -90,6 +90,35 @@ function GammeCard({ gamme }: { gamme: Gamme }) {
 const TREE_IMAGE_URL =
   "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_124202_96128beb-5f45-4e42-afcb-2a9c89f15840.png";
 
+/**
+ * Retour client sur la première intégration photo : deux arbres découpés
+ * posés sur l'aplat `bg-ciel` lisaient comme des autocollants ("cheap"),
+ * sans aucune cohérence de lumière avec la page. Un décor photographique
+ * (clairière floutée, lumière chaude, profondeur de champ) sert
+ * maintenant de fond plein cadre à toute la section — arbres nets du
+ * rideau au premier plan, arrière-plan flou déjà présent dans la photo
+ * en second plan — pour que l'ensemble se lise comme un seul
+ * environnement réel plutôt qu'un montage de calques plats.
+ */
+const BACKGROUND_IMAGE_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_125907_5030b562-6cce-4501-a236-542235068c8d.png";
+
+/** Photo plein cadre + voile de lisibilité — extrait pour être posé au
+ * bon endroit selon le mode (voir les deux points d'usage plus bas). */
+function GammesBackground() {
+  return (
+    // Sort du padding horizontal des conteneurs ancêtres (section / bloc
+    // `sticky`) pour couvrir la largeur réelle du viewport, bord à
+    // bord — un simple `inset-0` resterait cantonné à l'intérieur de ce
+    // padding (vérifié à l'écran : ~24px de bande visible de chaque
+    // côté sinon), très loin du plein cadre demandé.
+    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-screen -translate-x-1/2">
+      <Image src={BACKGROUND_IMAGE_URL} alt="" fill sizes="100vw" className="object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-b from-brume/55 via-brume/10 to-brume/45" />
+    </div>
+  );
+}
+
 function BigTree({
   side,
   x,
@@ -115,7 +144,7 @@ function BigTree({
           alt=""
           fill
           sizes="380px"
-          className={`object-contain object-bottom ${side === "right" ? "-scale-x-100" : ""}`}
+          className={`object-contain object-bottom drop-shadow-[0_35px_40px_rgba(20,18,12,0.35)] ${side === "right" ? "-scale-x-100" : ""}`}
         />
       </motion.div>
     </div>
@@ -225,6 +254,12 @@ export default function GammesPreview() {
 
   return (
     <section id="gammes" className="relative bg-ciel px-6 py-28">
+      {/* Repli mobile / reduced-motion : pas d'écran épinglé, donc pas de
+          risque de désynchronisation avec un contenu fixe — le décor
+          peut vivre au niveau de la section (pleine largeur, hauteur
+          naturelle du contenu). */}
+      {!canAnimateCurtain && <GammesBackground />}
+
       {/*
         Le conteneur ciblé par `useScroll` (et son enfant `sticky`) reste
         TOUJOURS monté, y compris sur mobile / reduced-motion / avant
@@ -248,7 +283,16 @@ export default function GammesPreview() {
               : "relative mx-auto max-w-6xl"
           }
         >
-          <div className={canAnimateCurtain ? "relative mx-auto w-full max-w-6xl" : undefined}>
+          {/* En mode rideau, le décor vit à l'intérieur du bloc
+              `sticky` (pleine largeur avant la colonne centrée) : il
+              reste ainsi parfaitement figé avec les arbres et les
+              cartes pendant toute la durée de l'écran épinglé, plutôt
+              que de défiler derrière un contenu fixe si on le plaçait
+              au niveau de la section (bug constaté à l'écran, corrigé
+              avant livraison). */}
+          {canAnimateCurtain && <GammesBackground />}
+
+          <div className={canAnimateCurtain ? "relative z-[1] mx-auto w-full max-w-6xl" : "relative z-[1]"}>
             <motion.div
               initial={false}
               {...(canAnimateCurtain ? { style: { filter: titleFilter, y: titleY } } : {})}

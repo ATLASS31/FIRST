@@ -2402,6 +2402,57 @@ Le formulaire de contact (`ContactClient.tsx`) n'envoie volontairement rien
 code) — ce n'est pas un bug, juste un chantier non démarré (branchement à
 un vrai endpoint email/CRM), déjà remonté dans la section suivante.
 
+## Gammes : décor photographique plein cadre (les arbres seuls ne suffisaient pas)
+
+Retour client immédiat sur la première intégration photo, avec une
+image de référence à l'appui : les deux arbres découpés posés sur
+l'aplat `bg-ciel` lisaient comme des autocollants — *"cheap à
+souhait"* — sans aucune cohérence de lumière ni de profondeur avec le
+reste de la page. La référence montrait un environnement photographique
+complet et immersif (clairière floutée, lumière chaude, profondeur de
+champ), pas juste deux images posées sur un fond plat.
+
+**Décor plein cadre.** Une seconde image Higgsfield générée
+spécifiquement comme fond de scène — clairière floutée, lumière dorée,
+profondeur de champ (flou en arrière-plan, plus net au premier plan) —
+sert désormais de fond photographique à toute la section, en plus des
+arbres nets et détourés du rideau qui restent au premier plan et
+continuent de s'écarter au scroll. Un voile dégradé très discret
+(`brume/55` en haut et en bas, transparent au centre) garde le titre et
+les badges lisibles sans aplatir la photo.
+
+**Piège d'écran épinglé, repéré et corrigé avant livraison.** Poser ce
+décor au niveau de la `<section>` (donc en dehors du bloc `sticky`)
+aurait fait défiler l'image derrière les arbres et les cartes — qui,
+eux, restent figés à l'écran pendant toute la durée du pin — créant un
+décalage visible entre premier plan fixe et arrière-plan qui glisse.
+Le décor vit donc à l'intérieur du bloc `sticky` en mode rideau
+(parfaitement figé avec le reste), et au niveau de la section
+uniquement dans le repli mobile/reduced-motion, où il n'y a pas de pin
+donc pas de risque de décalage.
+
+**Plein cadre bord à bord, pas juste dans la colonne centrée.** Un
+simple `inset-0` restait cantonné à l'intérieur du padding horizontal
+des conteneurs ancêtres (section et bloc `sticky` ont chacun leur propre
+`px-6`) — vérifié à l'écran, une bande de fond uni visible de chaque
+côté. Corrigé avec la technique de "sortie de conteneur" classique
+(`left-1/2 w-screen -translate-x-1/2`), qui ignore le padding des
+parents et couvre la largeur réelle du viewport ; revérifié : largeur
+mesurée à l'écran passée de 1392px (contenu moins padding) à 1440px
+(viewport plein) sans provoquer de scroll horizontal.
+
+**Ombre portée sur les arbres** (`drop-shadow` Tailwind, statique,
+directement sur l'`<Image>`) pour un minimum d'ancrage au sol plutôt
+que des découpes flottant sans contact visuel avec la scène.
+
+**Vérifications** : `tsc`/`eslint` propres ; le pin reste identique à
+100% après l'ajout du décor (`sticky` toujours à `top: 0`, hauteur
+inchangée, revérifié à mi-scroll) ; largeur plein cadre confirmée à
+1440px sur desktop et pleine largeur sur mobile, sans scroll horizontal
+introduit ; présence du décor confirmée en mode rideau ET en repli
+mobile/reduced-motion ; régression complète sur les 10 routes sans
+nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
