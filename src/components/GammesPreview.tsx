@@ -76,92 +76,19 @@ function GammeCard({ gamme }: { gamme: Gamme }) {
   );
 }
 
-/** Hash déterministe (même sortie serveur/client) — pas de Math.random. */
-function seededRandom(seed: number) {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-}
-
 /**
- * Silhouette de feuillage organique : un contour fermé irrégulier
- * (Catmull-Rom → Bézier autour d'un cercle de base bruité), pas un
- * cercle parfait — c'est ce qui distingue une "masse de feuillage" d'une
- * simple boule. `seed` fait varier la silhouette d'un amas à l'autre et
- * d'un arbre à l'autre sans jamais se répéter à l'identique.
+ * Vraie photo d'arbre (rendu Higgsfield, validé par le client — la
+ * silhouette générée en SVG jugée "cheap") plutôt qu'une illustration
+ * dessinée : tronc et branches détaillés, feuillage doré côté lumière /
+ * vert plus frais côté ombre, déjà détouré sur fond transparent. Le même
+ * fichier sert aux deux arbres — l'arbre droit est simplement retourné
+ * horizontalement (`-scale-x-100` sur l'image, indépendant du
+ * `x`/`rotate` du rideau porté par le `motion.div` parent) pour éviter
+ * de dupliquer un second rendu coûteux tout en gardant une composition
+ * symétrique cohérente.
  */
-function blobPath(cx: number, cy: number, r: number, seed: number, irregularity = 0.26, points = 9) {
-  const pts: [number, number][] = [];
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * Math.PI * 2;
-    const rand = seededRandom(seed + i * 7.31);
-    const radius = r * (1 - irregularity / 2 + rand * irregularity);
-    pts.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
-  }
-  const n = pts.length;
-  const d: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const p0 = pts[(i - 1 + n) % n];
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % n];
-    const p3 = pts[(i + 2) % n];
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    if (i === 0) d.push(`M${p1[0].toFixed(1)},${p1[1].toFixed(1)}`);
-    d.push(`C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`);
-  }
-  d.push("Z");
-  return d.join(" ");
-}
-
-type Blob = { cx: number; cy: number; r: number; seed: number };
-
-/**
- * Deux silhouettes entièrement distinctes (pas une simple symétrie
- * miroir de la même géométrie) : nombre d'amas, tailles, hauteur de
- * couronne et courbure du tronc diffèrent volontairement d'un côté à
- * l'autre, comme deux arbres réels d'une même clairière plutôt que deux
- * copies retournées.
- */
-const LEFT_BLOBS: Blob[] = [
-  { cx: 250, cy: 300, r: 148, seed: 11 },
-  { cx: 118, cy: 255, r: 104, seed: 23 },
-  { cx: 372, cy: 235, r: 92, seed: 37 },
-  { cx: 148, cy: 425, r: 118, seed: 51 },
-  { cx: 342, cy: 445, r: 128, seed: 64 },
-  { cx: 252, cy: 135, r: 88, seed: 78 },
-  { cx: 228, cy: 525, r: 108, seed: 92 },
-];
-
-const RIGHT_BLOBS: Blob[] = [
-  { cx: 292, cy: 262, r: 138, seed: 14 },
-  { cx: 412, cy: 302, r: 98, seed: 28 },
-  { cx: 172, cy: 282, r: 88, seed: 41 },
-  { cx: 330, cy: 442, r: 132, seed: 56 },
-  { cx: 152, cy: 412, r: 92, seed: 69 },
-  { cx: 292, cy: 112, r: 82, seed: 83 },
-  { cx: 300, cy: 542, r: 112, seed: 97 },
-  { cx: 202, cy: 182, r: 66, seed: 105 },
-];
-
-const LEFT_BRANCHES = [
-  "M265,635 C220,560 160,480 118,428",
-  "M265,635 C302,538 342,458 372,388",
-  "M265,635 C253,518 233,418 208,338",
-];
-
-const RIGHT_BRANCHES = [
-  "M255,635 C302,553 352,468 402,408",
-  "M255,635 C208,543 173,453 148,378",
-  "M255,635 C260,528 277,428 302,338",
-];
-
-const LEFT_TRUNK =
-  "M243,635 C238,660 236,700 240,735 C242,755 238,775 232,796 L300,796 C294,775 290,755 292,735 C296,700 294,660 289,635 C275,624 257,624 243,635 Z";
-
-const RIGHT_TRUNK =
-  "M232,796 C226,775 222,755 226,735 C230,700 228,660 234,635 C247,624 264,624 277,635 C283,660 281,700 285,735 C289,755 285,775 279,796 Z";
+const TREE_IMAGE_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_124202_96128beb-5f45-4e42-afcb-2a9c89f15840.png";
 
 function BigTree({
   side,
@@ -172,13 +99,6 @@ function BigTree({
   x: ReturnType<typeof useTransform<number, string>>;
   rotate: ReturnType<typeof useTransform<number, number>>;
 }) {
-  const blobs = side === "left" ? LEFT_BLOBS : RIGHT_BLOBS;
-  const branches = side === "left" ? LEFT_BRANCHES : RIGHT_BRANCHES;
-  const trunkPath = side === "left" ? LEFT_TRUNK : RIGHT_TRUNK;
-  const gradA = `gammes-bigtree-${side}-a`;
-  const gradB = `gammes-bigtree-${side}-b`;
-  const trunkGrad = `gammes-bigtree-${side}-trunk`;
-
   return (
     <div
       aria-hidden
@@ -187,57 +107,16 @@ function BigTree({
       }`}
     >
       <motion.div
-        className="flex h-full items-end"
+        className="relative h-full w-[380px]"
         style={{ x, rotate, transformOrigin: side === "left" ? "88% 100%" : "12% 100%" }}
       >
-        <svg width="440" height="720" viewBox="0 0 520 800">
-          <defs>
-            <radialGradient id={gradA} cx="34%" cy="26%" r="78%">
-              <stop offset="0%" stopColor="#8a9a72" />
-              <stop offset="55%" stopColor="#51603f" />
-              <stop offset="100%" stopColor="#2e3a29" />
-            </radialGradient>
-            <radialGradient id={gradB} cx="30%" cy="24%" r="80%">
-              <stop offset="0%" stopColor="#6f7f5c" />
-              <stop offset="55%" stopColor="#414f36" />
-              <stop offset="100%" stopColor="#242f1f" />
-            </radialGradient>
-            <linearGradient id={trunkGrad} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#5b4632" />
-              <stop offset="45%" stopColor="#7a5c3e" />
-              <stop offset="100%" stopColor="#4a3826" />
-            </linearGradient>
-          </defs>
-
-          {/* Tronc, légèrement galbé plutôt qu'un trapèze droit */}
-          <path d={trunkPath} fill={`url(#${trunkGrad})`} />
-
-          {/* Branches suggérées, dessinées sous le feuillage : elles ne
-              se devinent que dans les interstices entre les amas. */}
-          {branches.map((d, i) => (
-            <path
-              key={i}
-              d={d}
-              fill="none"
-              stroke="#4a3d2a"
-              strokeWidth={5 - i}
-              strokeLinecap="round"
-              opacity={0.5}
-            />
-          ))}
-
-          {/* Couronne : amas foliaires irréguliers superposés, tons
-              alternés pour suggérer la profondeur plutôt qu'une teinte
-              plate unique. */}
-          {blobs.map((b, i) => (
-            <path
-              key={b.seed}
-              d={blobPath(b.cx, b.cy, b.r, b.seed)}
-              fill={`url(#${i % 2 === 0 ? gradA : gradB})`}
-              opacity={0.94 + seededRandom(b.seed) * 0.06}
-            />
-          ))}
-        </svg>
+        <Image
+          src={TREE_IMAGE_URL}
+          alt=""
+          fill
+          sizes="380px"
+          className={`object-contain object-bottom ${side === "right" ? "-scale-x-100" : ""}`}
+        />
       </motion.div>
     </div>
   );

@@ -2305,6 +2305,56 @@ arbre, hauteur du conteneur redevenue naturelle — plus de `220vh`
 fantôme — titre et cartes pleinement visibles) ; régression complète
 sur les 10 routes sans nouvelle erreur.
 
+## Gammes : arbres en vraie photo plutôt qu'en SVG généré
+
+Retour client immédiat sur la silhouette SVG procédurale (`blobPath` +
+amas de cercles bruités) : *"les arbres font cheap."* Demande explicite
+de passer par une vraie image (Higgsfield) plutôt que de continuer à
+raffiner un dessin vectoriel.
+
+**Génération.** `recraft_v4_1` en `model_type: "standard"` (le variant
+photoréaliste du catalogue, par opposition à `vector`/`utility` conçus
+pour du plat) avec un prompt ciblant explicitement un rendu chaleureux :
+tronc et branches texturés, feuillage en pleine lumière dorée d'un côté
+et plus frais de l'autre, cadrage plein pied façon asset d'entourage
+architectural, sur fond neutre pour un détourage propre. Arrière-plan
+retiré ensuite via l'outil dédié de suppression de fond (transparence
+réelle, pas une couleur de fond approximative).
+
+**Un seul rendu pour les deux arbres.** Plutôt que de générer une
+seconde image (coût, et risque de deux styles qui ne s'accordent pas),
+le même fichier sert aux deux côtés : l'arbre droit est simplement
+retourné horizontalement (classe Tailwind `-scale-x-100` sur le
+`<Image>` lui-même, indépendante du `x`/`rotate` du rideau porté par le
+`motion.div` parent — les deux transforms vivent sur des nœuds
+différents, aucun conflit). Composition symétrique cohérente, un seul
+asset à charger.
+
+**Intégration technique.** `BigTree` perd toute sa génération
+procédurale (`blobPath`, `seededRandom`, listes de amas/branches/tracés
+de tronc) au profit d'un simple `next/image` en `fill` +
+`object-contain object-bottom` dans un conteneur de taille fixe
+(`380px` de large, hauteur héritée du bloc `-top-16 bottom-0` déjà en
+place) — ancrage bas identique à la version SVG, pour que le "tronc"
+parte bien du bas de la mise en scène. Le domaine CloudFront
+(`d8j0ntlcm91z4.cloudfront.net`) était déjà autorisé dans
+`next.config.ts` par les visuels de gammes existants, aucune
+configuration supplémentaire nécessaire.
+
+**Vérification.** Le rendu final de l'image (cadrage, lumière, absence
+d'artefacts) a été inspecté directement au moment de la génération.
+Ensuite, structurellement dans l'application : `tsc`/`eslint` propres ;
+lecture du DOM confirmant les deux `<img>` correctement dimensionnées
+(`380×512`), positionnées de part et d'autre du centre, et seule celle
+de droite portant `-scale-x-100` ; absence de toute image d'arbre en
+mobile (repli `whileInView` inchangé) ; régression complète sur les 10
+routes sans nouvelle erreur. Note technique : dans cet environnement de
+vérification, le proxy sortant bloque le domaine CloudFront (403), donc
+les captures d'écran locales ne peuvent pas afficher les pixels réels
+de l'image (même contrainte, déjà rencontrée et documentée, que pour
+les visuels de gammes existants qui utilisent le même domaine) — sans
+impact sur le rendu réel du site en production.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
