@@ -2197,6 +2197,114 @@ sans nouvelle erreur (les échecs de chargement d'images distantes
 observés dans le bac à sable de vérification sont un blocage réseau de
 l'environnement, pas un défaut du code).
 
+## Gammes : rideau d'arbres — écran épinglé + refonte du feuillage
+
+Retour client sur la version précédente (arbres massifs, ancrage sur le
+centre du bloc) : l'idée générale validée, mais deux défauts précis à
+corriger. *"Le scroll continue de défiler pendant que l'animation se
+joue [...] je veux que la section soit épinglée temporairement dans le
+viewport pendant toute l'animation [...] pas un scroll bloqué pendant
+une distance énorme."* Et sur les arbres eux-mêmes : *"les arbres
+ressemblent encore à un assemblage de grandes sphères [...] un vrai
+tronc visible ; des branches suggérées ; plusieurs masses de feuillage
+de tailles différentes [...] une silhouette différente pour l'arbre
+gauche et l'arbre droit."*
+
+**Écran épinglé (`position: sticky`), volontairement court.** Le
+`useScroll` non-pinné (ancré sur le centre du bloc) ne pouvait pas
+garantir un état final "posé" : la page continuait de défiler pendant
+la révélation, coupant la scène avant que l'utilisateur en profite.
+Nouvelle mécanique, standard pour ce type de séquence : un conteneur
+`pinRef` de hauteur fixe (`PIN_VH = 220vh`) enveloppe un enfant `sticky
+top-0 h-screen` qui reste figé à l'écran tant que `pinRef` traverse le
+viewport ; `useScroll({ target: pinRef, offset: ["start start", "end
+end"] })` traduit cette traversée en une progression 0→1 qui pilote
+tout — arbres, lueur, titre, cartes. Distance de scroll supplémentaire
+réellement parcourue : `220vh − 100vh = 120vh`, un peu plus d'un écran
+— court et précis comme demandé, pas un pinning à la "scroll-jacking"
+sur plusieurs écrans. Répartition verrouillée avec le client : 0–45 %
+ouverture des arbres, 30–75 % apparition du titre puis des cartes,
+75–100 % état final maintenu (obtenu naturellement, sans code
+supplémentaire : au-delà du dernier point de chaque courbe
+`useTransform`, la valeur reste figée).
+
+**Piège de montage évité : le nœud ciblé par `useScroll` doit TOUJOURS
+être monté.** Une première tentative rendait le conteneur `pinRef`
+entièrement de façon conditionnelle (`canAnimateCurtain ? <div
+ref={pinRef}>… : …`) — comme `isDesktop` démarre à `false` (résolu
+après hydratation), ce nœud n'existait pas encore au tout premier
+rendu, et `useScroll` s'accrochait dans le vide ("Target ref is defined
+but not hydrated" en console) : la progression ne reflétait plus rien
+de réel. Corrigé en gardant le conteneur et son enfant `sticky`
+TOUJOURS montés, seuls leur style (`height`, classes `sticky`) et leur
+contenu (arbres, lueur) changeant selon `canAnimateCurtain` — même
+discipline que partout ailleurs sur cette section.
+
+**Bug de fond, sévère, découvert en vérifiant à l'écran plutôt qu'en se
+fiant au code : `opacity` en `style` direct ne suit pas la
+`MotionValue` de façon fiable une fois l'élément dans un écran épinglé.**
+Constaté par une lecture directe de l'attribut `style` du DOM (pas
+seulement une capture d'écran) sur des dizaines d'essais : la valeur
+réellement écrite se figeait de façon non déterministe — tantôt
+correcte, tantôt bloquée sur une valeur périmée (parfois carrément
+figée à `1` en permanence, rendant une carte invisible pour toujours
+même arrivé en fin d'ouverture, un vrai régression bloquante repérée
+avant livraison). `transform` et `filter`, sur ces mêmes éléments, se
+sont montrés fiables à chaque frame testée. Diagnostic affiné : les
+éléments qui avaient déjà eu un `initial={{opacity: ...}}` explicite
+dans une passe de rendu antérieure (le repli mobile/reduced-motion des
+cartes, via `initial={{opacity:0,y:32}}`) gardaient cette valeur comme
+résidu CSS même après être repassés en mode `style` pur où `opacity` ne
+fait plus partie de l'objet — Framer Motion ne la libère jamais.
+**Correctif à deux volets** : (1) tout fondu passe désormais par
+`filter: opacity(N%)` (combiné avec le flou existant pour les cartes
+via `useMotionTemplate`) au lieu de la propriété CSS `opacity` — même
+rendu visuel, mécanisme qui s'est révélé fiable sur toutes les
+vérifications répétées ; (2) `initial={false}` explicite sur la branche
+rideau de chaque `motion.div` concerné, et le repli mobile/reduced
+motion lui-même reconverti pour utiliser `filter: opacity(N%)` plutôt
+que `opacity` dans son `initial`/`whileInView`, afin qu'aucune des deux
+branches ne pose jamais cette propriété.
+
+**Nouvelle silhouette d'arbre, générée plutôt que dessinée à la main.**
+Exigence client explicite : *"éviter les ronds parfaits ; les feuillages
+symétriques ; les arbres identiques en miroir ; l'effet clipart."` Une
+fonction `blobPath(cx, cy, r, seed)` construit un contour fermé
+irrégulier (points disposés en cercle avec un rayon bruité par un hash
+déterministe `seededRandom(seed)` — pas de `Math.random`, pour rester
+identique serveur/client — puis reliés par des courbes de Bézier
+dérivées d'un Catmull-Rom fermé) : chaque amas de feuillage a un
+contour organique unique, jamais un cercle parfait. `LEFT_BLOBS` et
+`RIGHT_BLOBS` sont deux listes de tailles/positions/seeds
+volontairement différentes (pas une géométrie unique retournée en
+miroir) pour que les deux arbres aient une silhouette réellement
+distincte. Tronc légèrement galbé (chemin à courbes, pas un trapèze
+droit) avec un dégradé bark à trois tons. Trois branches par arbre,
+tracées en `stroke` fin AVANT les amas de feuillage dans le SVG afin de
+ne se deviner que dans les interstices, jamais comme un trait qui
+traverse le feuillage.
+
+**Distance de sortie des arbres augmentée après vérification à l'écran
+de l'état final.** Premier réglage (`58%` de la largeur propre de
+l'arbre) laissait les couronnes recouvrir une bonne partie des cartes 1
+et 3 même en toute fin d'ouverture — contraire à l'exigence *"rien
+n'est coupé."* Porté à `135%`, revérifié : les trois cartes se lisent
+intégralement (badges, prix, CTA), les arbres ne subsistent qu'en
+liseré discret sur les bords, exactement la *"clairière qui vient de
+s'ouvrir"* demandée.
+
+**Vérifications** : `tsc --noEmit`/`eslint` sur tout le projet propres ;
+les trois états demandés (fermé / mi-ouverture / final) capturés et
+confirmés à l'écran sur un build de production (`next build && next
+start`, pas seulement `next dev`, pour éliminer tout artefact propre au
+Strict Mode de développement) ; stabilité du correctif `filter`
+reconfirmée sur une demi-douzaine de relances consécutives, aux deux
+extrémités de la progression (fermé et grand ouvert) ; repli mobile et
+`prefers-reduced-motion` revérifiés après la restructuration (aucun
+arbre, hauteur du conteneur redevenue naturelle — plus de `220vh`
+fantôme — titre et cartes pleinement visibles) ; régression complète
+sur les 10 routes sans nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
