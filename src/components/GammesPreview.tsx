@@ -77,85 +77,92 @@ function GammeCard({ gamme }: { gamme: Gamme }) {
 }
 
 /**
- * Vraie photo d'arbre (rendu Higgsfield, validé par le client — la
- * silhouette générée en SVG jugée "cheap") plutôt qu'une illustration
- * dessinée : tronc et branches détaillés, feuillage doré côté lumière /
- * vert plus frais côté ombre, déjà détouré sur fond transparent. Le même
- * fichier sert aux deux arbres — l'arbre droit est simplement retourné
- * horizontalement (`-scale-x-100` sur l'image, indépendant du
- * `x`/`rotate` du rideau porté par le `motion.div` parent) pour éviter
- * de dupliquer un second rendu coûteux tout en gardant une composition
- * symétrique cohérente.
+ * Vidéo Seedance (Higgsfield) : caméra prisonnière d'un feuillage de
+ * chêne dense, avance et écarte physiquement les branches — pas de
+ * fondu, pas de morphing, uniquement le contact de la caméra qui pousse
+ * le feuillage — jusqu'à révéler un fond ivoire uni. Remplace le rideau
+ * d'arbres (jugé "cheap" en photo découpée) : ici le scroll pilote
+ * l'avancée de la caméra elle-même via `currentTime`, puis un fondu
+ * classique prend le relais pour révéler le titre et les cartes une
+ * fois les branches complètement écartées.
  */
-const TREE_IMAGE_URL =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_124202_96128beb-5f45-4e42-afcb-2a9c89f15840.png";
+const VIDEO_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_134720_8a26fbc3-1c84-4982-af0e-b7345f8d7bea.mp4";
+// La première seconde est un plan de départ peu intéressant (demande
+// explicite : "commence la vidéo à 1 sec pas du début") ; la vidéo dure
+// 4s au total, donc le scroll ne pilote que les 3 secondes utiles.
+const VIDEO_START_TIME = 1;
+const VIDEO_DURATION = 4;
 
-/**
- * Retour client sur la première intégration photo : deux arbres découpés
- * posés sur l'aplat `bg-ciel` lisaient comme des autocollants ("cheap"),
- * sans aucune cohérence de lumière avec la page. Un décor photographique
- * (clairière floutée, lumière chaude, profondeur de champ) sert
- * maintenant de fond plein cadre à toute la section — arbres nets du
- * rideau au premier plan, arrière-plan flou déjà présent dans la photo
- * en second plan — pour que l'ensemble se lise comme un seul
- * environnement réel plutôt qu'un montage de calques plats.
- */
-const BACKGROUND_IMAGE_URL =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260722_125907_5030b562-6cce-4501-a236-542235068c8d.png";
+function GammesScrollVideo({
+  videoTime,
+  filter,
+}: {
+  videoTime: ReturnType<typeof useTransform<number, number>>;
+  filter: ReturnType<typeof useMotionTemplate>;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const readyRef = useRef(false);
 
-/** Photo plein cadre + voile de lisibilité — extrait pour être posé au
- * bon endroit selon le mode (voir les deux points d'usage plus bas). */
-function GammesBackground() {
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onLoaded = () => {
+      readyRef.current = true;
+      video.currentTime = VIDEO_START_TIME;
+    };
+    video.addEventListener("loadedmetadata", onLoaded);
+
+    // Boucle rAF plutôt qu'un `.on("change", ...)` direct : `currentTime`
+    // ne doit être écrit qu'une fois par frame peinte, jamais plus (une
+    // vidéo de 3s utiles n'a pas besoin du cache/canvas construit pour la
+    // vidéo Hero, beaucoup plus longue — un seek direct suffit ici).
+    let raf = 0;
+    const tick = () => {
+      if (readyRef.current && !video.seeking) {
+        const target = videoTime.get();
+        if (Math.abs(video.currentTime - target) > 0.02) {
+          video.currentTime = target;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoaded);
+      cancelAnimationFrame(raf);
+    };
+  }, [videoTime]);
+
   return (
     // Sort du padding horizontal des conteneurs ancêtres (section / bloc
     // `sticky`) pour couvrir la largeur réelle du viewport, bord à
     // bord — un simple `inset-0` resterait cantonné à l'intérieur de ce
-    // padding (vérifié à l'écran : ~24px de bande visible de chaque
-    // côté sinon), très loin du plein cadre demandé.
-    <div className="pointer-events-none absolute inset-y-0 left-1/2 z-0 w-screen -translate-x-1/2">
-      <Image src={BACKGROUND_IMAGE_URL} alt="" fill sizes="100vw" className="object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-b from-brume/55 via-brume/10 to-brume/45" />
-    </div>
-  );
-}
-
-function BigTree({
-  side,
-  x,
-  rotate,
-}: {
-  side: "left" | "right";
-  x: ReturnType<typeof useTransform<number, string>>;
-  rotate: ReturnType<typeof useTransform<number, number>>;
-}) {
-  return (
-    <div
+    // padding (déjà vérifié à l'écran sur le fond photo précédent).
+    <motion.div
       aria-hidden
-      className={`pointer-events-none absolute -top-16 bottom-0 z-10 hidden w-[58%] md:flex ${
-        side === "left" ? "left-0 justify-end" : "right-0 justify-start"
-      }`}
+      initial={false}
+      className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-screen -translate-x-1/2"
+      style={{ filter }}
     >
-      <motion.div
-        className="relative h-full w-[380px]"
-        style={{ x, rotate, transformOrigin: side === "left" ? "88% 100%" : "12% 100%" }}
-      >
-        <Image
-          src={TREE_IMAGE_URL}
-          alt=""
-          fill
-          sizes="380px"
-          className={`object-contain object-bottom drop-shadow-[0_35px_40px_rgba(20,18,12,0.35)] ${side === "right" ? "-scale-x-100" : ""}`}
-        />
-      </motion.div>
-    </div>
+      <video
+        ref={videoRef}
+        src={VIDEO_URL}
+        muted
+        playsInline
+        preload="auto"
+        className="h-full w-full object-cover"
+      />
+    </motion.div>
   );
 }
 
 /* Durée totale de l'écran épinglé : volontairement courte (pas de
    scroll bloqué sur une distance énorme, demande explicite du client) —
    ~1,2 hauteur d'écran de défilement supplémentaire pendant laquelle la
-   scène reste figée à l'écran et le scroll ne pilote plus que
-   l'ouverture des arbres et l'apparition du titre/des cartes. */
+   scène reste figée à l'écran et le scroll ne pilote plus que l'avancée
+   de la vidéo puis l'apparition du titre/des cartes. */
 const PIN_VH = 220;
 
 export default function GammesPreview() {
@@ -191,15 +198,19 @@ export default function GammesPreview() {
     offset: ["start start", "end end"],
   });
 
-  // Répartition verrouillée avec le client : 0–45 % ouverture des
-  // arbres, 30–75 % apparition du titre puis des cartes, 75–100 % état
+  // Répartition : 0–35 % la vidéo avance (caméra qui écarte les
+  // branches, `currentTime` piloté par le scroll), 32–48 % fondu de la
+  // vidéo vers le contenu ("fondu fin de vidéo"), 40–72 % apparition du
+  // titre puis des cartes ("apparition des offres"), le reste en état
   // final maintenu (obtenu naturellement : au-delà du dernier point de
   // chaque courbe, la valeur reste figée).
-  const leftX = useTransform(scrollYProgress, [0, 0.45], ["0%", "-135%"]);
-  const leftRotate = useTransform(scrollYProgress, [0, 0.45], [0, -5]);
-
-  const rightX = useTransform(scrollYProgress, [0, 0.45], ["0%", "135%"]);
-  const rightRotate = useTransform(scrollYProgress, [0, 0.45], [0, 5]);
+  const videoTime = useTransform(
+    scrollYProgress,
+    [0, 0.35],
+    [VIDEO_START_TIME, VIDEO_DURATION]
+  );
+  const videoOpacityPct = useTransform(scrollYProgress, [0.32, 0.48], [100, 0]);
+  const videoFilter = useMotionTemplate`opacity(${videoOpacityPct}%)`;
 
   /*
     Écran épinglé (`position: sticky`) + `opacity` en `style` direct : le
@@ -221,12 +232,9 @@ export default function GammesPreview() {
     CSS figée même après être repassés en mode `style` pur, où
     `opacity` ne fait plus partie de l'objet — Framer ne la "libère"
     jamais. D'où `initial={false}` explicite sur la branche rideau de
-    chaque `motion.div` concerné (titre, lueur, cartes), qui empêche
-    ce résidu de s'installer.
+    chaque `motion.div` concerné (vidéo, titre, cartes), qui empêche ce
+    résidu de s'installer.
   */
-  const glowOpacityPct = useTransform(scrollYProgress, [0.05, 0.3, 0.55, 0.75], [0, 100, 60, 35]);
-  const glowFilter = useMotionTemplate`opacity(${glowOpacityPct}%)`;
-
   const titleOpacityPct = useTransform(scrollYProgress, [0.3, 0.5], [0, 100]);
   const titleY = useTransform(scrollYProgress, [0.3, 0.5], [16, 0]);
   const titleFilter = useMotionTemplate`opacity(${titleOpacityPct}%)`;
@@ -254,12 +262,6 @@ export default function GammesPreview() {
 
   return (
     <section id="gammes" className="relative bg-ciel px-6 py-28">
-      {/* Repli mobile / reduced-motion : pas d'écran épinglé, donc pas de
-          risque de désynchronisation avec un contenu fixe — le décor
-          peut vivre au niveau de la section (pleine largeur, hauteur
-          naturelle du contenu). */}
-      {!canAnimateCurtain && <GammesBackground />}
-
       {/*
         Le conteneur ciblé par `useScroll` (et son enfant `sticky`) reste
         TOUJOURS monté, y compris sur mobile / reduced-motion / avant
@@ -283,14 +285,14 @@ export default function GammesPreview() {
               : "relative mx-auto max-w-6xl"
           }
         >
-          {/* En mode rideau, le décor vit à l'intérieur du bloc
-              `sticky` (pleine largeur avant la colonne centrée) : il
-              reste ainsi parfaitement figé avec les arbres et les
-              cartes pendant toute la durée de l'écran épinglé, plutôt
-              que de défiler derrière un contenu fixe si on le plaçait
-              au niveau de la section (bug constaté à l'écran, corrigé
-              avant livraison). */}
-          {canAnimateCurtain && <GammesBackground />}
+          {/* En mode rideau, la vidéo vit à l'intérieur du bloc
+              `sticky` (pleine largeur avant la colonne centrée) : elle
+              reste ainsi parfaitement figée avec le titre et les cartes
+              pendant toute la durée de l'écran épinglé, plutôt que de
+              défiler derrière un contenu fixe si on la plaçait au
+              niveau de la section (même piège que le décor précédent,
+              déjà rencontré et corrigé). */}
+          {canAnimateCurtain && <GammesScrollVideo videoTime={videoTime} filter={videoFilter} />}
 
           <div className={canAnimateCurtain ? "relative z-[1] mx-auto w-full max-w-6xl" : "relative z-[1]"}>
             <motion.div
@@ -304,32 +306,6 @@ export default function GammesPreview() {
             </motion.div>
 
             <div className={canAnimateCurtain ? "relative mt-8 md:mt-10" : "relative z-[1] mt-16"}>
-              {canAnimateCurtain && (
-                <>
-                  <motion.div
-                    aria-hidden
-                    initial={false}
-                    className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center"
-                    style={{ filter: glowFilter }}
-                  >
-                    <div
-                      className="h-[70%] w-[55%] rounded-full"
-                      style={{
-                        background:
-                          "radial-gradient(closest-side, rgba(173,138,85,0.12) 0%, rgba(173,138,85,0.05) 55%, transparent 75%)",
-                      }}
-                    />
-                  </motion.div>
-
-                  <div className="pointer-events-none absolute -top-16 bottom-0 left-0 right-0 z-10">
-                    <div className="relative mx-auto h-full max-w-6xl">
-                      <BigTree side="left" x={leftX} rotate={leftRotate} />
-                      <BigTree side="right" x={rightX} rotate={rightRotate} />
-                    </div>
-                  </div>
-                </>
-              )}
-
               <div className="relative z-[1] grid gap-6 md:grid-cols-3">
                 {GAMMES.map((gamme, i) => (
                   <motion.div

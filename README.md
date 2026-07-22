@@ -2453,6 +2453,79 @@ introduit ; présence du décor confirmée en mode rideau ET en repli
 mobile/reduced-motion ; régression complète sur les 10 routes sans
 nouvelle erreur.
 
+## Gammes : vidéo Seedance pilotée au scroll (abandon du décor photo)
+
+Nouveau retour immédiat sur le décor photographique : *"rend pas bien."*
+Le client fournit à la place une vidéo Seedance (Higgsfield) qu'il a
+générée lui-même — une caméra macro prisonnière d'un feuillage de chêne
+dense qui avance et écarte physiquement les branches (aucun fondu,
+aucun morphing, uniquement le contact caméra/feuillage) jusqu'à révéler
+un fond ivoire uni. Demande : le scroll pilote l'avancée de cette
+caméra, puis un fondu classique laisse place au titre et aux cartes.
+Abandon complet du rideau d'arbres et du décor photo — remplacés par
+cette seule vidéo.
+
+**Retrouver la vidéo depuis un lien de partage.** Le lien fourni
+(`higgsfield.ai/s/...`) est une page HTML, pas un fichier média
+direct — l'import direct échoue (`Unsupported content-type: text/html`).
+Récupérée via l'historique des générations (`show_generations`,
+filtré `type: video`) : le prompt de la génération la plus récente
+correspond mot pour mot à la description du client, confirmant qu'il
+s'agit bien du bon fichier.
+
+**Mécanique de scroll : `currentTime` piloté directement, pas le
+système de la vidéo Hero.** La vidéo Hero (bien plus longue) utilise un
+cache de frames en canvas + `playbackRate` pour un scroll arrière fluide
+— une mécanique lourde, construite et affinée sur plusieurs passes de ce
+projet. Pour 3 secondes de contenu utile ici, inutile de la reprendre :
+une simple boucle `requestAnimationFrame` qui lit la `MotionValue` de
+progression et écrit `video.currentTime` une fois par frame peinte
+(avec une zone morte de 20ms pour éviter les écritures redondantes)
+suffit et reste bien plus simple à maintenir.
+
+**"Commence la vidéo à 1 sec pas du début."** La vidéo dure 4s au total ;
+`VIDEO_START_TIME = 1` et le scroll ne mappe que les 3 secondes utiles
+(`[0, 0.35]` de progression → `[1, 4]` de `currentTime`), la première
+seconde (plan de départ jugé inintéressant) n'est jamais jouée.
+
+**Répartition du scroll** : 0–35 % la caméra avance dans le feuillage ;
+32–48 % fondu de la vidéo (léger chevauchement avec la fin du scrub
+pour un fondu connecté au dernier freeze-frame, pas une coupure nette) ;
+30–72 % apparition du titre puis des cartes, décalée pour commencer
+juste avant la fin du fondu vidéo ; au-delà, état final maintenu
+(inchangé — obtenu naturellement par le plafonnement des courbes
+`useTransform`).
+
+**Fondu vidéo/titre/cartes via `filter: opacity(N%)`**, pas la
+propriété CSS `opacity` — même mécanisme et même bug déjà rencontré et
+corrigé pour le rideau précédent (`opacity` en `style` direct se fige
+de façon non déterministe dans un écran épinglé), avec `initial={false}`
+sur chaque `motion.div` concerné pour éviter le résidu figé.
+
+**Vidéo plein cadre bord à bord**, à l'intérieur du bloc `sticky`
+(même piège de désynchronisation déjà rencontré avec le décor photo,
+et même correctif — le contenu épinglé doit vivre DANS le bloc figé,
+pas au niveau de la section).
+
+**Repli mobile / `prefers-reduced-motion` : aucune vidéo.** Pas de lien
+évident entre lire une vidéo et l'accessibilité réduite, mais l'écran
+épinglé lui-même reste désactivé sur ces profils (déjà le cas), donc la
+vidéo — qui n'a de sens que synchronisée au scroll épinglé — ne l'est
+pas non plus ; retour au fondu `whileInView` simple déjà éprouvé.
+
+**Vérifications** : `tsc`/`eslint` propres ; présence de la vidéo (bon
+`src`, `muted`) confirmée en desktop, absence confirmée sur mobile ;
+écran épinglé toujours figé à `top: 0` pendant tout le scroll après
+l'ajout de la vidéo ; fondu vidéo→contenu confirmé stable sur plusieurs
+relances consécutives (`filter: opacity(0%)` sur la vidéo, `opacity(100%)`
+sur titre et cartes en fin de progression) ; régression complète sur
+les 10 routes sans nouvelle erreur. Limite de vérification : le domaine
+CloudFront hébergeant la vidéo est bloqué par le proxy sortant de cet
+environnement de test (même contrainte déjà documentée pour les images)
+— le contenu réel de la vidéo (mouvement de caméra, qualité du fondu
+visuel) n'a donc pas pu être vérifié par capture d'écran ici et doit
+être confirmé côté client.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
