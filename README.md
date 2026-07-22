@@ -2526,6 +2526,31 @@ environnement de test (même contrainte déjà documentée pour les images)
 visuel) n'a donc pas pu être vérifié par capture d'écran ici et doit
 être confirmé côté client.
 
+## Gammes : retour complet à la version simple ("juste les offres")
+
+Après deux tentatives de mise en scène immersive (rideau d'arbres puis
+vidéo Seedance pilotée au scroll), retour client final : *"ça rend pas
+bien, reviens comme au début, juste les offres."* Décision de revenir
+purement et simplement à la version d'avant toute cette exploration —
+pas un nouvel ajustement, un retour complet.
+
+`GammesPreview.tsx` restauré à l'identique de l'état juste avant le
+premier rideau d'arbres (commit `2355320`, qui incluait déjà la
+correction de palette — badges uniformément en laiton) : titre, grille
+de 3 cartes, entrée `whileInView` simple (fondu + léger décalage
+vertical, stagger de 0.12s par carte), sans écran épinglé, sans vidéo,
+sans arbres, sans décor. Toute la mécanique construite dans les
+itérations précédentes (`useScroll` épinglé, `filter: opacity()`,
+vidéo scrubbée, décor photo plein cadre) est retirée du fichier.
+
+**Vérifications** : `tsc`/`eslint` propres ; confirmé dans le DOM
+qu'aucune vidéo ni aucun conteneur `sticky` ne subsiste, exactement 3
+cartes, badges tous en laiton (`rgb(173, 138, 85)`) ; capture d'écran
+conforme à la version simple attendue ; taille du bundle de la page
+d'accueil retombée à 12,7 kB (contre 16,4 kB avec la vidéo) confirmant
+que toute la mécanique complexe a bien été retirée, pas seulement
+désactivée ; régression complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
