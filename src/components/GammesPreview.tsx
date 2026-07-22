@@ -51,9 +51,7 @@ export default function GammesPreview() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-encre/85 via-encre/20 to-transparent" />
 
-                    <span
-                      className={`glass gamme-badge absolute left-5 top-5 flex items-center overflow-hidden rounded-full px-4 py-1.5 text-xs font-semibold text-${gamme.accent}`}
-                    >
+                    <span className="glass gamme-badge absolute left-5 top-5 flex items-center overflow-hidden rounded-full px-4 py-1.5 text-xs font-semibold text-laiton">
                       <SparkleIcon />
                       {gamme.name}
                     </span>

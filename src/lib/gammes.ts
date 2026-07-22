@@ -15,7 +15,6 @@ export type Gamme = {
   heroTagline: string;
   heroBody: string;
   fromPrice: string;
-  accent: string;
   imageUrl: string;
   highlights: [string, string];
   pourquoi: { lead: string; paragraphs: string[] };
@@ -34,7 +33,6 @@ export const GAMMES: Gamme[] = [
     heroBody:
       "Module habitable, isolation RE2020, équipement de base. Ossature bois Douglas, finitions soignées, prêt à vivre.",
     fromPrice: "À partir de 76 134 € TTC",
-    accent: "foret",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165425_628ec5b8-4a0f-4477-b6b1-48a539871a8a.png",
     highlights: ["Cuisine équipée de base", "Salle de bain complète"],
@@ -85,7 +83,6 @@ export const GAMMES: Gamme[] = [
     heroBody:
       "Finitions soignées, équipement complet, sur-mesure léger. Matériaux durables, agencement réfléchi, confort maîtrisé.",
     fromPrice: "À partir de 80 888 € TTC",
-    accent: "encre-doux",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165434_7dd44834-9e43-4660-b77e-e90e61d5275a.png",
     highlights: ["Cuisine équipée premium", "Salle de bain design"],
@@ -142,7 +139,6 @@ export const GAMMES: Gamme[] = [
     heroBody:
       "Matériaux nobles, finitions haut de gamme, sur-mesure complet. Bois massif, pierre naturelle, géométrie patiente.",
     fromPrice: "À partir de 88 763 € TTC",
-    accent: "laiton",
     imageUrl:
       "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260716_165443_0c82f2ed-5645-49fd-86ea-af77e9645b87.png",
     highlights: ["Cuisine sur-mesure haut de gamme", "Salle de bain en pierre naturelle"],

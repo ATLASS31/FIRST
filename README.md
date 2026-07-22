@@ -1998,6 +1998,39 @@ la forêt) ; objet 3D revérifié à l'écran au repos et après clic
 livraison") ; rendu mobile (390×844) et `prefers-reduced-motion`
 revérifiés ; régression complète sur les 10 routes sans nouvelle erreur.
 
+## Correction de palette : étiquettes des cartes gammes
+
+Retour client : *"Les couleurs ne respectent pas la palette du brief :
+utilise exactement `#F7F5F0` (fond clair), `#2F3E2E` (accent forêt),
+`#AD8A55` (accent laiton) — plus aucun vert menthe ni orange. Les
+étiquettes des cartes gammes doivent toutes être dans la même couleur
+(laiton)."*
+
+Vérification faite : `--brume` (`#f7f5f0`), `--foret` (`#2f3e2e`) et
+`--laiton` (`#ad8a55`) dans `globals.css` correspondaient déjà exactement
+aux trois valeurs du brief — rien à corriger sur les tokens eux-mêmes.
+Le vrai problème, confirmé par `grep` sur tout `src/` (aucune classe
+Tailwind verte/orange isolée trouvée ailleurs) : l'étiquette de chaque
+carte gamme (`GammesPreview.tsx`) utilisait `text-${gamme.accent}`, un
+champ différent par gamme dans `lib/gammes.ts` (`"foret"` pour Primaire,
+`"encre-doux"` pour Premium, `"laiton"` seulement pour Prestige) — donc
+trois couleurs différentes au lieu d'une seule, avec le vert de
+`--foret` probablement perçu comme le "vert menthe" signalé.
+
+Corrigé en codant `text-laiton` en dur sur l'étiquette (plus de classe
+Tailwind dynamique construite depuis une variable — au passage, ce
+motif est fragile avec le JIT de Tailwind, qui ne garantit de générer
+que les classes trouvées littéralement dans le code source) et en
+retirant le champ `accent`, devenu inutilisé, du type `Gamme` et des
+trois entrées dans `lib/gammes.ts`. Vérifié programmatiquement plutôt
+que seulement à l'œil : `getComputedStyle` sur les trois éléments
+`.gamme-badge` renvoie `rgb(173, 138, 85)` (soit `#AD8A55`) de façon
+identique sur les trois cartes.
+
+**Vérifications** : `tsc --noEmit`/`eslint` sur tout le projet propres ;
+couleur des trois étiquettes confirmée identique par script plutôt que
+supposée ; régression complète sur les 10 routes sans nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
