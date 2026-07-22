@@ -2031,6 +2031,85 @@ identique sur les trois cartes.
 couleur des trois étiquettes confirmée identique par script plutôt que
 supposée ; régression complète sur les 10 routes sans nouvelle erreur.
 
+## Gammes : rideau d'arbres au scroll (révélation des cartes)
+
+Demande explicite, cadrée par le client avant tout code : retravailler
+uniquement la section "Trois gammes pour trois exigences" avec une
+révélation "premium et légère" — deux arbres minimalistes en rideau,
+rapprochés au repos, qui s'écartent au scroll pour révéler les trois
+cartes. Contrainte non négociable, répétée deux fois par le client :
+*"ne redessine pas les cartes"*. Explicitement exclu aussi : nouvelle
+scène Three.js, forêt complète, lac, montagnes, low poly 3D lourd,
+particules, oiseaux, feuilles, lens flare.
+
+**Plan validé avant implémentation** (le client l'a demandé
+explicitement) : `useScroll({ target, offset })` de Framer Motion plutôt
+qu'une section épinglée — la progression de scroll est dérivée du
+passage naturel de la section dans le viewport, sans bloquer le scroll
+de l'utilisateur ni wrapper artificiel `400vh`. Toutes les animations
+passent uniquement par `transform`/`opacity`/`filter` (compositing GPU),
+aucune propriété qui déclenche un reflow, aucun re-render React par
+pixel scrollé (les `MotionValue` de Framer Motion contournent React,
+même discipline que partout ailleurs sur le site). Aucune nouvelle
+dépendance.
+
+**Les cartes ne sont pas recréées.** Dans `GammesPreview.tsx`, le JSX de
+chaque carte (`TiltCard` → `Link` → image → badge → highlights au survol
+→ tagline/prix/CTA) reste identique à l'original. Seul le *wrapper*
+`motion.div` autour de chaque carte change de source d'animation :
+`initial`/`whileInView` (l'ancien mécanisme, indépendant par carte)
+devient un `style={{ opacity, y, filter }}` dérivé d'une `MotionValue`
+de progression partagée quand le rideau est actif — mais uniquement le
+wrapper, jamais le contenu.
+
+**Bug de minutage trouvé et corrigé avant de considérer le travail
+fini** : le premier réglage définissait la progression 0 (arbres fermés)
+au moment où le conteneur arbres+cartes entrait à peine sous le bord
+inférieur du viewport — donc l'état "passage fermé" n'était en réalité
+jamais visible par l'utilisateur, déjà en train de s'ouvrir dès que la
+grille devenait lisible. Trouvé en comparant, via `getBoundingClientRect`
+dans un script Playwright, la position réelle du conteneur cible de
+`useScroll` (pas la section entière — une erreur de ciblage dans le
+script de vérification lui-même a d'abord caché le bug) à la fenêtre de
+progression déclarée. Corrigé en ajoutant un palier de repos explicite
+(`HOLD = 0.16`) : rien ne bouge tant que la progression n'a pas dépassé
+ce seuil, ce qui laisse le temps à la section d'entrer confortablement
+dans le viewport avec les arbres pleinement fermés avant que quoi que ce
+soit ne commence à s'animer — revérifié à l'écran à plusieurs fractions
+de scroll après correction, l'état fermé est maintenant clairement
+visible.
+
+**Réglages verrouillés avec le client avant validation finale** :
+recouvrement des cartes au repos modéré (arbres ancrés à `-70px` des
+bords du conteneur, pas un écran fermé) ; sortie ample (jusqu'à `125%`
+de leur propre largeur, quasi hors-cadre) avec une légère rotation
+(±6°) et un flottement vertical asymétrique à quatre points de passage
+(gauche et droite ne bougent jamais en miroir parfait, pour éviter
+l'effet "élément d'interface") ; lueur centrale à alpha très faible
+(0.12 au pic du dégradé, jamais un halo net) ; flou des cartes court
+(résolu dans le premier tiers de la fenêtre de chaque carte) et léger
+(6px maximum) ; stagger serré (0.03 de progression entre chaque carte).
+
+**Repli mobile et `prefers-reduced-motion` : pas une version amoindrie
+du rideau, l'ancienne animation `whileInView` d'origine.** Demande
+explicite : *"préfère une version simplifiée plutôt que de forcer
+exactement la même animation si cela nuit à la lisibilité ou aux
+performances."* `canAnimateCurtain = isDesktop && !prefersReducedMotion`
+(détection `matchMedia("(min-width: 768px)")`, résolue après montage,
+`false` par défaut côté serveur pour rester cohérent avant hydratation) ;
+si faux, ni arbres ni lueur ne sont rendus, et chaque carte retombe sur
+son comportement d'origine (opacité + translation, déclenché par
+`whileInView`, sans flou).
+
+**Vérifications** : `tsc --noEmit`/`eslint` sur tout le projet propres ;
+séquence complète revérifiée à l'écran sur plusieurs fractions de scroll
+avant et après le correctif de minutage (état fermé bien visible, sortie
+des arbres quasi complète, cartes qui se résolvent net) ; absence
+d'arbres confirmée programmatiquement (recherche des dégradés SVG
+propres aux arbres) en mobile et en `prefers-reduced-motion`, présence
+confirmée en desktop normal ; régression complète sur les 10 routes sans
+nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
