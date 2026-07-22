@@ -1935,6 +1935,69 @@ texte alternatif à la place de l'image ; le code utilise `next/image`
 exactement comme `GammesPreview.tsx`, qui affiche ces mêmes images
 correctement en production.
 
+## Retour en arrière complet : abandon de l'exploration 3D temps réel
+
+Après cinq tours consécutifs sur une exploration 3D temps réel
+(coquille architecturale → monolithe → forêt Bellora, trois directions
+artistiques différentes en cours de route), le client a arrêté le
+chantier : *"le site commence à perdre en fluidité [...] nous passons
+beaucoup de temps à résoudre des problèmes techniques au lieu
+d'améliorer le site [...] je préfère repartir sur une base propre et
+stable [...] nous reviendrons plus tard sur une grande expérience 3D,
+mais seulement lorsque le reste du site sera terminé."*
+
+Demande explicite : texte à gauche, un élément 3D à droite comme avant,
+les informations qui tournent/changent progressivement — "la version
+précédente". Plutôt que d'improviser une nouvelle version à partir de ce
+souvenir, l'historique git a été consulté pour retrouver l'état exact
+validé juste avant l'adoption de Three.js (commit `2dff32e`, "l'objet 3D
+devient la carte, navigation absorbée") et le restaurer précisément,
+sans rien réinventer :
+
+- **`NotreHistoire.tsx`** revient à sa version de ce commit : un prisme
+  triangulaire en CSS pur (`transform-style: preserve-3d`, rotation de
+  120°, inclinaison bornée au mouvement de la souris via Framer Motion),
+  dont chaque face porte une des trois preuves fortes (20 ans de
+  garantie, 4–12 semaines de livraison, 100 % fabriqué en France),
+  cliquable pour avancer, rotation automatique toutes les 3,5 s. Zéro
+  WebGL, zéro canvas, zéro import dynamique.
+- **`globals.css`** : les classes `.hs-object-*` (matériau Liquid Glass,
+  anneau de bord en gradient-border, reflet mouse-tracké, ombre de
+  contact) sont réinsérées à l'identique de leur dernière version
+  validée — extraites du même commit plutôt que réécrites de mémoire,
+  pour garantir un rendu pixel-identique à ce qui avait déjà été
+  approuvé. Seul ce bloc est restauré ; tout le reste du fichier (glass
+  système, hero, vague, gammes…) qui a évolué depuis ce commit reste
+  inchangé.
+- **`src/components/notre-histoire/`** (le dossier entier —
+  `ForestScene.tsx` et son historique de scènes Three.js) est supprimé.
+- **Dépendances désinstallées** : `three`, `@types/three`,
+  `@react-three/fiber`, `@react-three/drei` — confirmé au préalable
+  qu'aucun autre fichier du projet ne les importait
+  (`grep` sur tout `src/`). Le bundle de la page d'accueil redevient
+  nettement plus léger : 1506 modules compilés contre 2638 avant le
+  retrait, temps de compilation initial divisé par deux (~13 s contre
+  ~25 s) sur cette machine.
+
+**Pourquoi retrouver l'état exact d'un commit plutôt que reconstruire
+"de mémoire"** : reconstruire à l'approximatif aurait risqué de
+réintroduire des bugs déjà corrigés à l'époque (le mélange de texte en
+miroir entre faces, corrigé par `backface-visibility: hidden`,
+documenté dans le commentaire du code) ou de dériver légèrement du
+rendu déjà validé par le client. `git show <commit>:<fichier>` donne le
+texte exact tel qu'approuvé ; c'est ce qui a été repris, avec seulement
+la documentation en tête de fichier réécrite pour expliquer ce retour en
+arrière plutôt que l'historique de l'époque.
+
+**Vérifications** : `tsc --noEmit` et `eslint` sur tout le projet
+totalement propres (plus aucune erreur du tout, y compris l'ancienne
+erreur `GlassPanel.tsx` documentée de longue date — elle n'était
+apparemment déclenchée que par un site d'appel désormais supprimé avec
+la forêt) ; objet 3D revérifié à l'écran au repos et après clic
+(rotation confirmée entre "20 ans / de garantie" et "4–12 semaines / de
+livraison") ; rendu mobile (390×844) et `prefers-reduced-motion`
+revérifiés ; régression complète sur les 10 routes sans nouvelle erreur.
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de

@@ -1,207 +1,207 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
-import GlassPanel from "./GlassPanel";
-import { GAMMES } from "@/lib/gammes";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+
+const AUTOPLAY_MS = 3500;
+
+const FIGURES = [
+  { value: "20 ans", label: "de garantie" },
+  { value: "4–12 semaines", label: "de livraison" },
+  { value: "100%", label: "fabriqué en France" },
+];
 
 /**
- * Neuvième reprise — recadrage du client après le round précédent : "le
- * concept est déjà validé [...] ne cherche plus à inventer, cherche à
- * perfectionner." Le déroulé reste exactement celui déjà construit (forêt
- * → la caméra avance → les arbres s'écartent → le lac → les trois cartes
- * gammes au-dessus du lac → le scroll continue) ; seule la fin de séquence
- * change de nature.
+ * Retour complet à cette version sur demande explicite du client, après
+ * plusieurs tours d'exploration 3D temps réel (Three.js/React Three
+ * Fiber : coquille architecturale, monolithe, forêt Bellora). Diagnostic
+ * client : *"le site commence à perdre en fluidité [...] nous passons
+ * beaucoup de temps à résoudre des problèmes techniques au lieu
+ * d'améliorer le site [...] je préfère repartir sur une base propre et
+ * stable"*. Toute la piste WebGL est donc abandonnée pour l'instant —
+ * `notre-histoire/ForestScene.tsx` et les dépendances `three`/
+ * `@react-three/fiber`/`@react-three/drei` sont supprimées du projet,
+ * aucune trace gardée "au cas où".
  *
- * Les trois volumes architecturaux simplifiés du round précédent
- * disparaissent ("les espèces de cubes blancs [...] ça casse tout [...]
- * soit on montre les vraies maisons, soit on ne montre rien, mais
- * certainement pas des cubes"). À la place : les trois vraies cartes
- * gammes (`GAMMES` de `lib/gammes.ts` — mêmes photos, mêmes intitulés,
- * mêmes liens que `GammesPreview`, "les cartes existent déjà", aucune
- * nouvelle carte inventée ici) apparaissent en cascade au-dessus du lac,
- * dans un panneau Liquid Glass chacune, puis la section se détache et le
- * scroll normal continue directement dans `GammesPreview` juste en
- * dessous — qui reste la version "grille" complète (survol, highlights),
- * cette apparition-ci n'est qu'un teaser qui pointe vers les mêmes pages.
+ * Ce fichier restaure exactement l'état validé juste avant l'adoption de
+ * Three.js (commit `2dff32e`, "l'objet 3D devient la carte, navigation
+ * absorbée") : texte à gauche, objet 3D en CSS pur à droite (prisme
+ * triangulaire, `transform-style: preserve-3d`, aucune dépendance WebGL),
+ * dont une face différente fait face à l'écran à chaque étape — rotation
+ * de 120°, inclinaison bornée au mouvement de la souris, reflet
+ * mouse-tracké, matériau Liquid Glass identique sur les trois faces
+ * (classes `.hs-object-*`, restaurées dans `globals.css`). Chaque face
+ * porte directement une des trois preuves fortes (garantie, délai,
+ * fabrication) — l'objet entier est le seul élément interactif de la
+ * colonne, cliquable pour avancer, avec une rotation automatique toutes
+ * les 3,5 s. Aucune scène à charger, aucun canvas, aucun import
+ * dynamique : cette section revient au even coût de rendu qu'une carte
+ * CSS ordinaire.
  *
- * Un troisième canal de style DOM s'ajoute donc à `progressRef` : trois
- * refs de carte (`cardRefs`), chacune mutée directement par le même
- * gestionnaire de scroll throttlé, avec un seuil décalé par carte pour
- * une cascade plutôt qu'une apparition synchrone des trois à la fois —
- * toujours sans passer par le state React.
- *
- * **Section épinglée et repli** inchangés dans leur principe (cf. rounds
- * précédents) : conteneur `400vh` + panneau `sticky`, repli statique en
- * glass si `prefers-reduced-motion` ou pas de WebGL.
+ * Nous reviendrons sur une expérience 3D plus ambitieuse plus tard, une
+ * fois le reste du site stabilisé — pas dans cette section tant que ce
+ * chantier n'a pas de budget de temps dédié qui ne compromette pas le
+ * reste du développement.
  */
-const ForestScene = dynamic(() => import("./notre-histoire/ForestScene"), {
-  ssr: false,
-  loading: () => null,
-});
+function useObjectPointer() {
+  const ref = useRef<HTMLElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const latestPoint = useRef({ x: 0, y: 0 });
+  const px = useMotionValue(0.5);
+  const py = useMotionValue(0.5);
+  const springConfig = { stiffness: 180, damping: 24, mass: 0.4 };
+  const sx = useSpring(px, springConfig);
+  const sy = useSpring(py, springConfig);
 
-function supportsWebGL(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(
-      canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
-    );
-  } catch {
-    return false;
-  }
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    latestPoint.current = { x: e.clientX, y: e.clientY };
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      px.set((latestPoint.current.x - rect.left) / rect.width);
+      py.set((latestPoint.current.y - rect.top) / rect.height);
+    });
+  };
+
+  const handleLeave = () => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    px.set(0.5);
+    py.set(0.5);
+  };
+
+  return { ref, sx, sy, handleMove, handleLeave };
 }
-
-function ProofPoints() {
-  return (
-    <div className="mt-10 flex flex-wrap justify-center gap-3">
-      {[
-        ["Garantie", "20 ans"],
-        ["Livraison", "4–12 semaines"],
-        ["Fabrication", "100 % France"],
-      ].map(([label, value]) => (
-        <GlassPanel key={label} tone="light" rounded="rounded-2xl" className="px-5 py-3">
-          <p className="text-[10px] uppercase tracking-wide text-encre-douce">{label}</p>
-          <p className="text-lg font-semibold text-encre">{value}</p>
-        </GlassPanel>
-      ))}
-    </div>
-  );
-}
-
-/* Seuil de révélation décalé par carte (cascade plutôt que synchrone) :
-   la fenêtre se termine pile quand la progression atteint 1 pour la
-   dernière carte — la révélation se termine avec la séquence, pas avant. */
-const CARD_REVEAL_SPAN = 0.18;
-const CARD_REVEAL_STAGGER = 0.06;
-const CARD_REVEAL_START = 1 - CARD_REVEAL_SPAN - CARD_REVEAL_STAGGER * (GAMMES.length - 1);
 
 export default function NotreHistoire() {
+  const [active, setActive] = useState(0);
   const prefersReducedMotion = useReducedMotion();
-  const [canRender3D, setCanRender3D] = useState(false);
+  const { ref: objectRef, sx, sy, handleMove, handleLeave } = useObjectPointer();
+
+  const tiltX = useTransform(sy, [0, 1], [9, -9]);
+  const tiltY = useTransform(sx, [0, 1], [-9, 9]);
+
+  const shineX = useTransform(sx, [0, 1], ["0%", "100%"]);
+  const shineY = useTransform(sy, [0, 1], ["0%", "100%"]);
+  // Spéculaire à deux couches : un point chaud étroit (réflexion directe
+  // d'une source de lumière sur une surface polie) superposé à un halo
+  // large et doux (éclairage ambiant réfléchi), identique sur les trois
+  // faces (même `shineBackground`, calculé une seule fois contre l'objet
+  // entier) : seule la face tournée vers l'écran le montre réellement.
+  const shineBackground = useMotionTemplate`radial-gradient(80px circle at ${shineX} ${shineY}, rgba(255,255,255,0.6), transparent 45%), radial-gradient(280px circle at ${shineX} ${shineY}, rgba(255,255,255,0.22), transparent 65%)`;
 
   useEffect(() => {
-    setCanRender3D(!prefersReducedMotion && supportsWebGL());
-  }, [prefersReducedMotion]);
+    const id = setInterval(() => {
+      setActive((i) => (i + 1) % FIGURES.length);
+    }, AUTOPLAY_MS);
+    return () => clearInterval(id);
+  }, [active]);
 
-  const pinRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef(0);
-  const cardRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const handleAdvance = () => setActive((i) => (i + 1) % FIGURES.length);
+  const figure = FIGURES[active];
 
-  useEffect(() => {
-    if (!canRender3D) return;
-    let rafId: number | null = null;
-
-    const updateProgress = () => {
-      rafId = null;
-      const el = pinRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
-      const raw = total > 0 ? -rect.top / total : 0;
-      const clamped = Math.min(1, Math.max(0, raw));
-      progressRef.current = clamped;
-
-      cardRefs.current.forEach((card, i) => {
-        if (!card) return;
-        const start = CARD_REVEAL_START + i * CARD_REVEAL_STAGGER;
-        const t = Math.max(0, Math.min(1, (clamped - start) / CARD_REVEAL_SPAN));
-        const eased = t * t * (3 - 2 * t);
-        card.style.opacity = String(eased);
-        card.style.transform = `translateY(${(1 - eased) * 26}px) scale(${0.96 + eased * 0.04})`;
-      });
-    };
-
-    const onScroll = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(updateProgress);
-    };
-
-    updateProgress();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
-  }, [canRender3D]);
-
-  if (!canRender3D) {
-    return (
-      <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
-        <div className="relative z-10 mx-auto max-w-3xl text-center">
+  return (
+    <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
+      <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+        <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
           <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
             Le modulaire bois, sans compromis.
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-encre-doux">
-            Ossature Douglas certifiée, isolation conforme RE2020, bardage
-            Cryptomeria — chaque maison est conçue et assemblée en atelier
-            français par des charpentiers et menuisiers expérimentés.
+          <p className="mt-6 text-base leading-relaxed text-encre-doux">
+            Le modulaire bois traîne une réputation : préfabriqué bon marché,
+            finitions médiocres, durée de vie courte.
           </p>
-          <ProofPoints />
+          <span aria-hidden className="mt-4 block h-px w-8 bg-laiton" />
+          <p className="mt-4 text-base leading-relaxed text-encre-doux">
+            <strong className="font-semibold text-encre">
+              Nous construisons l&apos;inverse.
+            </strong>{" "}
+            Ossature Douglas certifiée, isolation conforme RE2020, bardage
+            Cryptomeria — les matériaux et les gestes sont ceux d&apos;une
+            maison construite sur place. Chaque maison est conçue et
+            assemblée en atelier français par des charpentiers et menuisiers
+            expérimentés.
+          </p>
         </div>
-      </section>
-    );
-  }
 
-  return (
-    <section ref={pinRef} className="relative" style={{ height: "400vh" }}>
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
-        <ForestScene progressRef={progressRef} />
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-[9%] flex justify-center gap-4 px-4 sm:gap-6">
-          {GAMMES.map((gamme, i) => (
-            <Link
-              key={gamme.slug}
-              ref={(node) => {
-                cardRefs.current[i] = node;
-              }}
-              href={gamme.href}
-              className="pointer-events-auto relative block w-[clamp(112px,15vw,192px)]"
-              style={{ opacity: 0, transform: "translateY(26px) scale(0.96)" }}
+        <div className="flex min-w-0 justify-center">
+          <motion.button
+            ref={objectRef as React.RefObject<HTMLButtonElement>}
+            type="button"
+            onClick={handleAdvance}
+            onMouseMove={handleMove}
+            onMouseLeave={handleLeave}
+            aria-label={`Étape ${active + 1} sur ${FIGURES.length} : ${figure.value} ${figure.label}. Cliquer pour voir l'étape suivante.`}
+            className="hs-object-scene"
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+          >
+            <motion.div
+              className="hs-object-tilt"
+              initial={{ opacity: 0, y: 26, scale: 0.94, filter: "blur(14px)" }}
+              whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : { duration: 1, ease: [0.16, 1, 0.3, 1] }
+              }
+              style={{ rotateX: tiltX, rotateY: tiltY }}
             >
-              {/* Le bob CSS (`forest-card-float`) vit sur ce conteneur
-                  interne, séparé du `<Link>` qui porte le transform de
-                  révélation piloté par le scroll (JS, ci-dessus) — sinon
-                  l'animation CSS et la mutation JS s'écrasent l'une
-                  l'autre en se disputant la même propriété `transform`
-                  sur le même élément. */}
-              <div className="forest-card-float" style={{ animationDelay: `${i * 0.6}s` }}>
-                <GlassPanel tone="light" sheen rounded="rounded-2xl" className="p-2 shadow-xl transition-transform duration-300 hover:-translate-y-1">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
-                    <Image
-                      src={gamme.imageUrl}
-                      alt={`Maison Bellora, gamme ${gamme.name}`}
-                      fill
-                      sizes="(min-width: 640px) 15vw, 30vw"
-                      className="object-cover"
+              <motion.div
+                className="hs-object-step"
+                animate={{ rotateY: -active * 120 }}
+                transition={
+                  prefersReducedMotion
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 70, damping: 14, mass: 1 }
+                }
+              >
+                {FIGURES.map((f) => (
+                  <div key={f.label} className="hs-object-face">
+                    <div aria-hidden className="hs-object-face-rim" />
+                    <motion.div
+                      aria-hidden
+                      className="hs-object-face-shine"
+                      style={{ background: shineBackground }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-encre/80 via-encre/10 to-transparent" />
-                    <span className={`glass absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-semibold text-${gamme.accent} sm:text-[10px]`}>
-                      {gamme.name}
-                    </span>
+                    <div aria-hidden className="hs-object-face-content">
+                      <p className="text-balance text-2xl font-semibold leading-snug text-encre sm:text-4xl">
+                        {f.value}
+                      </p>
+                      <p className="eyebrow mt-3 text-xs text-encre-douce sm:text-sm">
+                        {f.label}
+                      </p>
+                      <span
+                        aria-hidden
+                        className="mx-auto mt-4 block h-px w-7 bg-laiton/70"
+                      />
+                    </div>
                   </div>
-                  <div className="px-1 py-1.5">
-                    <p className="truncate text-[10px] leading-tight text-encre-douce sm:text-xs">
-                      {gamme.cardTagline}
-                    </p>
-                  </div>
-                </GlassPanel>
-                <div
-                  aria-hidden
-                  className="glass absolute inset-x-0 top-[calc(100%+2px)] h-1/2 origin-top scale-y-[-1] rounded-2xl opacity-15 blur-md"
-                  style={{
-                    maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
-                    WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)",
-                  }}
-                />
-              </div>
-            </Link>
-          ))}
+                ))}
+              </motion.div>
+            </motion.div>
+            <div aria-hidden className="hs-object-shadow" />
+          </motion.button>
         </div>
       </div>
     </section>
