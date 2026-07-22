@@ -2110,6 +2110,93 @@ propres aux arbres) en mobile et en `prefers-reduced-motion`, présence
 confirmée en desktop normal ; régression complète sur les 10 routes sans
 nouvelle erreur.
 
+## Gammes : rideau d'arbres — refonte massive après rejet client
+
+Le premier jet du rideau d'arbres (section précédente) a été rejeté en
+bloc : *"Tu n'as pas compris le concept visuel. Je ne veux pas deux
+formes fines posées sur les côtés dès le départ."* Les arbres fins
+ancrés aux bords ("deux pointes fines", "deux cyprès décoratifs") ne
+masquaient rien au repos et les cartes étaient déjà visibles dès le
+début. Nouveau cahier des charges explicite, avec schémas ASCII à
+l'appui : deux arbres massifs, presque collés au centre de la section au
+repos, couvrant une grande partie de la hauteur (du bas de la grille
+jusqu'au-dessus du titre) et masquant réellement le titre et les trois
+cartes ; au scroll, ils s'écartent largement de part et d'autre comme un
+rideau de théâtre. Contrainte inchangée : *"Ne touche pas aux cartes."*
+
+**Nouvelle silhouette d'arbre.** Exigence explicite contre le rendu
+précédent : *"tronc visible ; couronne végétale large ; plusieurs masses
+organiques simples ; aucune forme de pointe unique ; aucun rendu cyprès
+ou aiguille."* `BigTree` (dans `GammesPreview.tsx`) remplace le tracé
+conique unique par un tronc (`path` trapézoïdal, brun) surmonté d'une
+couronne composée de sept cercles de rayons variés qui se superposent
+avec le même dégradé radial — une masse organique "en nuage" sans
+couture visible, plutôt qu'une pointe.
+
+**Nouveau positionnement : chevauchement au centre, pas ancrage aux
+bords.** Chaque arbre occupe la moitié (`w-[58%]`) de la largeur du bloc
+titre+cartes, ancré au bord *extérieur* du conteneur (`left-0`/`right-0`)
+mais avec son contenu poussé vers le bord *intérieur*
+(`justify-end`/`justify-start`) — les deux couronnes se chevauchent donc
+largement au centre au repos ("presque collés"), au lieu d'être deux
+éléments décoratifs posés sur les bords. Hauteur : `-top-16 bottom-0
+flex items-end`, du bas de la grille jusqu'au-dessus du titre.
+
+**Le `useScroll` cible maintenant titre + arbres + cartes ensemble**
+(`sectionRef` remonté d'un niveau) pour que le titre soit lui aussi
+masqué au repos et révélé progressivement avec les cartes, comme demandé
+("*ils révèlent progressivement le titre et les trois cartes*").
+
+**Deuxième bug de minutage, plus sévère, trouvé et corrigé.** En
+réutilisant l'ancrage `offset: ["start 0.9", "start 0.15"]` du premier
+jet pour ce nouveau conteneur bien plus haut (titre + arbres qui
+remontent au-dessus + grille, environ 575px), le palier de repos
+s'épuisait entièrement pendant que le conteneur était encore presque
+entièrement sous le bas du viewport : la capture d'écran de l'état
+"fermé" ne montrait que la section précédente, avec juste la pointe des
+couronnes visible au ras du bas de l'écran. Diagnostiqué par le calcul
+direct (avec un ancrage `"start"`, un conteneur de cette hauteur ne
+devient substantiellement visible qu'à une progression bien après la fin
+du palier prévu) puis confirmé à l'écran. **Corrigé en passant à un
+ancrage sur le CENTRE du conteneur** :
+`offset: ["center 0.85", "center 0.2"]` au lieu de `["start …", "start
+…"]` — suivre le centre plutôt que le bord supérieur donne une bonne
+part du conteneur déjà visible dès `progress = 0`, ce qui rend l'état
+"fermé" réellement observable avant que l'ouverture ne commence. Palier
+réajusté à `HOLD = 0.12` avec ce nouvel ancrage.
+
+**Vérifié à l'écran, exactement les trois états demandés par le client**
+(*"montre-moi d'abord : 1. l'état fermé ; 2. l'état à mi-ouverture ; 3.
+l'état complètement ouvert"*), via un script Playwright ciblant le vrai
+conteneur `useScroll` et calculant la position de scroll pour atteindre
+une fraction de progression donnée (adapté à la formule du nouvel
+ancrage centre) :
+- **Fermé** (progression proche de 0, avant/pendant le palier) : les deux
+  couronnes se touchent quasiment au centre, tronc visible en bas,
+  aucune carte visible, titre pas encore lisible.
+- **Mi-ouverture** (~0.25-0.5) : écart naissant entre les deux couronnes,
+  titre qui se révèle en transparence à travers l'ouverture, cartes
+  toujours masquées.
+- **Ouvert** (~0.95) : arbres quasi sortis du cadre (juste les bords des
+  couronnes visibles sur les côtés), titre et les trois cartes
+  pleinement résolus (badges, prix, CTA lisibles).
+
+**Repli mobile et `prefers-reduced-motion` re-vérifiés après la
+restructuration** (le titre est désormais dans son propre
+`motion.div` conditionnel) : présence des arbres testée
+programmatiquement via l'identifiant des dégradés propres à `BigTree`
+(`[id^="gammes-bigtree-grad-"]`) — `0` en mobile, `0` en
+`prefers-reduced-motion`, `2` en desktop normal ; titre et cartes
+pleinement visibles immédiatement dans les deux cas de repli, sans
+`opacity` résiduelle.
+
+**Vérifications** : `tsc --noEmit`/`eslint` sur tout le projet propres ;
+les trois états demandés capturés et confirmés à l'écran ; repli mobile
+et accessibilité reconfirmés ; régression complète sur les 10 routes
+sans nouvelle erreur (les échecs de chargement d'images distantes
+observés dans le bac à sable de vérification sont un blocage réseau de
+l'environnement, pas un défaut du code).
+
 ## Audit du 2026-07-17 : bugs et corrections
 
 Passage complet du code (tous les composants, pages, lib) à la recherche de
