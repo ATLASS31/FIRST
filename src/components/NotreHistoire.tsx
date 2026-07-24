@@ -30,22 +30,38 @@ import { motion, useReducedMotion } from "framer-motion";
  * du site plutôt que sur un fond vidéo visible. Comme la vidéo source n'a
  * pas de canal alpha, le rendu passe par un `<canvas>` : chaque frame est
  * dessinée puis le fond (couleur échantillonnée dans le coin de l'image,
- * supposé uniforme) est rendu transparent pixel par pixel. Dégradation
- * silencieuse si le CDN ne renvoie pas d'en-têtes CORS permettant la
- * lecture des pixels (`getImageData` lève alors une erreur) : la vidéo
- * reste visible avec son fond d'origine plutôt que de casser l'affichage.
+ * supposé uniforme) est rendu transparent pixel par pixel.
+ *
+ * Troisième retour : le détourage ne marchait toujours pas en pratique
+ * ("ça fait tache, les éléments volent pas") — confirmation du risque déjà
+ * identifié : le CDN Higgsfield (CloudFront) ne renvoie pas d'en-têtes CORS
+ * lisibles, donc `getImageData` levait une `SecurityError` silencieuse et
+ * le détourage ne s'appliquait jamais. Corrigé en sortant la vidéo par une
+ * route interne same-origin (`/api/materials-video`, voir ce fichier) :
+ * le navigateur ne la traite plus comme cross-origin, donc la lecture des
+ * pixels fonctionne.
+ *
+ * Quatrième retour : abandon du "snap" à durée fixe au profit d'une
+ * animation continue liée au scroll — les matériaux se séparent au fur et
+ * à mesure que la section défile à l'écran, exactement comme la vague de
+ * Hero.tsx (scrubbable, jamais un simple déclenchement ponctuel). Le seek
+ * n'est redemandé que lorsque le précédent est terminé (`!video.seeking`)
+ * — c'est ce qui évitait déjà les sauts brutaux dans la version "snap", ici
+ * généralisé à un scrub continu plutôt qu'à une durée fixe.
  */
 
-const MATERIALS_VIDEO_URL =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260723_190609_0a1973fa-f788-4814-8e66-ab39572d87b8.mp4";
+const MATERIALS_VIDEO_URL = "/api/materials-video";
 // Généré à l'endroit (les 6 matériaux glissent les uns vers les autres
 // jusqu'à former un seul bloc) ; on la joue à l'envers, du dernier frame
 // (bloc assemblé, l'état de repos) vers le premier (matériaux écartés,
-// l'état "déplié" demandé). Durée réelle 4s, comprimée pour le "petit
-// snap" plutôt qu'un scrub continu — la durée réelle peut légèrement
-// dépasser ce budget si le navigateur met plus de temps à seeker.
+// l'état "déplié"), en continu au fil du scroll.
 const VIDEO_DURATION = 4;
-const SNAP_MS = 650;
+// Fenêtre de scroll sur laquelle la séparation se joue : 0 quand le haut
+// du bloc matériaux est encore bas dans le viewport (à peine visible), 1
+// une fois remonté vers le tiers supérieur — un défilement normal, sans
+// pin ni scroll-jacking, juste le passage naturel de la section à l'écran.
+const REVEAL_START_VH = 0.85;
+const REVEAL_END_VH = 0.35;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -129,11 +145,11 @@ function FeatureIcon({ name }: { name: (typeof FEATURES)[number]["icon"] }) {
 /**
  * Le lecteur vidéo (invisible, `opacity-0`) sert uniquement de source de
  * frames décodées ; c'est le `<canvas>` superposé qui est réellement
- * affiché, une fois le fond détouré. `currentTime` est piloté à rebours du
- * dernier frame vers le premier via des seeks chaînés sur `seeked` (voir
- * commentaire de fichier) — jamais deux seeks en vol en même temps, donc
- * jamais de saut brutal. Une fois le dépliage terminé, les légendes
- * apparaissent en dessous, une par une.
+ * affiché, une fois le fond détouré. `currentTime` suit en continu la
+ * position de scroll (voir `REVEAL_START_VH`/`REVEAL_END_VH`) : jamais de
+ * durée fixe, jamais deux seeks en vol en même temps (`!video.seeking`),
+ * donc jamais de saut brutal, dans un sens comme dans l'autre. Les
+ * légendes suivent la même logique continue et réversible.
  */
 function MaterialsShowcase() {
   const prefersReducedMotion = useReducedMotion();
@@ -141,7 +157,6 @@ function MaterialsShowcase() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
-  const triggeredRef = useRef(false);
   const keyColorRef = useRef<[number, number, number] | null>(null);
   const keyingDisabledRef = useRef(false);
 
@@ -196,70 +211,63 @@ function MaterialsShowcase() {
     const container = containerRef.current;
     if (!video || !container) return;
 
-    let cancelled = false;
-
     const onLoaded = () => {
       video.currentTime = prefersReducedMotion ? 0 : VIDEO_DURATION;
     };
     video.addEventListener("loadedmetadata", onLoaded);
 
-    const onFirstSeeked = () => {
-      drawFrame();
-      if (prefersReducedMotion) setUnfolded(true);
-    };
-    video.addEventListener("seeked", onFirstSeeked, { once: true });
+    const onSeeked = () => drawFrame();
+    video.addEventListener("seeked", onSeeked);
 
     if (prefersReducedMotion) {
+      const onFirstSeeked = () => setUnfolded(true);
+      video.addEventListener("seeked", onFirstSeeked, { once: true });
       return () => {
         video.removeEventListener("loadedmetadata", onLoaded);
+        video.removeEventListener("seeked", onSeeked);
         video.removeEventListener("seeked", onFirstSeeked);
       };
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting || triggeredRef.current) return;
-        triggeredRef.current = true;
+    const getProgress = () => {
+      const rect = container.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const start = vh * REVEAL_START_VH;
+      const end = vh * REVEAL_END_VH;
+      return Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
+    };
 
-        const start = performance.now();
-        // Filet de sécurité : si les événements `seeked` ne se déclenchent
-        // jamais (edge case navigateur), les légendes finissent quand même
-        // par apparaître plutôt que de rester bloquées indéfiniment.
-        const hardStop = setTimeout(() => setUnfolded(true), SNAP_MS + 1500);
+    let rafId: number | null = null;
 
-        const step = () => {
-          if (cancelled) return;
-          const elapsed = performance.now() - start;
-          const t = Math.min(1, elapsed / SNAP_MS);
-          // Ease-out : rapide au départ puis se pose en douceur.
-          const eased = 1 - Math.pow(1 - t, 3);
-          video.currentTime = VIDEO_DURATION * (1 - eased);
-        };
+    const tick = () => {
+      const progress = getProgress();
+      const targetTime = VIDEO_DURATION * (1 - progress);
 
-        const onSeeked = () => {
-          if (cancelled) return;
-          drawFrame();
-          const elapsed = performance.now() - start;
-          if (elapsed < SNAP_MS) {
-            requestAnimationFrame(step);
-          } else {
-            video.removeEventListener("seeked", onSeeked);
-            clearTimeout(hardStop);
-            setUnfolded(true);
-          }
-        };
-        video.addEventListener("seeked", onSeeked);
-        step();
-      },
-      { threshold: 0.4 }
-    );
-    observer.observe(container);
+      // On ne redemande un seek que si le précédent est bien terminé —
+      // c'est ce qui garantit un mouvement lisse plutôt que des sauts
+      // (voir commentaire de fichier).
+      if (!video.seeking && Math.abs(targetTime - video.currentTime) > 0.015) {
+        try {
+          video.currentTime = targetTime;
+        } catch {
+          // Vidéo pas encore prête (métadonnées non chargées) : on
+          // réessaiera à la frame suivante.
+        }
+      }
+
+      setUnfolded((prev) => {
+        const next = progress > 0.9;
+        return prev === next ? prev : next;
+      });
+
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
 
     return () => {
-      cancelled = true;
       video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("seeked", onFirstSeeked);
-      observer.disconnect();
+      video.removeEventListener("seeked", onSeeked);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [prefersReducedMotion, drawFrame]);
 

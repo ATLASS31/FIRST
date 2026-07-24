@@ -2672,6 +2672,53 @@ logique (chaînage d'événements, calcul de couleur, alpha, timing de
 cascade) est vérifiée programmatiquement, le rendu pixel final reste à
 confirmer côté client.
 
+## Notre histoire : abandon du snap, scrub continu + vidéo same-origin
+
+Deuxième retour client sur cette même section : *"oublie le snap apple,
+juste je veux que au slide il y ait l'animation fluide des matériaux qui
+se séparent"*, et confirmation que le fond de la vidéo n'était toujours
+pas retiré (*"ça fait tache, les éléments volent pas"*) — exactement le
+risque déjà identifié dans l'entrée précédente (canvas potentiellement
+"tainted" par l'absence d'en-têtes CORS sur le CDN).
+
+**Fond vidéo, cause confirmée et corrigée** : le CDN Higgsfield
+(CloudFront) ne renvoie pas d'en-têtes CORS lisibles par le navigateur, ce
+qui rend le `<canvas>` "taintée" dès qu'on y dessine une frame vidéo
+cross-origin — `getImageData` lève alors une `SecurityError`, interceptée
+silencieusement par le `catch` déjà en place, désactivant le détourage
+sans le signaler. Corrigé en ajoutant une route API interne,
+`src/app/api/materials-video/route.ts`, qui relaie la vidéo côté serveur
+(avec support des en-têtes `Range` pour un seek efficace) : le navigateur
+la voit alors comme same-origin, et la lecture des pixels pour le
+détourage fonctionne. **Cette route ne peut pas être vérifiée de bout en
+bout dans ce sandbox** : le CDN CloudFront est bloqué par le proxy sortant
+de cet environnement, y compris pour un `fetch()` côté serveur — la route
+répond donc `502` ici, ce qui est le comportement correct de repli (testé
+et confirmé), pas un bug. En production, le serveur Next.js n'a pas cette
+restriction réseau et la requête aboutira normalement.
+
+**Abandon du "snap"** : plus de durée fixe (650ms) ni de déclenchement
+ponctuel via `IntersectionObserver`. L'animation est maintenant liée en
+continu à la position de scroll de la section, sur le même principe que
+la vague de `Hero.tsx` (scrubbable dans les deux sens, jamais un simple
+trigger one-shot). La correction précédente (ne jamais redemander un seek
+tant que le précédent n'est pas terminé, via `!video.seeking`) est
+conservée et généralisée : elle s'applique maintenant à chaque frame de
+scroll plutôt qu'à une séquence à durée fixe.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi
+avec la nouvelle route (`ƒ /api/materials-video`, rendu à la demande) ;
+la route retourne bien une erreur `502` propre (pas un crash serveur) au
+lieu de laisser fuiter une exception non gérée quand le fetch amont
+échoue ; progression des légendes suivie en scrollant à travers la
+section point par point : révélation progressive (pas de saut), et
+réversible en scrollant vers le haut (les légendes redisparaissent),
+confirmant le caractère continu et bidirectionnel de l'animation ;
+régression complète sur les 10 routes sans nouvelle erreur. Le rendu
+visuel réel (fluidité du seek et résultat du détourage) reste à confirmer
+côté client, cette fois avec de meilleures chances de fonctionner
+puisque la cause racine du fond non retiré est directement adressée.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
