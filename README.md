@@ -2551,6 +2551,65 @@ d'accueil retombée à 12,7 kB (contre 16,4 kB avec la vidéo) confirmant
 que toute la mécanique complexe a bien été retirée, pas seulement
 désactivée ; régression complète sur les 10 routes sans nouvelle erreur.
 
+## Notre histoire : refonte icônes + vidéo matériaux "reverse-snap"
+
+Direction précise du client, deux images de référence à l'appui.
+L'ancien objet 3D en rotation (CSS, faces animées avec des chiffres) est
+retiré : à gauche, le texte est désormais accompagné d'une ligne de 4
+preuves avec icône (100% fabriqué en France, Douglas certifié, conforme
+RE2020, garantie 20 ans) — quatre icônes trait minimalistes dessinées à
+la main (pin, arbre, maison, bouclier), dans le style déjà établi par
+`ThreePiliers.tsx` (`viewBox` 24×24, `stroke="currentColor"`, épaisseur
+1.5, extrémités arrondies). Explicitement demandé : sans les petits
+boutons "+" visibles sur l'image de référence.
+
+À droite, la vidéo Higgsfield fournie par le client (les six matériaux
+de construction — ossature Douglas, OSB, isolation, pare-vapeur,
+liteaux, bardage Cryptomeria — qui glissent les uns vers les autres
+jusqu'à former un seul bloc assemblé) est jouée **à l'envers** : elle
+démarre assemblée (dernier frame) et se "déplie" jusqu'au premier frame
+quand la section entre dans le viewport. Aucun navigateur ne supportant
+la lecture arrière fluide via `playbackRate` négatif, la technique déjà
+utilisée pour le hero est reprise : une boucle `requestAnimationFrame`
+qui décrémente `video.currentTime`, déclenchée une seule fois par un
+`IntersectionObserver` (pas de scroll-scrub continu). Demande explicite
+du client : *"au slide vers le bas les matériaux s'écartent d'un coup,
+petit snap apple genre"* — la boucle est donc compressée sur 650ms avec
+un easing ease-out cubique, plutôt qu'un scrub étalé sur la durée réelle
+de la vidéo (4s). Une fois le dépliage terminé, les six légendes
+apparaissent en cascade sous chaque matériau (numéro, titre, courte
+description), reprenant le style filmstrip de la seconde image de
+référence.
+
+Le bloc CSS `.hs-object-*` (styling de l'ancien objet 3D — scène,
+tilt, faces, rim, shine, ombre) est supprimé entièrement de
+`globals.css`, confirmé sans référence restante ailleurs dans le code
+avant suppression.
+
+**Bug trouvé et corrigé en vérifiant le rendu** : les icônes SVG
+n'avaient aucune taille explicite (`viewBox` seul, sans `className`/
+`width`/`height`) et s'effondraient à 0×0 — invisibles bien que
+présentes dans le DOM (un premier contrôle Playwright comptant les
+`<svg>` par sélecteur donnait le bon compte sans détecter le problème de
+taille). Corrigé en ajoutant `className="h-6 w-6"` à l'élément `<svg>`
+partagé par les quatre icônes. Un fond `bg-encre/5` a aussi été ajouté
+au conteneur vidéo pour éviter un vide visuel si la vidéo met du temps à
+charger.
+
+**Vérifications** : `tsc`/`eslint` propres ; capture d'écran de la
+section confirmant les 4 icônes visibles (taille et couleur laiton
+correctes) et les 6 légendes de matériaux en place ; logique de
+`currentTime` et de la cascade d'opacité vérifiée programmatiquement
+(progression d'opacité entre 1200ms et 2000ms après déclenchement) ;
+fallback `prefers-reduced-motion` vérifié (saute directement à l'état
+"déplié", légendes visibles sans délai) ; régression complète sur les
+10 routes sans nouvelle erreur. Comme pour les vidéos précédentes, le
+CDN Higgsfield (`d8j0ntlcm91z4.cloudfront.net` /
+`d2ol7oe51mr4n9.cloudfront.net`) est bloqué par le proxy sortant de cet
+environnement : le contenu pixel réel de la vidéo/poster n'a donc pas pu
+être vérifié visuellement ici (structure DOM, styles calculés et
+logique JS oui ; rendu visuel à confirmer côté client).
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de

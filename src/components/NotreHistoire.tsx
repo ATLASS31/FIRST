@@ -1,122 +1,213 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from "framer-motion";
-
-const AUTOPLAY_MS = 3500;
-
-const FIGURES = [
-  { value: "20 ans", label: "de garantie" },
-  { value: "4–12 semaines", label: "de livraison" },
-  { value: "100%", label: "fabriqué en France" },
-];
+import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * Retour complet à cette version sur demande explicite du client, après
- * plusieurs tours d'exploration 3D temps réel (Three.js/React Three
- * Fiber : coquille architecturale, monolithe, forêt Bellora). Diagnostic
- * client : *"le site commence à perdre en fluidité [...] nous passons
- * beaucoup de temps à résoudre des problèmes techniques au lieu
- * d'améliorer le site [...] je préfère repartir sur une base propre et
- * stable"*. Toute la piste WebGL est donc abandonnée pour l'instant —
- * `notre-histoire/ForestScene.tsx` et les dépendances `three`/
- * `@react-three/fiber`/`@react-three/drei` sont supprimées du projet,
- * aucune trace gardée "au cas où".
- *
- * Ce fichier restaure exactement l'état validé juste avant l'adoption de
- * Three.js (commit `2dff32e`, "l'objet 3D devient la carte, navigation
- * absorbée") : texte à gauche, objet 3D en CSS pur à droite (prisme
- * triangulaire, `transform-style: preserve-3d`, aucune dépendance WebGL),
- * dont une face différente fait face à l'écran à chaque étape — rotation
- * de 120°, inclinaison bornée au mouvement de la souris, reflet
- * mouse-tracké, matériau Liquid Glass identique sur les trois faces
- * (classes `.hs-object-*`, restaurées dans `globals.css`). Chaque face
- * porte directement une des trois preuves fortes (garantie, délai,
- * fabrication) — l'objet entier est le seul élément interactif de la
- * colonne, cliquable pour avancer, avec une rotation automatique toutes
- * les 3,5 s. Aucune scène à charger, aucun canvas, aucun import
- * dynamique : cette section revient au even coût de rendu qu'une carte
- * CSS ordinaire.
- *
- * Nous reviendrons sur une expérience 3D plus ambitieuse plus tard, une
- * fois le reste du site stabilisé — pas dans cette section tant que ce
- * chantier n'a pas de budget de temps dédié qui ne compromette pas le
- * reste du développement.
+ * Refonte complète sur direction précise du client, référence visuelle à
+ * l'appui (deux images) : à gauche le texte + une ligne de 4 preuves avec
+ * icône (remplace l'ancien objet 3D en rotation — l'histoire n'est plus
+ * racontée par un objet qui tourne mais par la matière elle-même) ; à
+ * droite, une vidéo Higgsfield (six matériaux de construction qui glissent
+ * les uns vers les autres jusqu'à former un seul bloc assemblé) — mais
+ * *retournée* : elle démarre assemblée et se "déplie" au scroll pour
+ * révéler les six couches, chacune légendée en dessous une fois
+ * l'ouverture terminée. Demande explicite : *"au slide vers le bas les
+ * matériaux s'écartent d'un coup, petit snap apple genre."*
  */
-function useObjectPointer() {
-  const ref = useRef<HTMLElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const latestPoint = useRef({ x: 0, y: 0 });
-  const px = useMotionValue(0.5);
-  const py = useMotionValue(0.5);
-  const springConfig = { stiffness: 180, damping: 24, mass: 0.4 };
-  const sx = useSpring(px, springConfig);
-  const sy = useSpring(py, springConfig);
+
+const MATERIALS_VIDEO_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260723_190609_0a1973fa-f788-4814-8e66-ab39572d87b8.mp4";
+const MATERIALS_VIDEO_POSTER =
+  "https://d2ol7oe51mr4n9.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/30d74101-1ddb-410e-9a19-a3c075bf284a.png";
+// Généré à l'endroit (les 6 matériaux glissent les uns vers les autres
+// jusqu'à former un seul bloc) ; on la joue à l'envers, du dernier frame
+// (bloc assemblé, l'état de repos) vers le premier (matériaux écartés,
+// l'état "déplié" demandé). Durée réelle 4s, mais on la comprime à une
+// fraction de seconde pour le "petit snap" plutôt qu'un scrub continu.
+const VIDEO_DURATION = 4;
+const SNAP_MS = 650;
+
+const FEATURES = [
+  { icon: "pin", value: "100%", label: "fabriqué en France" },
+  { icon: "tree", value: "Douglas", label: "certifié" },
+  { icon: "home", value: "Conforme", label: "RE2020" },
+  { icon: "shield", value: "Garantie", label: "20 ans" },
+] as const;
+
+const MATERIALS = [
+  {
+    title: "Ossature Douglas",
+    description: "Bois massif certifié PEFC, naturellement résistant et stabilisé.",
+  },
+  {
+    title: "Panneau OSB 4",
+    description: "Rigidité et stabilité structurelle pour une maison solide et durable.",
+  },
+  {
+    title: "Isolation",
+    description:
+      "Fibre de bois haute densité pour un confort thermique optimal été comme hiver.",
+  },
+  {
+    title: "Pare-vapeur",
+    description:
+      "Membrane d'étanchéité à l'air performante pour préserver la qualité de l'isolation.",
+  },
+  {
+    title: "Liteaux & lame d'air",
+    description:
+      "Ventilation naturelle assurant la durabilité de la façade et la régulation de l'humidité.",
+  },
+  {
+    title: "Bardage Cryptomeria",
+    description: "Bois naturellement durable, esthétique et résistant aux intempéries.",
+  },
+];
+
+function FeatureIcon({ name }: { name: (typeof FEATURES)[number]["icon"] }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "h-6 w-6",
+  };
+  if (name === "pin") {
+    return (
+      <svg {...common}>
+        <path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z" />
+        <circle cx="12" cy="10" r="3" />
+      </svg>
+    );
+  }
+  if (name === "tree") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="9" r="5.5" />
+        <path d="M12 14.5V21M8.5 21h7" />
+      </svg>
+    );
+  }
+  if (name === "home") {
+    return (
+      <svg {...common}>
+        <path d="M3 11.5 12 4l9 7.5" />
+        <path d="M5.5 10v10.5h13V10" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="M12 3.5 19 6.3v5.6c0 5.2-3.4 8.4-7 9.6-3.6-1.2-7-4.4-7-9.6V6.3l7-2.8z" />
+      <path d="m9 12 2 2 4-4.2" />
+    </svg>
+  );
+}
+
+/**
+ * Le lecteur vidéo lit `currentTime` à rebours du dernier frame vers le
+ * premier (aucun navigateur ne fait de vraie lecture arrière fluide via
+ * `playbackRate` négatif) : une boucle `requestAnimationFrame` décrémente
+ * `currentTime` sur `SNAP_MS`, déclenchée une seule fois quand la section
+ * entre dans le viewport. Une fois le dépliage terminé, les légendes
+ * apparaissent en dessous, en cascade.
+ */
+function MaterialsShowcase() {
+  const prefersReducedMotion = useReducedMotion();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [unfolded, setUnfolded] = useState(false);
+  const triggeredRef = useRef(false);
 
   useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
 
-  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
-    latestPoint.current = { x: e.clientX, y: e.clientY };
-    if (rafRef.current !== null) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const rect = ref.current?.getBoundingClientRect();
-      if (!rect) return;
-      px.set((latestPoint.current.x - rect.left) / rect.width);
-      py.set((latestPoint.current.y - rect.top) / rect.height);
-    });
-  };
-
-  const handleLeave = () => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    if (prefersReducedMotion) {
+      // Pas d'animation : on va directement à l'état "déplié" (matériaux
+      // écartés, légendes visibles), cohérent avec le reste du site où
+      // reduced-motion retombe toujours sur l'état final plutôt qu'une
+      // version amoindrie de l'animation.
+      setUnfolded(true);
+      return;
     }
-    px.set(0.5);
-    py.set(0.5);
-  };
 
-  return { ref, sx, sy, handleMove, handleLeave };
+    const onLoaded = () => {
+      video.currentTime = VIDEO_DURATION;
+    };
+    video.addEventListener("loadedmetadata", onLoaded);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || triggeredRef.current) return;
+        triggeredRef.current = true;
+
+        const start = performance.now();
+        const tick = (now: number) => {
+          const t = Math.min(1, (now - start) / SNAP_MS);
+          // Ease-out : rapide au départ puis se pose en douceur, comme
+          // l'aimantation "snap" déjà présente dans la vidéo source.
+          const eased = 1 - Math.pow(1 - t, 3);
+          video.currentTime = VIDEO_DURATION * (1 - eased);
+          if (t < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            setUnfolded(true);
+          }
+        };
+        requestAnimationFrame(tick);
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(container);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoaded);
+      observer.disconnect();
+    };
+  }, [prefersReducedMotion]);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <div className="relative aspect-video w-full overflow-hidden rounded-3xl bg-encre/5">
+        <video
+          ref={videoRef}
+          src={MATERIALS_VIDEO_URL}
+          poster={MATERIALS_VIDEO_POSTER}
+          muted
+          playsInline
+          preload="auto"
+          className="h-full w-full object-contain"
+        />
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
+        {MATERIALS.map((material, i) => (
+          <motion.div
+            key={material.title}
+            initial={{ opacity: 0, y: 10 }}
+            animate={unfolded ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ duration: 0.45, delay: i * 0.06, ease: "easeOut" }}
+          >
+            <p className="eyebrow text-[11px] text-encre-douce">
+              {String(i + 1).padStart(2, "0")}
+            </p>
+            <p className="mt-1.5 text-sm font-semibold text-encre">{material.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-encre-doux">
+              {material.description}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function NotreHistoire() {
-  const [active, setActive] = useState(0);
-  const prefersReducedMotion = useReducedMotion();
-  const { ref: objectRef, sx, sy, handleMove, handleLeave } = useObjectPointer();
-
-  const tiltX = useTransform(sy, [0, 1], [9, -9]);
-  const tiltY = useTransform(sx, [0, 1], [-9, 9]);
-
-  const shineX = useTransform(sx, [0, 1], ["0%", "100%"]);
-  const shineY = useTransform(sy, [0, 1], ["0%", "100%"]);
-  // Spéculaire à deux couches : un point chaud étroit (réflexion directe
-  // d'une source de lumière sur une surface polie) superposé à un halo
-  // large et doux (éclairage ambiant réfléchi), identique sur les trois
-  // faces (même `shineBackground`, calculé une seule fois contre l'objet
-  // entier) : seule la face tournée vers l'écran le montre réellement.
-  const shineBackground = useMotionTemplate`radial-gradient(80px circle at ${shineX} ${shineY}, rgba(255,255,255,0.6), transparent 45%), radial-gradient(280px circle at ${shineX} ${shineY}, rgba(255,255,255,0.22), transparent 65%)`;
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActive((i) => (i + 1) % FIGURES.length);
-    }, AUTOPLAY_MS);
-    return () => clearInterval(id);
-  }, [active]);
-
-  const handleAdvance = () => setActive((i) => (i + 1) % FIGURES.length);
-  const figure = FIGURES[active];
-
   return (
     <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
       <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
@@ -140,69 +231,23 @@ export default function NotreHistoire() {
             assemblée en atelier français par des charpentiers et menuisiers
             expérimentés.
           </p>
+
+          <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+            {FEATURES.map((feature) => (
+              <div key={feature.label} className="flex flex-col items-start gap-3">
+                <span aria-hidden className="text-laiton">
+                  <FeatureIcon name={feature.icon} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-encre">{feature.value}</p>
+                  <p className="text-sm text-encre-douce">{feature.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="flex min-w-0 justify-center">
-          <motion.button
-            ref={objectRef as React.RefObject<HTMLButtonElement>}
-            type="button"
-            onClick={handleAdvance}
-            onMouseMove={handleMove}
-            onMouseLeave={handleLeave}
-            aria-label={`Étape ${active + 1} sur ${FIGURES.length} : ${figure.value} ${figure.label}. Cliquer pour voir l'étape suivante.`}
-            className="hs-object-scene"
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-          >
-            <motion.div
-              className="hs-object-tilt"
-              initial={{ opacity: 0, y: 26, scale: 0.94, filter: "blur(14px)" }}
-              whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              viewport={{ once: true, amount: 0.6 }}
-              transition={
-                prefersReducedMotion
-                  ? { duration: 0 }
-                  : { duration: 1, ease: [0.16, 1, 0.3, 1] }
-              }
-              style={{ rotateX: tiltX, rotateY: tiltY }}
-            >
-              <motion.div
-                className="hs-object-step"
-                animate={{ rotateY: -active * 120 }}
-                transition={
-                  prefersReducedMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 70, damping: 14, mass: 1 }
-                }
-              >
-                {FIGURES.map((f) => (
-                  <div key={f.label} className="hs-object-face">
-                    <div aria-hidden className="hs-object-face-rim" />
-                    <motion.div
-                      aria-hidden
-                      className="hs-object-face-shine"
-                      style={{ background: shineBackground }}
-                    />
-                    <div aria-hidden className="hs-object-face-content">
-                      <p className="text-balance text-2xl font-semibold leading-snug text-encre sm:text-4xl">
-                        {f.value}
-                      </p>
-                      <p className="eyebrow mt-3 text-xs text-encre-douce sm:text-sm">
-                        {f.label}
-                      </p>
-                      <span
-                        aria-hidden
-                        className="mx-auto mt-4 block h-px w-7 bg-laiton/70"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-            </motion.div>
-            <div aria-hidden className="hs-object-shadow" />
-          </motion.button>
-        </div>
+        <MaterialsShowcase />
       </div>
     </section>
   );
