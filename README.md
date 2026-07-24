@@ -2610,6 +2610,68 @@ environnement : le contenu pixel réel de la vidéo/poster n'a donc pas pu
 être vérifié visuellement ici (structure DOM, styles calculés et
 logique JS oui ; rendu visuel à confirmer côté client).
 
+## Notre histoire : retours client — animation, fond, cascade, taille
+
+Quatre retours précis après la première passe de la refonte ci-dessus :
+*"il n'y a aucune animation sur la vidéo genre petit freeze et hop tout
+dégroupé, faut un truc smooth apple"*, *"les textes qui décrivent les
+éléments arrivent un par un aussi"*, *"le fond de la vidéo il faudrait le
+supprimer comme ça on a vraiment l'impression qu'ils flottent sur le fond
+du site"*, et *"tu agrandis énormément les matériaux, aujourd'hui ils
+occupent environ 35% de la largeur, je les ferais occuper 60 à 70%."*
+
+**Le "freeze puis snap" (bug réel, pas un ressenti)** : la première
+version écrivait `video.currentTime` à chaque frame `requestAnimationFrame`
+(~60 fois/seconde) sans jamais attendre que le navigateur ait fini de
+traiter la précédente valeur. Un `<video>` seeké ne rend pas chaque valeur
+demandée si une nouvelle arrive avant que la précédente soit résolue — la
+plupart des écritures étaient donc silencieusement ignorées, et seule la
+toute dernière s'appliquait, d'où l'impression d'un gel suivi d'un saut
+brutal. Corrigé en chaînant les seeks sur l'événement `seeked` : chaque
+nouvelle valeur de `currentTime` n'est demandée qu'une fois la précédente
+réellement rendue par le décodeur, ce qui cale automatiquement le rythme
+sur ce que le navigateur peut vraiment fournir — fluide par construction,
+quel que soit son débit de seek réel. Un filet de sécurité (`setTimeout`)
+garantit que les légendes finissent par apparaître même si l'événement
+`seeked` ne se déclenche jamais.
+
+**Fond de la vidéo retiré** : la vidéo source (MP4/H.264) n'a pas de canal
+alpha, donc aucun moyen natif de rendre son fond transparent. La solution
+retenue : le `<video>` devient une source de frames invisible
+(`opacity-0`), et un `<canvas>` superposé affiche chaque frame après
+détourage — la couleur de fond est échantillonnée dans le coin de l'image
+(supposée uniforme, cohérent avec un rendu studio Higgsfield) puis rendue
+transparente pixel par pixel, avec une zone de fondu pour lisser les
+bords. Dégradation silencieuse et volontaire si le CDN ne renvoie pas
+d'en-têtes CORS permettant la lecture des pixels (`getImageData` lève
+alors une erreur, interceptée) : la vidéo reste visible avec son fond
+d'origine plutôt que de casser l'affichage.
+
+**Légendes en cascade** : le délai entre chaque légende est passé de
+0.06s à 0.13s (avec une easing "Apple" `cubic-bezier(0.22, 1, 0.36, 1)`)
+pour que l'arrivée "une par une" soit clairement perceptible plutôt que
+quasi simultanée.
+
+**Matériaux agrandis** : la répartition des colonnes passe de
+`lg:grid-cols-[1fr_1.2fr]` (texte ~45%, matériaux ~55%) à
+`lg:grid-cols-[1fr_2fr]` (texte ~33%, matériaux ~67%), et le conteneur de
+`max-w-6xl` à `max-w-7xl` pour donner plus de place absolue aux deux
+colonnes.
+
+**Vérifications** : `tsc`/`eslint` propres ; ratio de largeur de colonne
+mesuré à l'exécution (0.67, dans la fourchette 60–70% demandée) ; absence
+d'erreur JS/console (le chemin `getImageData`/`SecurityError` ne plante
+jamais, catché) ; progression de l'opacité des 6 légendes suivie dans le
+temps confirmant une apparition strictement séquentielle et non
+simultanée ; rendu mobile vérifié (colonnes empilées) ; régression
+complète sur les 10 routes sans nouvelle erreur. Limite persistante de cet
+environnement : le CDN vidéo (`d8j0ntlcm91z4.cloudfront.net`) est bloqué
+par le proxy sortant du sandbox, donc ni la fluidité réelle du seek ni le
+résultat visuel du détourage n'ont pu être vérifiés à l'œil ici — la
+logique (chaînage d'événements, calcul de couleur, alpha, timing de
+cascade) est vérifiée programmatiquement, le rendu pixel final reste à
+confirmer côté client.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de

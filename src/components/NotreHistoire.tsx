@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
@@ -14,17 +14,36 @@ import { motion, useReducedMotion } from "framer-motion";
  * révéler les six couches, chacune légendée en dessous une fois
  * l'ouverture terminée. Demande explicite : *"au slide vers le bas les
  * matériaux s'écartent d'un coup, petit snap apple genre."*
+ *
+ * Retour client après une première passe : l'animation "freeze puis hop
+ * tout dégroupé" au lieu d'être fluide. Cause réelle : on écrivait
+ * `video.currentTime` à chaque frame `requestAnimationFrame` (~60x/s) sans
+ * attendre que le navigateur ait fini de "seeker" la précédente valeur —
+ * la plupart des écritures étaient donc ignorées/écrasées, et seule la
+ * toute dernière finissait par s'appliquer d'un coup. Corrigé en chaînant
+ * les seeks sur l'événement `seeked` : chaque nouvelle valeur n'est
+ * demandée qu'une fois la précédente réellement rendue, ce qui cale le
+ * rythme sur ce que le décodeur peut vraiment fournir — fluide plutôt que
+ * saccadé, quelle que soit la vitesse de seek du navigateur.
+ *
+ * Deuxième demande : que les matériaux aient l'air de flotter sur le fond
+ * du site plutôt que sur un fond vidéo visible. Comme la vidéo source n'a
+ * pas de canal alpha, le rendu passe par un `<canvas>` : chaque frame est
+ * dessinée puis le fond (couleur échantillonnée dans le coin de l'image,
+ * supposé uniforme) est rendu transparent pixel par pixel. Dégradation
+ * silencieuse si le CDN ne renvoie pas d'en-têtes CORS permettant la
+ * lecture des pixels (`getImageData` lève alors une erreur) : la vidéo
+ * reste visible avec son fond d'origine plutôt que de casser l'affichage.
  */
 
 const MATERIALS_VIDEO_URL =
   "https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260723_190609_0a1973fa-f788-4814-8e66-ab39572d87b8.mp4";
-const MATERIALS_VIDEO_POSTER =
-  "https://d2ol7oe51mr4n9.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/30d74101-1ddb-410e-9a19-a3c075bf284a.png";
 // Généré à l'endroit (les 6 matériaux glissent les uns vers les autres
 // jusqu'à former un seul bloc) ; on la joue à l'envers, du dernier frame
 // (bloc assemblé, l'état de repos) vers le premier (matériaux écartés,
-// l'état "déplié" demandé). Durée réelle 4s, mais on la comprime à une
-// fraction de seconde pour le "petit snap" plutôt qu'un scrub continu.
+// l'état "déplié" demandé). Durée réelle 4s, comprimée pour le "petit
+// snap" plutôt qu'un scrub continu — la durée réelle peut légèrement
+// dépasser ce budget si le navigateur met plus de temps à seeker.
 const VIDEO_DURATION = 4;
 const SNAP_MS = 650;
 
@@ -108,38 +127,94 @@ function FeatureIcon({ name }: { name: (typeof FEATURES)[number]["icon"] }) {
 }
 
 /**
- * Le lecteur vidéo lit `currentTime` à rebours du dernier frame vers le
- * premier (aucun navigateur ne fait de vraie lecture arrière fluide via
- * `playbackRate` négatif) : une boucle `requestAnimationFrame` décrémente
- * `currentTime` sur `SNAP_MS`, déclenchée une seule fois quand la section
- * entre dans le viewport. Une fois le dépliage terminé, les légendes
- * apparaissent en dessous, en cascade.
+ * Le lecteur vidéo (invisible, `opacity-0`) sert uniquement de source de
+ * frames décodées ; c'est le `<canvas>` superposé qui est réellement
+ * affiché, une fois le fond détouré. `currentTime` est piloté à rebours du
+ * dernier frame vers le premier via des seeks chaînés sur `seeked` (voir
+ * commentaire de fichier) — jamais deux seeks en vol en même temps, donc
+ * jamais de saut brutal. Une fois le dépliage terminé, les légendes
+ * apparaissent en dessous, une par une.
  */
 function MaterialsShowcase() {
   const prefersReducedMotion = useReducedMotion();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
   const triggeredRef = useRef(false);
+  const keyColorRef = useRef<[number, number, number] | null>(null);
+  const keyingDisabledRef = useRef(false);
+
+  const drawFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.videoWidth === 0) return;
+
+    if (canvas.width !== video.videoWidth) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    if (keyingDisabledRef.current) return;
+
+    try {
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = frame.data;
+
+      if (!keyColorRef.current) {
+        keyColorRef.current = [data[0], data[1], data[2]];
+      }
+      const [kr, kg, kb] = keyColorRef.current;
+      const threshold = 26;
+      const feather = 20;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const dr = data[i] - kr;
+        const dg = data[i + 1] - kg;
+        const db = data[i + 2] - kb;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist < threshold) {
+          data[i + 3] = 0;
+        } else if (dist < threshold + feather) {
+          data[i + 3] = Math.round(((dist - threshold) / feather) * 255);
+        }
+      }
+      ctx.putImageData(frame, 0, 0);
+    } catch {
+      // Canvas "taintée" (le CDN ne renvoie pas d'en-têtes CORS lisibles) :
+      // on ne détoure plus, mais le frame déjà dessiné reste affiché.
+      keyingDisabledRef.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
     const container = containerRef.current;
     if (!video || !container) return;
 
-    if (prefersReducedMotion) {
-      // Pas d'animation : on va directement à l'état "déplié" (matériaux
-      // écartés, légendes visibles), cohérent avec le reste du site où
-      // reduced-motion retombe toujours sur l'état final plutôt qu'une
-      // version amoindrie de l'animation.
-      setUnfolded(true);
-      return;
-    }
+    let cancelled = false;
 
     const onLoaded = () => {
-      video.currentTime = VIDEO_DURATION;
+      video.currentTime = prefersReducedMotion ? 0 : VIDEO_DURATION;
     };
     video.addEventListener("loadedmetadata", onLoaded);
+
+    const onFirstSeeked = () => {
+      drawFrame();
+      if (prefersReducedMotion) setUnfolded(true);
+    };
+    video.addEventListener("seeked", onFirstSeeked, { once: true });
+
+    if (prefersReducedMotion) {
+      return () => {
+        video.removeEventListener("loadedmetadata", onLoaded);
+        video.removeEventListener("seeked", onFirstSeeked);
+      };
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -147,51 +222,73 @@ function MaterialsShowcase() {
         triggeredRef.current = true;
 
         const start = performance.now();
-        const tick = (now: number) => {
-          const t = Math.min(1, (now - start) / SNAP_MS);
-          // Ease-out : rapide au départ puis se pose en douceur, comme
-          // l'aimantation "snap" déjà présente dans la vidéo source.
+        // Filet de sécurité : si les événements `seeked` ne se déclenchent
+        // jamais (edge case navigateur), les légendes finissent quand même
+        // par apparaître plutôt que de rester bloquées indéfiniment.
+        const hardStop = setTimeout(() => setUnfolded(true), SNAP_MS + 1500);
+
+        const step = () => {
+          if (cancelled) return;
+          const elapsed = performance.now() - start;
+          const t = Math.min(1, elapsed / SNAP_MS);
+          // Ease-out : rapide au départ puis se pose en douceur.
           const eased = 1 - Math.pow(1 - t, 3);
           video.currentTime = VIDEO_DURATION * (1 - eased);
-          if (t < 1) {
-            requestAnimationFrame(tick);
+        };
+
+        const onSeeked = () => {
+          if (cancelled) return;
+          drawFrame();
+          const elapsed = performance.now() - start;
+          if (elapsed < SNAP_MS) {
+            requestAnimationFrame(step);
           } else {
+            video.removeEventListener("seeked", onSeeked);
+            clearTimeout(hardStop);
             setUnfolded(true);
           }
         };
-        requestAnimationFrame(tick);
+        video.addEventListener("seeked", onSeeked);
+        step();
       },
       { threshold: 0.4 }
     );
     observer.observe(container);
 
     return () => {
+      cancelled = true;
       video.removeEventListener("loadedmetadata", onLoaded);
+      video.removeEventListener("seeked", onFirstSeeked);
       observer.disconnect();
     };
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, drawFrame]);
 
   return (
     <div ref={containerRef} className="w-full">
-      <div className="relative aspect-video w-full overflow-hidden rounded-3xl bg-encre/5">
+      <div className="relative aspect-video w-full">
         <video
           ref={videoRef}
           src={MATERIALS_VIDEO_URL}
-          poster={MATERIALS_VIDEO_POSTER}
           muted
           playsInline
           preload="auto"
-          className="h-full w-full object-contain"
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-contain opacity-0"
+        />
+        <canvas
+          ref={canvasRef}
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-contain"
         />
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
         {MATERIALS.map((material, i) => (
           <motion.div
             key={material.title}
-            initial={{ opacity: 0, y: 10 }}
-            animate={unfolded ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-            transition={{ duration: 0.45, delay: i * 0.06, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 14 }}
+            animate={unfolded ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+            transition={{ duration: 0.5, delay: 0.1 + i * 0.13, ease: [0.22, 1, 0.36, 1] }}
           >
             <p className="eyebrow text-[11px] text-encre-douce">
               {String(i + 1).padStart(2, "0")}
@@ -210,7 +307,7 @@ function MaterialsShowcase() {
 export default function NotreHistoire() {
   return (
     <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
-      <div className="relative z-10 mx-auto grid max-w-6xl gap-16 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+      <div className="relative z-10 mx-auto grid max-w-7xl gap-16 lg:grid-cols-[1fr_2fr] lg:items-center">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
           <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
