@@ -138,14 +138,10 @@ import { motion, useReducedMotion } from "framer-motion";
  * suivant a signalé des images dupliquées et des zones effacées sur
  * certains matériaux (l'image figée et le canvas ne représentaient jamais
  * exactement le même instant, donc le passage de l'un à l'autre créait un
- * chevauchement visible). Revert complet à ce moment-là, puis retour du
- * client : le vide (sans rien du tout) "rend pas bien" non plus. Cette
- * fois corrigé sans repartir sur du contenu figuratif : un placeholder
- * abstrait (`.materials-loading`, un reflet qui balaie en boucle, cf.
- * globals.css) — par construction, un dégradé sans forme ne peut jamais
- * entrer en conflit visuel avec la vraie vidéo qui apparaît par-dessus,
- * contrairement à une frame figée des mêmes objets. `PLAYBACK_RATE`
- * également augmenté (demande client passée, voir plus bas).
+ * chevauchement visible). Revert complet : cette brève absence de vidéo
+ * au chargement à froid est un moindre mal comparé à ce chevauchement —
+ * "à la limite rajoute juste un peu de vitesse aux animations c'est
+ * tout". `PLAYBACK_RATE` augmenté en conséquence (voir plus bas).
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -251,12 +247,6 @@ function MaterialsShowcase() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
-  // Passe à `true` dès que la première frame réelle est dessinée sur le
-  // canvas — pilote la disparition en fondu du placeholder abstrait
-  // (`.materials-loading`, cf. globals.css) affiché le temps du
-  // chargement. Toujours monté (jamais démonté), juste rendu invisible
-  // par transition : reste inoffensif une fois caché.
-  const [videoReady, setVideoReady] = useState(false);
   // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
   // chargées, plutôt qu'une valeur devinée : deviner mal laisse
   // `object-contain` ajouter un vide transparent (invisible une fois le
@@ -375,7 +365,6 @@ function MaterialsShowcase() {
         const showFinal = () => {
           drawFrame(explodeVideo);
           setUnfolded(true);
-          setVideoReady(true);
         };
         if (Number.isFinite(explodeVideo.duration) && explodeVideo.duration > 0) {
           const onFinalSeeked = () => showFinal();
@@ -391,7 +380,6 @@ function MaterialsShowcase() {
         }
       } else {
         drawFrame(explodeVideo);
-        setVideoReady(true);
       }
     };
     explodeVideo.addEventListener("loadeddata", onExplodeReady, { once: true });
@@ -593,17 +581,6 @@ function MaterialsShowcase() {
         className="relative -mx-6 lg:mx-0"
         style={{ aspectRatio: videoAspect ? String(videoAspect) : "16 / 9" }}
       >
-        {/* Placeholder abstrait (reflet qui balaie, aucun contenu
-            figuratif) le temps que la vidéo télécharge assez pour que
-            `loadeddata` se déclenche — jamais de conflit visuel possible
-            avec le vrai contenu puisqu'il n'y a rien de figuratif à faire
-            correspondre. Toujours monté, juste rendu invisible par
-            transition une fois `videoReady`. */}
-        <div
-          aria-hidden
-          className="materials-loading absolute inset-0 transition-opacity duration-500"
-          style={{ opacity: videoReady ? 0 : 1, pointerEvents: "none" }}
-        />
         <video
           ref={explodeVideoRef}
           src={EXPLODE_VIDEO_URL}

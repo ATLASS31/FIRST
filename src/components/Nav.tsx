@@ -54,9 +54,17 @@ export default function Nav() {
           ))}
         </ul>
 
+        {/* `-mr-4` compense l'écart entre le padding horizontal de la
+            pilule (px-7 = 28px à partir de sm, actif dès que ce bouton
+            devient visible à md) et son padding vertical (py-3 = 12px) :
+            sans ça, l'espace visuel entre le bouton et le bord droit de
+            la pilule est nettement plus large qu'au-dessus/en dessous
+            (16px d'écart). Ce correctif ne touche que ce bouton, pas le
+            padding de la pilule elle-même (qui doit rester tel quel pour
+            le logo et les liens). */}
         <Link
           href="/contact"
-          className="hidden rounded-full bg-foret px-5 py-2.5 text-lg font-medium text-brume transition-opacity hover:opacity-90 md:inline-block"
+          className="hidden rounded-full bg-foret px-5 py-2.5 text-lg font-medium text-brume transition-opacity hover:opacity-90 md:-mr-4 md:inline-block"
         >
           Demander un devis
         </Link>

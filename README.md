@@ -3430,6 +3430,38 @@ complète sur les 10 routes sans nouvelle erreur console (hors 502/tunnel
 déjà connus, propres au blocage réseau de ce bac à sable pour le CDN
 vidéo).
 
+## Placeholder de chargement : revert ; Nav CTA : écart uniforme autour du bouton
+
+Retour client sur le round précédent : l'animation de survol de la nav
+("j'adore") est gardée telle quelle, mais le placeholder de chargement
+abstrait (panneau + reflet qui balaie) est annulé — "revient comme avant
+pour l'animation des éléments". Revert propre et ciblé : `globals.css` et
+`NotreHistoire.tsx` restaurés à leur état du commit précédent (`git
+checkout <commit> -- <fichiers>`), `Nav.tsx` non touché par ce revert
+puisque son changement était dans un fichier séparé.
+
+**Bouton "Demander un devis", écart asymétrique** : dans la pilule de
+navigation, l'écart entre le bouton et le bord droit de la pilule (28px,
+`sm:px-7`) était visiblement plus large que l'écart au-dessus/en dessous
+(12px, `py-3`) — les deux paddings de la pilule n'ont jamais eu de raison
+d'être égaux (l'un cadre tout le contenu horizontalement, l'autre
+verticalement), mais leur écart devient visible autour du dernier élément
+de la ligne, le bouton plein. Corrigé avec une marge négative ciblée sur
+le seul bouton (`md:-mr-4`, -16px = exactement la différence entre les
+deux paddings) qui le rapproche du bord droit sans toucher au padding de
+la pilule elle-même (qui reste inchangé pour le logo et les liens).
+Mesuré par Playwright : les trois écarts (haut, bas, droite) sont
+désormais identiques au pixel près (13px chacun, l'ombre/bordure de la
+pilule ajoutant 1px aux 12px de `py-3`).
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+`git status` confirmant le retrait complet du placeholder (aucune trace de
+`videoReady`/`.materials-loading`) et l'absence du fichier
+`materials-poster.webp` (jamais réintroduit) ; mesure géométrique
+Playwright des trois écarts autour du bouton CTA (13px/13px/13px) ;
+capture d'écran de la pilule confirmant l'équilibre visuel ; régression
+complète sur les 10 routes sans nouvelle erreur console.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
