@@ -3057,6 +3057,58 @@ perçue réelle (vitesse, résultat de la compression) reste à confirmer
 côté client — toujours invérifiable ici, ce sandbox ne dispose d'aucun
 décodeur H.264 (voir round précédent).
 
+## Notre histoire : flash-frame, netteté vidéo, lignes mal placées
+
+Retour "bravo c'est parfait" avec quatre finitions : un frame parasite
+visible à chaque lancement d'animation, la compression du round précédent
+jugée trop floue, une vitesse encore un peu plus rapide (les deux sens),
+et les lignes divisoires qui tombaient en fait dans le texte plutôt
+qu'entre les colonnes.
+
+**Frame parasite, cause et correction** : `runExplode`/`runRegroup`
+demandaient `currentTime = 0` puis démarraient aussitôt la boucle de
+dessin/lecture, sans attendre que ce seek soit réellement terminé — un
+seek vidéo est asynchrone, donc le tout premier frame dessiné pouvait
+encore montrer l'ancienne position (fin de la vidéo précédente, milieu
+d'une passe interrompue par le correcteur du round précédent...) avant
+que la vraie lecture ne démarre, un flash d'un frame. Corrigé en
+attendant l'événement `seeked` avant de lancer `play()` — mais seulement
+si un seek réel est nécessaire (`currentTime > 0.03`) : si la vidéo est
+déjà quasiment à 0, un seek vers la même valeur ne déclenche pas toujours
+`seeked`, donc attendre inconditionnellement aurait pu bloquer le tout
+premier lancement.
+
+**Netteté vidéo** : la compression du round précédent (1280×720, CRF 23)
+était trop agressive pour ce contenu (mouvement rapide) et rendait le
+flou visible. Recompressée depuis le fichier original à 1920×1080,
+CRF 18 — 1,4 Mo (contre 4,46 Mo à l'origine, toujours ~3× plus léger,
+mais nettement plus net que la première tentative à 336 Ko). Vérifiée sur
+une frame extraite : texture du bois et petit texte du papier "Intello"
+bien lisibles.
+
+**Vitesse** : `PLAYBACK_RATE` remonté de 1.6 à 1.9 (dépliage et
+repliement, déjà symétriques dans le code — le retour client demandait
+explicitement les deux sens).
+
+**Lignes divisoires mal placées, cause et correction** : `-translate-x-1/2`
+décale un élément de 50% de *sa propre* largeur — pour une ligne de 1px,
+ça ne fait que 0,5px, pas la moitié du `gap-x-4` (16px) qui sépare les
+colonnes. La ligne restait donc quasiment collée au bord gauche de sa
+colonne, à l'endroit exact où le texte commence — "dans le texte" comme
+remonté par le client. Remplacé par un décalage fixe (`-left-2`, 8px) qui
+la centre exactement dans le gap, et agrandie (`h-8` → `h-10`, 40px).
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+scénario de scroll erratique (déjà utilisé au round précédent) confirmant
+que la correction n'a rien cassé au modèle auto-correcteur ; géométrie
+des lignes mesurée à l'exécution — 8px avant le texte (donc dans le gap,
+plus dans le texte), 40px de haut ; capture d'écran conforme ; régression
+complète sur les 10 routes sans nouvelle erreur ; `ffmpeg-static`
+réinstallé puis désinstallé proprement pour la recompression (`git status`
+sur `package.json`/`package-lock.json` confirmé vide). La fluidité et la
+netteté réelles restent à confirmer côté client — toujours invérifiable
+ici (aucun décodeur H.264 dans ce sandbox, voir rounds précédents).
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de

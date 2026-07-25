@@ -68,6 +68,29 @@ import { motion, useReducedMotion } from "framer-motion";
  * cours est interrompue et repart immédiatement dans le bon sens. Le
  * résultat visé correspond donc toujours à la position réelle, quel que
  * soit l'historique de scroll qui y a mené.
+ *
+ * Retour client : un frame "qui bug" visible à chaque lancement
+ * d'animation. Cause : on démarrait la boucle de dessin/lecture juste
+ * après avoir demandé `currentTime = 0`, sans attendre que ce seek soit
+ * réellement terminé — le premier frame dessiné pouvait donc encore
+ * montrer la position précédente (fin de vidéo, milieu d'une passe
+ * interrompue...) avant que le vrai début ne s'affiche. Corrigé en
+ * attendant l'événement `seeked` avant de lancer `play()` et la boucle.
+ *
+ * Retour client : la vidéo compressée (round précédent) paraissait trop
+ * floue — la baisse de résolution (1280×720) et de bitrate était trop
+ * agressive pour ce contenu (mouvement rapide des matériaux). Recompressée
+ * depuis le fichier original à 1920×1080, CRF 18 (contre 720p/CRF 23) :
+ * toujours ~3× plus légère que l'original (1,4 Mo contre 4,46 Mo) mais
+ * nettement plus nette, vérifiée sur une frame extraite.
+ *
+ * Retour client : lignes divisoires "dans le texte" plutôt qu'entre les
+ * colonnes. Cause : `-translate-x-1/2` décale l'élément de 50% de *sa
+ * propre* largeur (1px, donc 0,5px) et non de la moitié du `gap-x-4`
+ * (16px) qui sépare les colonnes — la ligne restait donc quasiment collée
+ * au bord gauche de sa colonne, juste à l'endroit où le texte commence.
+ * Corrigée avec un décalage fixe (`-left-2`, 8px) qui la place exactement
+ * au milieu du gap.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -77,10 +100,10 @@ const REGROUP_VIDEO_URL = "/api/materials-video";
 // "déplié" ; en dessous, c'est "groupé". Recalculé à chaque vérification,
 // jamais mémorisé comme un franchissement ponctuel.
 const THRESHOLD_VH = 0.6;
-// Vitesse de lecture des deux vidéos : un peu plus rapide que le temps
-// réel pour un effet "woosh" plus net (demande client), sans devenir
-// brutal comme le "snap" à 650ms abandonné plus tôt dans le projet.
-const PLAYBACK_RATE = 1.6;
+// Vitesse de lecture des deux vidéos : plus rapide que le temps réel pour
+// un effet "woosh" net (demande client, encore accélérée une fois), sans
+// devenir brutal comme le "snap" à 650ms abandonné plus tôt dans le projet.
+const PLAYBACK_RATE = 1.9;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -346,42 +369,60 @@ function MaterialsShowcase() {
     const runExplode = () => {
       phase = "exploding";
       regroupVideo.pause();
-      try {
-        explodeVideo.currentTime = 0;
-      } catch {
-        // ignore
-      }
-      explodeVideo.playbackRate = PLAYBACK_RATE;
-      explodeVideo.play().catch(() => {});
-      hardStop = setTimeout(() => {
-        stopPlayLoop();
-        explodeVideo.pause();
-        phase = "exploded";
-        setUnfolded(true);
-      }, PLAYBACK_TIMEOUT_MS);
 
-      const loop = () => {
-        if (cancelled) return;
-        drawFrame(explodeVideo);
-        const atEnd =
-          explodeVideo.ended ||
-          (Number.isFinite(explodeVideo.duration) &&
-            explodeVideo.currentTime >= explodeVideo.duration - 0.03);
-        if (explodeVideo.paused && !atEnd) {
-          // Lecture pas encore démarrée (chargement) : on continue d'attendre.
-          playRafId = requestAnimationFrame(loop);
-          return;
-        }
-        if (atEnd) {
+      const start = () => {
+        // Une interruption a pu changer la phase pendant l'attente du seek
+        // (voir plus bas) : un démarrage devenu obsolète ne doit rien faire.
+        if (cancelled || phase !== "exploding") return;
+        explodeVideo.playbackRate = PLAYBACK_RATE;
+        explodeVideo.play().catch(() => {});
+        hardStop = setTimeout(() => {
           stopPlayLoop();
           explodeVideo.pause();
           phase = "exploded";
           setUnfolded(true);
-          return;
-        }
+        }, PLAYBACK_TIMEOUT_MS);
+
+        const loop = () => {
+          if (cancelled) return;
+          drawFrame(explodeVideo);
+          const atEnd =
+            explodeVideo.ended ||
+            (Number.isFinite(explodeVideo.duration) &&
+              explodeVideo.currentTime >= explodeVideo.duration - 0.03);
+          if (explodeVideo.paused && !atEnd) {
+            // Lecture pas encore démarrée (chargement) : on continue d'attendre.
+            playRafId = requestAnimationFrame(loop);
+            return;
+          }
+          if (atEnd) {
+            stopPlayLoop();
+            explodeVideo.pause();
+            phase = "exploded";
+            setUnfolded(true);
+            return;
+          }
+          playRafId = requestAnimationFrame(loop);
+        };
         playRafId = requestAnimationFrame(loop);
       };
-      playRafId = requestAnimationFrame(loop);
+
+      // Si la vidéo n'est pas déjà au tout début, on attend que le seek
+      // soit réellement terminé avant de dessiner quoi que ce soit — sinon
+      // le premier frame affiché peut encore montrer l'ancienne position
+      // (fin de vidéo, milieu d'une passe interrompue...), un flash d'un
+      // frame avant que la vraie lecture ne démarre.
+      if (explodeVideo.currentTime > 0.03) {
+        explodeVideo.addEventListener("seeked", start, { once: true });
+        try {
+          explodeVideo.currentTime = 0;
+        } catch {
+          explodeVideo.removeEventListener("seeked", start);
+          start();
+        }
+      } else {
+        start();
+      }
     };
 
     // Repliement : lecture native de la vidéo d'origine du client (sens
@@ -390,39 +431,50 @@ function MaterialsShowcase() {
       phase = "regrouping";
       setUnfolded(false);
       explodeVideo.pause();
-      try {
-        regroupVideo.currentTime = 0;
-      } catch {
-        // ignore
-      }
-      regroupVideo.playbackRate = PLAYBACK_RATE;
-      regroupVideo.play().catch(() => {});
-      hardStop = setTimeout(() => {
-        stopPlayLoop();
-        regroupVideo.pause();
-        phase = "grouped";
-      }, PLAYBACK_TIMEOUT_MS);
 
-      const loop = () => {
-        if (cancelled) return;
-        drawFrame(regroupVideo);
-        const atEnd =
-          regroupVideo.ended ||
-          (Number.isFinite(regroupVideo.duration) &&
-            regroupVideo.currentTime >= regroupVideo.duration - 0.03);
-        if (regroupVideo.paused && !atEnd) {
-          playRafId = requestAnimationFrame(loop);
-          return;
-        }
-        if (atEnd) {
+      const start = () => {
+        if (cancelled || phase !== "regrouping") return;
+        regroupVideo.playbackRate = PLAYBACK_RATE;
+        regroupVideo.play().catch(() => {});
+        hardStop = setTimeout(() => {
           stopPlayLoop();
           regroupVideo.pause();
           phase = "grouped";
-          return;
-        }
+        }, PLAYBACK_TIMEOUT_MS);
+
+        const loop = () => {
+          if (cancelled) return;
+          drawFrame(regroupVideo);
+          const atEnd =
+            regroupVideo.ended ||
+            (Number.isFinite(regroupVideo.duration) &&
+              regroupVideo.currentTime >= regroupVideo.duration - 0.03);
+          if (regroupVideo.paused && !atEnd) {
+            playRafId = requestAnimationFrame(loop);
+            return;
+          }
+          if (atEnd) {
+            stopPlayLoop();
+            regroupVideo.pause();
+            phase = "grouped";
+            return;
+          }
+          playRafId = requestAnimationFrame(loop);
+        };
         playRafId = requestAnimationFrame(loop);
       };
-      playRafId = requestAnimationFrame(loop);
+
+      if (regroupVideo.currentTime > 0.03) {
+        regroupVideo.addEventListener("seeked", start, { once: true });
+        try {
+          regroupVideo.currentTime = 0;
+        } catch {
+          regroupVideo.removeEventListener("seeked", start);
+          start();
+        }
+      } else {
+        start();
+      }
     };
 
     // Auto-correcteur : l'état désiré ne dépend que de la position actuelle,
@@ -519,7 +571,7 @@ function MaterialsShowcase() {
               // structurelle.
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 hidden h-8 w-px -translate-x-1/2 -translate-y-1/2 bg-laiton/50 lg:block"
+                className="absolute -left-2 top-1/2 hidden h-10 w-px -translate-y-1/2 bg-laiton/50 lg:block"
               />
             )}
             <p className="eyebrow text-[11px] text-encre-douce">
