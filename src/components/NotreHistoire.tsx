@@ -189,9 +189,25 @@ function MaterialsShowcase() {
     const canvas = canvasRef.current;
     if (!video || !canvas || video.videoWidth === 0) return;
 
-    if (canvas.width !== video.videoWidth) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    // Le canvas est dessiné à la taille d'affichage réelle (× ratio
+    // d'écran, plafonné à 2), jamais à la résolution native de la vidéo :
+    // recalculer des centaines de milliers de pixels pour le détourage à
+    // chaque frame faisait ramer l'animation sur mobile ("saccadé"), alors
+    // que l'image affichée est bien plus petite que la source. Le rapport
+    // largeur/hauteur natif de la vidéo est conservé (`object-contain` en
+    // CSS gère déjà le cadrage), seule la résolution baisse.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssWidth = canvas.getBoundingClientRect().width || video.videoWidth;
+    const targetWidth = Math.max(
+      1,
+      Math.min(video.videoWidth, Math.round(cssWidth * dpr))
+    );
+    const scale = targetWidth / video.videoWidth;
+    const targetHeight = Math.max(1, Math.round(video.videoHeight * scale));
+
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
     }
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
@@ -229,15 +245,22 @@ function MaterialsShowcase() {
       const [kr, kg, kb] = keyColorRef.current;
       const threshold = 34;
       const feather = 30;
+      // Comparer les distances au carré évite un `Math.sqrt` par pixel
+      // (l'essentiel du coût du détourage) : la racine n'est calculée que
+      // pour la fine bande de pixels réellement dans la zone de fondu,
+      // pas pour l'image entière — sensible sur mobile.
+      const t2 = threshold * threshold;
+      const tf2 = (threshold + feather) * (threshold + feather);
 
       for (let i = 0; i < data.length; i += 4) {
         const dr = data[i] - kr;
         const dg = data[i + 1] - kg;
         const db = data[i + 2] - kb;
-        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-        if (dist < threshold) {
+        const dist2 = dr * dr + dg * dg + db * db;
+        if (dist2 < t2) {
           data[i + 3] = 0;
-        } else if (dist < threshold + feather) {
+        } else if (dist2 < tf2) {
+          const dist = Math.sqrt(dist2);
           data[i + 3] = Math.round(((dist - threshold) / feather) * 255);
         }
       }
@@ -393,7 +416,11 @@ function MaterialsShowcase() {
 
   return (
     <div ref={containerRef} className="w-full">
-      <div className="relative aspect-video w-full">
+      {/* Plein cadre jusqu'aux bords de l'écran sur mobile/tablette (annule
+          le px-6 de la section) — les matériaux paraissaient trop petits,
+          resserrés dans la marge de texte. Redevient contenu dans la
+          colonne normale à partir de lg (à côté du texte). */}
+      <div className="relative -mx-6 aspect-video lg:mx-0">
         <video
           ref={videoRef}
           src={MATERIALS_VIDEO_URL}

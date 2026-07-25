@@ -2765,6 +2765,51 @@ sans nouvelle erreur. La fluidité perçue réelle du dépliage/repliement
 client, cette fois sur un mécanisme dont la vitesse ne dépend plus du
 geste de scroll.
 
+## Notre histoire : ajustements mobile (plein cadre + perf)
+
+Retour client très positif sur le round précédent ("parfait c'est nickel",
+détourage et mécanique d'animation validés), deux réglages mobile
+restants : les matériaux paraissaient trop petits (resserrés dans la
+marge de texte au lieu de prendre toute la largeur), et l'animation
+restait saccadée sur téléphone.
+
+**Plein cadre sur mobile** : le bloc vidéo/canvas des matériaux annule
+maintenant le `px-6` de la section via une marge négative (`-mx-6`,
+réinitialisée à `lg:mx-0`), pour s'étendre jusqu'aux bords de l'écran sur
+mobile et tablette — redevient contenu normalement dans sa colonne à
+partir de `lg`, à côté du texte. Les légendes (numéros, titres,
+descriptions) restent dans le flux normal avec la marge habituelle,
+seule l'image bleed.
+
+**Saccade sur mobile, cause identifiée et corrigée** : le détourage
+tournait sur la résolution *native* de la vidéo à chaque frame —
+`getImageData`/`putImageData` plus une boucle par pixel avec un
+`Math.sqrt`, potentiellement plusieurs centaines de milliers de pixels
+recalculés à chaque frame de l'animation, alors que l'image affichée à
+l'écran est bien plus petite que la source. Sur desktop l'écart passe
+inaperçu, sur un CPU mobile ce travail JS bloquant devient le vrai goulot
+d'étranglement (plus significatif que la latence de seek elle-même) et
+grignote le budget de temps de l'animation, d'où le rendu saccadé. Deux
+correctifs : (1) le canvas est maintenant dimensionné à sa taille
+d'affichage réelle × ratio d'écran (plafonné à 2), pas à la résolution
+native de la vidéo — le rapport largeur/hauteur d'origine est conservé,
+seule la résolution baisse ; (2) la comparaison de couleur au fond évite
+`Math.sqrt` pour l'immense majorité des pixels (comparaison de distances
+au carré), la racine n'étant calculée que pour la fine bande de pixels
+réellement dans la zone de fondu du détourage.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+géométrie du bloc vidéo mesurée à l'exécution sur un viewport 390px
+(iPhone) : `left: 0, right: 390` — plein cadre confirmé, bord à bord ;
+nouveau scénario de scroll graduel (imitant un scroll normal, pas un saut
+instantané) confirmant que le déclenchement directionnel fonctionne
+toujours après ces changements ; régression complète sur les 10 routes
+sans nouvelle erreur. La fluidité réelle sur un téléphone physique reste
+à confirmer côté client — la cause structurelle du ralentissement
+(volume de pixels traités par frame) est corrigée, mais je ne peux pas
+mesurer un vrai gain de FPS sur un appareil mobile réel depuis ce
+sandbox.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
