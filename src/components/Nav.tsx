@@ -33,11 +33,22 @@ export default function Nav() {
         <ul className="hidden items-center gap-8 md:flex">
           {LINKS.map((link) => (
             <li key={link.href}>
+              {/* group + span plutôt qu'un simple hover:text-foret : le
+                  client voulait "une animation de survol", pas juste un
+                  changement de couleur instantané. Léger cran de graisse
+                  (medium -> semibold, un seul cran : "pas trop") + un
+                  soulignement qui se déploie depuis la gauche, sur la
+                  couleur d'accent laiton plutôt que foret (cohérent avec
+                  le reste des micro-interactions du site). */}
               <Link
                 href={link.href}
-                className="text-lg font-medium text-encre-doux transition-colors hover:text-foret"
+                className="group relative inline-block text-lg font-medium text-encre-doux transition-colors hover:font-semibold hover:text-foret"
               >
                 {link.label}
+                <span
+                  aria-hidden
+                  className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-laiton transition-transform duration-300 ease-out group-hover:scale-x-100"
+                />
               </Link>
             </li>
           ))}

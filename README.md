@@ -3382,6 +3382,54 @@ le DOM et la présence normale de la vidéo/du canvas ; régression complète
 sur les 10 routes sans nouvelle erreur console (hors 502/tunnel déjà
 connus, propres au blocage réseau de ce bac à sable pour le CDN vidéo).
 
+## Notre histoire : placeholder de chargement abstrait ; Nav : animation de survol
+
+**Le vide au chargement, cette fois sans repartir sur du contenu
+figuratif** : après le revert du poster photographique (round précédent —
+il créait un chevauchement visible avec la vraie vidéo), le client a
+signalé que le vide complet "rend pas bien" non plus. Un poster
+photographique avait déjà démontré son risque (désynchronisation avec le
+contenu réel) ; la leçon retenue est qu'un placeholder ne peut être sûr
+que s'il est structurellement incapable d'entrer en conflit avec ce qu'il
+précède — donc jamais de contenu figuratif. Ajout de `.materials-loading`
+(globals.css) : un panneau plein en `brume-2` (ivoire chaud, nettement
+distinct du `bg-ciel` sauge de la section — un premier essai réutilisant
+`--ciel` comme couleur de base du dégradé se fondait presque entièrement
+dans le fond et ne réglait rien), un fin liseré `laiton` à faible opacité
+pour définir ses bords, et un reflet diagonal qui balaie en boucle
+(`materials-loading-sweep`, désactivé sous `prefers-reduced-motion`,
+remplacé par un fond fixe). Piloté par un état React `videoReady` : passe
+à `true` dès que `drawFrame` dessine la première frame réelle dans
+`onExplodeReady`, et le placeholder (toujours monté, jamais démonté)
+s'efface en fondu (`transition-opacity duration-500`) plutôt que de
+disparaître d'un coup.
+
+**Nav : animation de survol sur les liens** (demande annexe, "ça devient
+bold pas trop mais une animation de survol") : `hover:font-semibold`
+(un seul cran de graisse, 500 → 600 — les poids 400/500/600 d'Inter sont
+déjà chargés en statique, pas besoin d'un fichier variable) combiné à un
+soulignement en laiton qui se déploie depuis la gauche au survol
+(`scale-x-0` → `group-hover:scale-x-100`, `transition-transform
+duration-300`) — la vraie composante "animée" de l'effet, le changement de
+graisse en lui-même restant un saut instantané (`font-weight` ne
+s'interpole pas en douceur avec des fichiers de police statiques par
+poids). Uniquement sur les 4 liens desktop (`Concept`/`Gammes`/`Modèles`/
+`Procédé`, seuls éléments où "curseur"/survol a un sens) ; menu mobile et
+bouton CTA non touchés.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+Playwright confirmant l'opacité du placeholder passant de 1 à 0 une fois
+`videoReady` (événement `loadeddata` simulé, ce bac à sable n'ayant pas de
+décodeur H.264) et sa couleur de fond mesurée (`rgb(239, 237, 228)`,
+`brume-2`, bien distincte du `bg-ciel` environnant) ; capture d'écran
+confirmant un panneau visuellement défini plutôt qu'une zone qui se fond
+dans le fond ; `font-weight` du lien nav mesuré à 500 au repos et 600 au
+survol, `scale` du soulignement mesuré à `0` puis `1` (propriété CSS
+`scale`, pas `transform` — Tailwind v4 sépare les deux) ; régression
+complète sur les 10 routes sans nouvelle erreur console (hors 502/tunnel
+déjà connus, propres au blocage réseau de ce bac à sable pour le CDN
+vidéo).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
