@@ -2925,6 +2925,73 @@ erreur. Le ratio réel une fois la vraie vidéo chargée, et le gain de
 fluidité de la réduction de résolution de capture, restent à confirmer
 côté client — invérifiables ici, CDN vidéo bloqué par le sandbox.
 
+## Notre histoire : vidéo pré-inversée du client — fin du scrub/cache
+
+Retour très positif sur mobile ("très bien sur tel c'est parfait"). Le
+client a fourni une seconde vidéo, montée cette fois dans le bon sens
+(matériaux qui se séparent), avec deux ajustements desktop : de fines
+lignes dorées entre les 6 légendes de matériaux, et les 4 icônes de
+preuve mieux centrées (pas seulement sur mobile — sur desktop aussi,
+elles restaient collées à gauche).
+
+**Simplification architecturale majeure** : avec une vidéo "dépliage" qui
+se joue nativement dans le bon sens, plus besoin de scrub arrière manuel
+ni du cache de frames (`createImageBitmap`) qui compensait son absence de
+fluidité — tout le mécanisme ajouté sur les rounds précédents (chained
+seeks, pré-chauffe, cache, `EXPLODE_MS`/`REGROUP_MS`) est retiré. Le
+composant utilise maintenant deux lecteurs vidéo distincts, chacun
+toujours lu vers l'avant natif : `public/videos/materials-explode.mp4`
+(nouvelle vidéo du client, auto-hébergée) pour le dépliage,
+`/api/materials-video` (toujours relayée depuis le CDN d'origine) pour le
+repliement. Bundle légèrement plus léger malgré l'ajout d'un second
+`<video>` (13.5 kB contre 13.8 kB) — la suppression du cache pèse plus
+lourd que l'ajout.
+
+**Fichier client, traité sans ffmpeg** : la vidéo fournie (`.mov`) contient
+un flux H.264/AAC standard dans un conteneur estampillé QuickTime
+(vérifié par inspection binaire des marqueurs `avc1`/`avcC`, aucun
+`ffmpeg`/`ffprobe` disponible dans ce sandbox pour un vrai remux) — copiée
+telle quelle en `.mp4` dans `public/videos/`, ce qui suffit pour que les
+navigateurs la servent et la décodent normalement (le contenu binaire
+H.264/AAC est ce qui compte, pas l'étiquette d'origine du conteneur). Si
+la taille (4,4 Mo) pose problème en prod, une compression restera à faire
+avec de vrais outils vidéo.
+
+**Lignes dorées** : bordure gauche fine (`border-laiton/40`) sur les 5
+légendes suivant la première, dans la grille à 6 colonnes desktop.
+
+**Icônes centrées, universellement** : le retour précédent ("centre sur
+mobile") avait ajouté un `sm:items-start sm:text-left` qui repassait à
+gauche dès la tablette — retiré, le centrage s'applique maintenant à
+toutes les tailles d'écran, cohérent avec la capture desktop annotée par
+le client.
+
+**Filet de sécurité ajouté** : découverte en testant ce round — si une
+vidéo ne joue jamais (fichier introuvable, codec non supporté...), les
+deux boucles de lecture attendaient indéfiniment un `ended` qui ne
+viendrait jamais, laissant les légendes bloquées invisibles pour de bon.
+Un `setTimeout` de secours (6s, largement au-delà de toute lecture
+normale) force maintenant la transition d'état dans les deux sens même
+si la vidéo ne coopère jamais.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+**découverte importante** — le Chromium de ce sandbox (build open-source
+de Playwright) n'embarque aucun décodeur H.264 propriétaire
+(`canPlayType` renvoie vide pour H.264, "probably" pour VP9), donc ni la
+nouvelle vidéo auto-hébergée ni l'ancienne ne peuvent être lues à l'écran
+ici — indépendant du blocage réseau du CDN déjà documenté, un problème
+différent et plus fondamental limité à cet environnement de test (les
+navigateurs grand public embarquent tous H.264). Le filet de sécurité a
+justement été vérifié grâce à cette limite : après le délai de 6s, les
+légendes apparaissent bien malgré l'échec de lecture ; lignes dorées et
+centrage des icônes confirmés par les styles calculés ; géométrie mobile
+(plein cadre, 390px) toujours correcte ; régression complète sur les 10
+routes sans nouvelle erreur. Le rendu visuel réel (fluidité des deux
+sens, résultat du détourage sur la nouvelle vidéo) reste à confirmer
+côté client — cette fois avec de bien meilleures chances, puisque les
+deux directions sont maintenant une lecture native simple, sans aucune
+approximation.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
@@ -2937,6 +3004,11 @@ côté client — invérifiables ici, CDN vidéo bloqué par le sandbox.
   l'exigerait, quelle que soit la technique de lecture/dessin utilisée. Un
   ré-encodage/upscale IA a été tenté et a empiré le rendu — la vraie
   solution est un nouveau tournage/rendu en plus haute résolution.
+- **Vidéo "dépliage" de Notre histoire non compressée** :
+  `public/videos/materials-explode.mp4` (4,4 Mo) est le fichier fourni par
+  le client, copié tel quel — aucun outil de compression/ré-encodage vidéo
+  disponible dans cet environnement (pas de `ffmpeg`). À passer dans un
+  vrai encodeur avant mise en prod si la taille pose problème.
 - **Rapatrier les médias** (hero, visuels de gammes) : `src/lib/media.ts`
   et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
   CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération,

@@ -8,107 +8,58 @@ import { motion, useReducedMotion } from "framer-motion";
  * l'appui (deux images) : à gauche le texte + une ligne de 4 preuves avec
  * icône (remplace l'ancien objet 3D en rotation — l'histoire n'est plus
  * racontée par un objet qui tourne mais par la matière elle-même) ; à
- * droite, une vidéo Higgsfield (six matériaux de construction qui glissent
- * les uns vers les autres jusqu'à former un seul bloc assemblé) — mais
- * *retournée* : elle démarre assemblée et se "déplie" au scroll pour
- * révéler les six couches, chacune légendée en dessous une fois
- * l'ouverture terminée. Demande explicite : *"au slide vers le bas les
- * matériaux s'écartent d'un coup, petit snap apple genre."*
+ * droite, les six matériaux de construction qui se séparent au scroll,
+ * chacun légendé en dessous une fois l'ouverture terminée.
  *
- * Retour client après une première passe : l'animation "freeze puis hop
- * tout dégroupé" au lieu d'être fluide. Cause réelle : on écrivait
- * `video.currentTime` à chaque frame `requestAnimationFrame` (~60x/s) sans
- * attendre que le navigateur ait fini de "seeker" la précédente valeur —
- * la plupart des écritures étaient donc ignorées/écrasées, et seule la
- * toute dernière finissait par s'appliquer d'un coup. Corrigé en chaînant
- * les seeks sur l'événement `seeked` : chaque nouvelle valeur n'est
- * demandée qu'une fois la précédente réellement rendue, ce qui cale le
- * rythme sur ce que le décodeur peut vraiment fournir — fluide plutôt que
- * saccadé, quelle que soit la vitesse de seek du navigateur.
+ * Après plusieurs passes à faire reculer manuellement une vidéo Higgsfield
+ * qui n'existait qu'assemblant les matériaux (aucun navigateur ne lit une
+ * vidéo à l'envers nativement — seulement des approximations plus ou moins
+ * fluides : scrub chaîné sur `seeked`, cache de frames `createImageBitmap`
+ * façon `Hero.tsx`...), le client a finalement fourni une seconde vidéo,
+ * montée cette fois dans le bon sens (matériaux qui se séparent). Les deux
+ * directions se lisent donc désormais nativement vers l'avant, chacune sa
+ * propre vidéo — plus aucun scrub, plus aucun cache, plus aucune
+ * approximation : le dépliage est aussi fluide que l'était déjà le
+ * repliement, par construction plutôt que par bricolage.
  *
- * Deuxième demande : que les matériaux aient l'air de flotter sur le fond
- * du site plutôt que sur un fond vidéo visible. Comme la vidéo source n'a
- * pas de canal alpha, le rendu passe par un `<canvas>` : chaque frame est
- * dessinée puis le fond (couleur échantillonnée dans le coin de l'image,
- * supposé uniforme) est rendu transparent pixel par pixel.
+ * Fond détouré au `<canvas>` (aucune des deux vidéos n'a de canal alpha) :
+ * couleur de fond échantillonnée (moyenne des 4 coins, tolère le léger
+ * dégradé du rendu studio) puis rendue transparente pixel par pixel.
+ * Vidéo "dépliage" auto-hébergée (`public/videos`, fournie par le client) ;
+ * vidéo "repliement" toujours relayée par `/api/materials-video` (reste
+ * hébergée par le CDN du client) pour rester same-origin et permettre la
+ * lecture des pixels par le canvas.
  *
- * Troisième retour : le détourage ne marchait toujours pas en pratique
- * ("ça fait tache, les éléments volent pas") — confirmation du risque déjà
- * identifié : le CDN Higgsfield (CloudFront) ne renvoie pas d'en-têtes CORS
- * lisibles, donc `getImageData` levait une `SecurityError` silencieuse et
- * le détourage ne s'appliquait jamais. Corrigé en sortant la vidéo par une
- * route interne same-origin (`/api/materials-video`, voir ce fichier) :
- * le navigateur ne la traite plus comme cross-origin, donc la lecture des
- * pixels fonctionne.
+ * Cadre dimensionné dynamiquement sur le vrai ratio de la vidéo
+ * (`videoAspect`, mesuré à ses métadonnées) plutôt que deviné : deviner
+ * faux laisse `object-contain` ajouter du vide transparent invisible
+ * au-dessus/en dessous du contenu réel.
  *
- * Quatrième retour : abandon du "snap" à durée fixe au profit d'une
- * animation continue liée au scroll — les matériaux se séparent au fur et
- * à mesure que la section défile à l'écran, exactement comme la vague de
- * Hero.tsx (scrubbable, jamais un simple déclenchement ponctuel). Le seek
- * n'est redemandé que lorsque le précédent est terminé (`!video.seeking`)
- * — c'est ce qui évitait déjà les sauts brutaux dans la version "snap", ici
- * généralisé à un scrub continu plutôt qu'à une durée fixe.
+ * Animation déclenchée par le franchissement d'une ligne de seuil
+ * (`THRESHOLD_VH`), pas liée en continu au scroll : descendre dans la
+ * section déclenche le dépliage, remonter au-dessus déclenche le
+ * repliement — jamais de scroll-jacking, juste une ligne de passage.
  *
- * Cinquième retour, sur cette même version "scrub continu" : "je ne veux
- * pas que le slide gère la vitesse de l'animation" — lier `currentTime` à
- * la position de scroll fait dépendre la vitesse perçue de la vitesse à
- * laquelle le client scrolle (un flick rapide saute des frames), ce qui
- * ne peut jamais paraître fluide. Retour à une animation déclenchée (pas
- * liée en continu), mais cette fois à son propre rythme fixe, indépendant
- * du scroll : descendre dans la section déclenche le dépliage une fois,
- * remonter au-dessus déclenche le repliement dans l'autre sens — exactement
- * "je descends, ça se lance ; je remonte, ça se lance dans l'autre sens".
- * Le dépliage (à rebours, décroissant) reste un scrub manuel chaîné sur
- * `seeked` (aucun navigateur ne lit une vidéo à l'envers nativement) sur
- * une durée fixe et généreuse (pas un "snap" de 650ms). Le repliement, lui,
- * va dans le sens naturel d'enregistrement de la vidéo (croissant) : on
- * peut donc utiliser `video.play()` natif (accéléré via `playbackRate`),
- * intrinsèquement fluide puisque géré par le décodeur — même technique que
- * le sens "avant" du scroll dans Hero.tsx.
- *
- * Sixième retour : un petit fragment du fond (coin haut-gauche) n'était pas
- * détouré — la couleur de fond a un léger dégradé/vignette (rendu studio),
- * un seul pixel de coin échantillonné ne suffisait pas. La couleur de
- * référence est maintenant la moyenne des 4 coins, avec un seuil et un
- * fondu plus généreux pour couvrir la variation du dégradé.
- *
- * Septième retour, mobile : le bloc matériaux pouvait encore grandir, trop
- * d'écart vertical avec le texte au-dessus, les 4 icônes de preuve mal
- * centrées, et surtout — le repliement (natif, `video.play()`) est
- * "parfait, bien fluide", mais le dépliage (scrub arrière manuel) reste
- * saccadé, le client l'a lui-même correctement diagnostiqué : *"tu as dû
- * inverser la vidéo, ça doit faire bug."* Exact — aucun navigateur ne
- * décode une vidéo à l'envers en temps réel, donc chaque `currentTime`
- * décroissant redemande un nouveau décodage, plus lent qu'une lecture
- * native. Solution : un cache de frames déjà décodées (`createImageBitmap`,
- * même technique que le scroll arrière de `Hero.tsx`), rempli
- * opportunément à chaque lecture avant de la vidéo (repliement réel, mais
- * aussi une "pré-chauffe" invisible au chargement — lecture accélérée en
- * tâche de fond avant toute interaction, pour que même le tout premier
- * dépliage puisse piocher dedans). Le dépliage tente d'abord le cache
- * (dessin instantané, aucune attente de décodeur) et ne retombe sur un
- * seek live que pour les zones pas encore en cache.
+ * Filet de sécurité (`PLAYBACK_TIMEOUT_MS`) : si une vidéo ne joue jamais
+ * (fichier introuvable, codec non supporté...), l'état visuel ne reste
+ * jamais bloqué en "exploding"/"regrouping" indéfiniment. Découvert en
+ * testant ce round dans ce sandbox : son Chromium (build open-source de
+ * Playwright) n'embarque aucun décodeur H.264 propriétaire
+ * (`canPlayType('video/mp4; codecs="avc1..."')` renvoie vide, alors que
+ * VP9 fonctionne) — indépendant du blocage réseau du CDN déjà documenté
+ * ailleurs, donc ni l'une ni l'autre vidéo ne peut être vérifiée à l'écran
+ * ici, même la nouvelle auto-hébergée. Les navigateurs réels (Chrome,
+ * Safari, Firefox grand public) embarquent tous un décodeur H.264 et ne
+ * sont pas concernés.
  */
 
-const MATERIALS_VIDEO_URL = "/api/materials-video";
-// Généré à l'endroit (les 6 matériaux glissent les uns vers les autres
-// jusqu'à former un seul bloc) ; on la joue à l'envers, du dernier frame
-// (bloc assemblé, l'état de repos) vers le premier (matériaux écartés,
-// l'état "déplié").
-const VIDEO_DURATION = 4;
+const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
+const REGROUP_VIDEO_URL = "/api/materials-video";
 // Ligne de déclenchement unique : le haut du bloc matériaux doit remonter
 // au-dessus de cette fraction de la hauteur d'écran. En descendant, la
 // franchir déclenche le dépliage ; en remontant, la refranchir déclenche
-// le repliement — jamais de scroll-jacking, juste une ligne de passage.
+// le repliement.
 const THRESHOLD_VH = 0.6;
-const EXPLODE_MS = 1150;
-const REGROUP_MS = 950;
-// Granularité du cache de frames (même valeur que Hero.tsx, déjà éprouvée
-// sur ce site pour le même problème) : assez fin pour paraître fluide sur
-// les 4s de la vidéo, assez grossier pour rester capturable par les
-// événements `timeupdate` du navigateur.
-const CACHE_BUCKET = 0.2;
-const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -190,50 +141,43 @@ function FeatureIcon({ name }: { name: (typeof FEATURES)[number]["icon"] }) {
 }
 
 /**
- * Le lecteur vidéo (invisible, `opacity-0`) sert uniquement de source de
- * frames décodées ; c'est le `<canvas>` superposé qui est réellement
- * affiché, une fois le fond détouré. L'animation est déclenchée par le
- * franchissement de `THRESHOLD_VH`, pas par la position de scroll en
- * continu : dépliage (scrub arrière chaîné sur `seeked`) en descendant,
- * repliement (lecture native accélérée) en remontant — chacun à sa propre
- * durée fixe, indépendante de la vitesse de scroll.
+ * Deux lecteurs vidéo invisibles (`opacity-0`), un par sens, tous deux
+ * toujours lus vers l'avant natif — c'est le `<canvas>` superposé qui est
+ * réellement affiché, une fois le fond détouré.
  */
 function MaterialsShowcase() {
   const prefersReducedMotion = useReducedMotion();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const explodeVideoRef = useRef<HTMLVideoElement>(null);
+  const regroupVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
   // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
-  // chargées, plutôt qu'une valeur devinée (16:9 ou carré) : deviner mal
-  // laisse `object-contain` ajouter un vide transparent (invisible une
-  // fois le fond détouré) au-dessus/en dessous du contenu réel — c'est ce
-  // qui donnait l'impression d'un écart énorme avec le texte au-dessus.
+  // chargées, plutôt qu'une valeur devinée : deviner mal laisse
+  // `object-contain` ajouter un vide transparent (invisible une fois le
+  // fond détouré) au-dessus/en dessous du contenu réel.
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const keyColorRef = useRef<[number, number, number] | null>(null);
   const keyingDisabledRef = useRef(false);
-  const frameCacheRef = useRef<Map<number, ImageBitmap>>(new Map());
-  const capturingRef = useRef(false);
 
-  // Dessine n'importe quelle source image (frame vidéo live OU bitmap mis
-  // en cache) sur le canvas, avec le même détourage — factorisé pour que
-  // le cache et la vidéo live partagent exactement le même rendu.
-  const drawSource = useCallback((source: CanvasImageSource, srcW: number, srcH: number) => {
+  const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
-    if (!canvas || srcW === 0) return;
+    if (!canvas || video.videoWidth === 0) return;
 
     // Le canvas est dessiné à la taille d'affichage réelle (× ratio
     // d'écran, plafonné à 2), jamais à la résolution native de la vidéo :
     // recalculer des centaines de milliers de pixels pour le détourage à
-    // chaque frame faisait ramer l'animation sur mobile ("saccadé"), alors
-    // que l'image affichée est bien plus petite que la source. Le rapport
-    // largeur/hauteur natif de la source est conservé (`object-contain` en
+    // chaque frame faisait ramer l'animation sur mobile. Le rapport
+    // largeur/hauteur natif de la vidéo est conservé (`object-contain` en
     // CSS gère déjà le cadrage), seule la résolution baisse.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const cssWidth = canvas.getBoundingClientRect().width || srcW;
-    const targetWidth = Math.max(1, Math.min(srcW, Math.round(cssWidth * dpr)));
-    const scale = targetWidth / srcW;
-    const targetHeight = Math.max(1, Math.round(srcH * scale));
+    const cssWidth = canvas.getBoundingClientRect().width || video.videoWidth;
+    const targetWidth = Math.max(
+      1,
+      Math.min(video.videoWidth, Math.round(cssWidth * dpr))
+    );
+    const scale = targetWidth / video.videoWidth;
+    const targetHeight = Math.max(1, Math.round(video.videoHeight * scale));
 
     if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
       canvas.width = targetWidth;
@@ -242,7 +186,7 @@ function MaterialsShowcase() {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     if (keyingDisabledRef.current) return;
 
@@ -302,262 +246,156 @@ function MaterialsShowcase() {
     }
   }, []);
 
-  const drawFrame = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || video.videoWidth === 0) return;
-    drawSource(video, video.videoWidth, video.videoHeight);
-  }, [drawSource]);
-
-  // Dessine depuis le cache si une frame proche du temps demandé a déjà
-  // été capturée (recherche ±2 buckets, comme Hero.tsx) ; renvoie false
-  // sinon pour laisser l'appelant retomber sur un seek live.
-  const drawCachedFrame = useCallback(
-    (time: number) => {
-      const video = videoRef.current;
-      if (!video || video.videoWidth === 0) return false;
-      const bucket = bucketOf(time);
-      let bitmap = frameCacheRef.current.get(bucket);
-      for (let d = 1; d <= 2 && !bitmap; d++) {
-        bitmap = frameCacheRef.current.get(bucket - d) || frameCacheRef.current.get(bucket + d);
-      }
-      if (!bitmap) return false;
-      drawSource(bitmap, bitmap.width, bitmap.height);
-      return true;
-    },
-    [drawSource]
-  );
-
-  // Capture opportuniste : ne bloque jamais rien, se contente de garnir le
-  // cache pendant que la vidéo joue déjà vers l'avant (repliement réel ou
-  // pré-chauffe en tâche de fond) — gratuit, le décodeur a de toute façon
-  // déjà cette frame sous la main pour l'affichage natif.
-  const maybeCaptureFrame = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || typeof window.createImageBitmap !== "function") return;
-    if (capturingRef.current || video.paused || video.seeking) return;
-    const bucket = bucketOf(video.currentTime);
-    if (frameCacheRef.current.has(bucket)) return;
-    capturingRef.current = true;
-
-    // Capturé à la même résolution réduite que l'affichage, jamais à la
-    // résolution native : des bitmaps pleine résolution consommaient assez
-    // de CPU/mémoire pendant la capture pour faire ramer l'animation en
-    // cours elle-même — y compris le repliement, jusque-là fluide,
-    // régression remontée par le client ("saccadé avant et arrière
-    // maintenant").
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const cssWidth = canvas.getBoundingClientRect().width || video.videoWidth;
-    const resizeWidth = Math.max(1, Math.min(video.videoWidth, Math.round(cssWidth * dpr)));
-    const scale = resizeWidth / video.videoWidth;
-    const resizeHeight = Math.max(1, Math.round(video.videoHeight * scale));
-
-    window
-      .createImageBitmap(video, { resizeWidth, resizeHeight, resizeQuality: "low" })
-      .then((bitmap) => {
-        if (frameCacheRef.current.has(bucket)) {
-          bitmap.close();
-        } else {
-          frameCacheRef.current.set(bucket, bitmap);
-        }
-      })
-      .catch(() => {
-        // Pas grave : ce bucket restera absent, l'appelant retombera sur
-        // le seek live s'il tombe dessus.
-      })
-      .finally(() => {
-        capturingRef.current = false;
-      });
-  }, []);
-
   useEffect(() => {
-    const video = videoRef.current;
+    const explodeVideo = explodeVideoRef.current;
+    const regroupVideo = regroupVideoRef.current;
     const container = containerRef.current;
-    const frameCache = frameCacheRef.current;
-    if (!video || !container) return;
+    if (!explodeVideo || !regroupVideo || !container) return;
 
-    const onLoaded = () => {
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        setVideoAspect(video.videoWidth / video.videoHeight);
+    let cancelled = false;
+
+    const onExplodeMeta = () => {
+      if (explodeVideo.videoWidth > 0 && explodeVideo.videoHeight > 0) {
+        setVideoAspect(explodeVideo.videoWidth / explodeVideo.videoHeight);
       }
-      video.currentTime = prefersReducedMotion ? 0 : VIDEO_DURATION;
     };
-    video.addEventListener("loadedmetadata", onLoaded);
+    explodeVideo.addEventListener("loadedmetadata", onExplodeMeta);
+
+    // État initial "groupé" (assemblé) = première frame de la vidéo de
+    // dépliage. Sous reduced-motion, l'état final "déplié" attendu est sa
+    // dernière frame.
+    const onExplodeReady = () => {
+      if (cancelled) return;
+      if (prefersReducedMotion) {
+        const showFinal = () => {
+          drawFrame(explodeVideo);
+          setUnfolded(true);
+        };
+        if (Number.isFinite(explodeVideo.duration) && explodeVideo.duration > 0) {
+          const onFinalSeeked = () => showFinal();
+          explodeVideo.addEventListener("seeked", onFinalSeeked, { once: true });
+          try {
+            explodeVideo.currentTime = explodeVideo.duration;
+          } catch {
+            explodeVideo.removeEventListener("seeked", onFinalSeeked);
+            showFinal();
+          }
+        } else {
+          showFinal();
+        }
+      } else {
+        drawFrame(explodeVideo);
+      }
+    };
+    explodeVideo.addEventListener("loadeddata", onExplodeReady, { once: true });
 
     if (prefersReducedMotion) {
-      const onFirstSeeked = () => {
-        drawFrame();
-        setUnfolded(true);
-      };
-      video.addEventListener("seeked", onFirstSeeked, { once: true });
       return () => {
-        video.removeEventListener("loadedmetadata", onLoaded);
-        video.removeEventListener("seeked", onFirstSeeked);
+        cancelled = true;
+        explodeVideo.removeEventListener("loadedmetadata", onExplodeMeta);
+        explodeVideo.removeEventListener("loadeddata", onExplodeReady);
       };
     }
 
-    let cancelled = false;
     let phase: "grouped" | "exploding" | "exploded" | "regrouping" = "grouped";
     let lastScrollY = window.scrollY;
     let playRafId: number | null = null;
     let hardStop: ReturnType<typeof setTimeout> | null = null;
-    let warmupActive = false;
-    let warmupDone = false;
+    // Budget large : le temps qu'une lecture normale prendrait dans le pire
+    // cas plausible, jamais atteint en usage réel. Filet de sécurité pour
+    // ne jamais rester bloqué en "exploding"/"regrouping" indéfiniment si
+    // la vidéo ne joue jamais pour une raison ou une autre (codec non
+    // supporté, fichier introuvable, etc.) — les légendes doivent toujours
+    // finir par apparaître plutôt que de dépendre uniquement d'un
+    // événement qui pourrait ne jamais se produire.
+    const PLAYBACK_TIMEOUT_MS = 6000;
 
     const stopPlayLoop = () => {
       if (playRafId !== null) {
         cancelAnimationFrame(playRafId);
         playRafId = null;
       }
-    };
-
-    // Capture continue pendant toute lecture avant (repliement réel ET
-    // pré-chauffe ci-dessous) : garnit le cache utilisé par le dépliage.
-    video.addEventListener("timeupdate", maybeCaptureFrame);
-
-    const onWarmupProgress = () => {
-      if (cancelled) return;
-      if (video.currentTime >= VIDEO_DURATION - 0.05) stopWarmup();
-    };
-
-    const stopWarmup = () => {
-      if (!warmupActive) return;
-      warmupActive = false;
-      warmupDone = true;
-      video.removeEventListener("timeupdate", onWarmupProgress);
-      video.pause();
-      video.playbackRate = 1;
-      try {
-        video.currentTime = VIDEO_DURATION;
-      } catch {
-        // ignore
+      if (hardStop) {
+        clearTimeout(hardStop);
+        hardStop = null;
       }
     };
 
-    // Pré-chauffe invisible du cache : lecture avant accélérée en tâche de
-    // fond dès le chargement, avant toute interaction, pour que même le
-    // tout premier dépliage puisse piocher dans des frames déjà décodées.
-    // Le canvas n'est jamais redessiné pendant ce temps (il continue de
-    // montrer l'état "assemblé" déjà affiché) — seule la capture tourne.
-    const startWarmup = () => {
-      if (warmupDone || warmupActive || cancelled) return;
-      warmupActive = true;
-      video.playbackRate = 4;
-      try {
-        video.currentTime = 0;
-      } catch {
-        // ignore
-      }
-      video.addEventListener("timeupdate", onWarmupProgress);
-      video.play().catch(() => {
-        warmupActive = false;
-        video.removeEventListener("timeupdate", onWarmupProgress);
-      });
-    };
-
-    const onFirstSeeked = () => {
-      drawFrame();
-      startWarmup();
-    };
-    video.addEventListener("seeked", onFirstSeeked, { once: true });
-
-    // Dépliage : la vidéo doit reculer (assemblée -> écartée), ce
-    // qu'aucun navigateur ne sait faire nativement en temps réel. On tente
-    // d'abord le cache de frames (dessin instantané, pas d'attente de
-    // décodeur — c'est ce qui corrige le "saccadé" que le client a
-    // remonté) et on ne retombe sur un seek live que pour les zones pas
-    // encore en cache, en chaînant sur `seeked` (jamais deux seeks en
-    // vol) comme dans la version précédente.
+    // Dépliage : lecture native de la vidéo fournie par le client, déjà
+    // montée dans le bon sens (matériaux qui se séparent) — plus de scrub.
     const runExplode = () => {
-      stopWarmup();
       phase = "exploding";
-      const startTime = video.currentTime;
-      const start = performance.now();
-      if (hardStop) clearTimeout(hardStop);
+      regroupVideo.pause();
+      try {
+        explodeVideo.currentTime = 0;
+      } catch {
+        // ignore
+      }
+      explodeVideo.play().catch(() => {});
       hardStop = setTimeout(() => {
-        video.removeEventListener("seeked", onExplodeSeeked);
-        phase = "exploded";
-        setUnfolded(true);
-      }, EXPLODE_MS + 1200);
-
-      let liveSeekPending = false;
-
-      const finishIfDone = (elapsed: number) => {
-        if (elapsed < EXPLODE_MS) return false;
-        video.removeEventListener("seeked", onExplodeSeeked);
-        if (hardStop) clearTimeout(hardStop);
-        phase = "exploded";
-        setUnfolded(true);
-        return true;
-      };
-
-      const step = () => {
-        if (cancelled) return;
-        const elapsed = performance.now() - start;
-        if (finishIfDone(elapsed)) return;
-        const t = Math.min(1, elapsed / EXPLODE_MS);
-        const eased = 1 - Math.pow(1 - t, 3);
-        const target = t >= 1 ? 0 : startTime * (1 - eased);
-
-        if (drawCachedFrame(target)) {
-          // Déjà en cache : pas d'attente de décodeur, on avance tout de
-          // suite — c'est ce qui rend ce chemin fluide indépendamment de
-          // la vitesse de seek de l'appareil.
-          requestAnimationFrame(step);
-          return;
-        }
-        if (liveSeekPending) return;
-        liveSeekPending = true;
-        try {
-          video.currentTime = target;
-        } catch {
-          liveSeekPending = false;
-        }
-      };
-
-      const onExplodeSeeked = () => {
-        if (cancelled) return;
-        liveSeekPending = false;
-        drawFrame();
-        const elapsed = performance.now() - start;
-        if (finishIfDone(elapsed)) return;
-        step();
-      };
-      video.addEventListener("seeked", onExplodeSeeked);
-      step();
-    };
-
-    // Repliement : la vidéo avance dans son sens naturel d'enregistrement
-    // (écartée -> assemblée) — lecture native accélérée, intrinsèquement
-    // fluide puisque gérée par le décodeur (même principe que le sens
-    // "avant" du scroll dans Hero.tsx). Alimente aussi le cache au passage
-    // (via le `timeupdate` déjà branché plus haut).
-    const runRegroup = () => {
-      stopWarmup();
-      phase = "regrouping";
-      setUnfolded(false);
-      const remaining = Math.max(VIDEO_DURATION - video.currentTime, 0.1);
-      video.playbackRate = Math.min(Math.max(remaining / (REGROUP_MS / 1000), 1), 8);
-      video.play().catch(() => {});
-
-      const finish = () => {
         stopPlayLoop();
-        video.pause();
-        video.playbackRate = 1;
-        try {
-          video.currentTime = VIDEO_DURATION;
-        } catch {
-          // ignore
-        }
-        drawFrame();
-        phase = "grouped";
-      };
+        explodeVideo.pause();
+        phase = "exploded";
+        setUnfolded(true);
+      }, PLAYBACK_TIMEOUT_MS);
 
       const loop = () => {
         if (cancelled) return;
-        drawFrame();
-        if (video.paused || video.currentTime >= VIDEO_DURATION - 0.03) {
-          finish();
+        drawFrame(explodeVideo);
+        const atEnd =
+          explodeVideo.ended ||
+          (Number.isFinite(explodeVideo.duration) &&
+            explodeVideo.currentTime >= explodeVideo.duration - 0.03);
+        if (explodeVideo.paused && !atEnd) {
+          // Lecture pas encore démarrée (chargement) : on continue d'attendre.
+          playRafId = requestAnimationFrame(loop);
+          return;
+        }
+        if (atEnd) {
+          stopPlayLoop();
+          explodeVideo.pause();
+          phase = "exploded";
+          setUnfolded(true);
+          return;
+        }
+        playRafId = requestAnimationFrame(loop);
+      };
+      playRafId = requestAnimationFrame(loop);
+    };
+
+    // Repliement : lecture native de la vidéo d'origine du client (sens
+    // d'enregistrement naturel, matériaux qui s'assemblent).
+    const runRegroup = () => {
+      phase = "regrouping";
+      setUnfolded(false);
+      explodeVideo.pause();
+      try {
+        regroupVideo.currentTime = 0;
+      } catch {
+        // ignore
+      }
+      regroupVideo.play().catch(() => {});
+      hardStop = setTimeout(() => {
+        stopPlayLoop();
+        regroupVideo.pause();
+        phase = "grouped";
+      }, PLAYBACK_TIMEOUT_MS);
+
+      const loop = () => {
+        if (cancelled) return;
+        drawFrame(regroupVideo);
+        const atEnd =
+          regroupVideo.ended ||
+          (Number.isFinite(regroupVideo.duration) &&
+            regroupVideo.currentTime >= regroupVideo.duration - 0.03);
+        if (regroupVideo.paused && !atEnd) {
+          playRafId = requestAnimationFrame(loop);
+          return;
+        }
+        if (atEnd) {
+          stopPlayLoop();
+          regroupVideo.pause();
+          phase = "grouped";
           return;
         }
         playRafId = requestAnimationFrame(loop);
@@ -583,36 +421,39 @@ function MaterialsShowcase() {
 
     return () => {
       cancelled = true;
-      video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("seeked", onFirstSeeked);
-      video.removeEventListener("timeupdate", maybeCaptureFrame);
-      video.removeEventListener("timeupdate", onWarmupProgress);
+      explodeVideo.removeEventListener("loadedmetadata", onExplodeMeta);
+      explodeVideo.removeEventListener("loadeddata", onExplodeReady);
       window.removeEventListener("scroll", checkThreshold);
-      if (hardStop) clearTimeout(hardStop);
       stopPlayLoop();
-      frameCache.forEach((bitmap) => bitmap.close());
-      frameCache.clear();
+      explodeVideo.pause();
+      regroupVideo.pause();
     };
-  }, [prefersReducedMotion, drawFrame, drawCachedFrame, maybeCaptureFrame]);
+  }, [prefersReducedMotion, drawFrame]);
 
   return (
     <div ref={containerRef} className="w-full">
       {/* Plein cadre jusqu'aux bords de l'écran sur mobile/tablette (annule
-          le px-6 de la section) — les matériaux paraissaient trop petits,
-          resserrés dans la marge de texte. Le ratio du cadre colle
-          exactement à la vidéo réelle (`videoAspect`) : deviner (carré,
-          16:9…) laisse `object-contain` ajouter du vide transparent
-          au-dessus/en dessous du contenu quand le ratio deviné est faux —
-          invisible (fond détouré) mais bien présent, d'où l'écart énorme
-          remonté par le client. 16:9 en repli le temps que les métadonnées
-          de la vidéo chargent. */}
+          le px-6 de la section). Le ratio du cadre colle exactement à la
+          vidéo réelle (`videoAspect`) : deviner (carré, 16:9…) laisse
+          `object-contain` ajouter du vide transparent au-dessus/en dessous
+          du contenu quand le ratio deviné est faux. 16:9 en repli le temps
+          que les métadonnées de la vidéo chargent. */}
       <div
         className="relative -mx-6 lg:mx-0"
         style={{ aspectRatio: videoAspect ? String(videoAspect) : "16 / 9" }}
       >
         <video
-          ref={videoRef}
-          src={MATERIALS_VIDEO_URL}
+          ref={explodeVideoRef}
+          src={EXPLODE_VIDEO_URL}
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-contain opacity-0"
+        />
+        <video
+          ref={regroupVideoRef}
+          src={REGROUP_VIDEO_URL}
           muted
           playsInline
           preload="auto"
@@ -633,6 +474,7 @@ function MaterialsShowcase() {
             initial={{ opacity: 0, y: 14 }}
             animate={unfolded ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
             transition={{ duration: 0.5, delay: 0.1 + i * 0.13, ease: [0.22, 1, 0.36, 1] }}
+            className={i > 0 ? "lg:border-l lg:border-laiton/40 lg:pl-4" : ""}
           >
             <p className="eyebrow text-[11px] text-encre-douce">
               {String(i + 1).padStart(2, "0")}
@@ -677,7 +519,7 @@ export default function NotreHistoire() {
             {FEATURES.map((feature) => (
               <div
                 key={feature.label}
-                className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left"
+                className="flex flex-col items-center gap-3 text-center"
               >
                 <span aria-hidden className="text-laiton">
                   <FeatureIcon name={feature.icon} />
