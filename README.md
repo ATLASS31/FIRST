@@ -3109,8 +3109,74 @@ sur `package.json`/`package-lock.json` confirmé vide). La fluidité et la
 netteté réelles restent à confirmer côté client — toujours invérifiable
 ici (aucun décodeur H.264 dans ce sandbox, voir rounds précédents).
 
+## Sécurité des dépendances, lignes divisoires (vraie cause), lisibilité nav
+
+Trois sujets sans rapport entre eux dans un même retour : le client a vu
+beaucoup de rouge dans son terminal (`npm install`, `npm audit`), les
+lignes divisoires de "Notre histoire" tombaient encore dans le texte
+malgré la correction du round précédent, et le texte de la barre de
+navigation jugé trop petit pour la clientèle visée (plutôt aisée,
+parfois âgée).
+
+**`npm audit`** : 12 vulnérabilités "high" au total. Sur les 12, une
+partie tenait à `next` lui-même (DoS, SSRF, confusion de cache, fuite de
+endpoints internes non authentifiés) — corrigée en passant `next` et
+`eslint-config-next` de `15.5.20` à `15.5.21` (patch, pas de changement
+majeur, cohérent avec la contrainte "Next.js 15.5.x" d'`AGENTS.md`).
+Le reste se répartit en deux groupes qui ne seront *pas* résolus par un
+simple patch : la chaîne `eslint` (`minimatch`/`brace-expansion`, DoS par
+expansion regex) — c'est un outil de dev, jamais livré en production,
+aucune exposition réelle ; et `postcss`/`sharp`, **bundlés à l'intérieur
+de `next` lui-même** (`node_modules/next/node_modules/postcss`, `sharp`
+en dépendance optionnelle pour `next/image`) — même en installant la
+dernière version disponible de `next` (15.5.21), ces copies internes
+restent non corrigées en amont ; la seule voie affichée par `npm audit
+fix --force` est un saut vers Next 16 (majeur), explicitement écarté sans
+accord du client vu la contrainte de compatibilité du projet. Risque réel
+très faible dans les deux cas pour ce site (pas de traitement d'images
+envoyées par des utilisateurs, pas de CSS ni de source maps non fiables
+traités à l'exécution) — mais transparence complète sur ce qui est corrigé
+et ce qui ne l'est pas encore.
+
+**Lignes divisoires, vraie cause (troisième tentative)** : les deux
+correctifs précédents (décalage horizontal, puis hauteur) étaient
+nécessaires mais pas suffisants. La cause restante : une grille CSS étire
+par défaut (`align-items: stretch`) chaque cellule à la hauteur de la
+plus haute de sa ligne — le texte reste aligné en haut, mais la *boîte*
+s'étire. La ligne, centrée via `top-1/2` sur cette boîte étirée et non
+sur le texte réellement visible, se retrouvait décalée vers le bas dès
+qu'une colonne voisine avait une description sensiblement plus longue
+(donc plus de lignes après enroulement) — plus flagrant aux largeurs
+où le texte s'enroule beaucoup, ce qui explique pourquoi ça semblait
+correct dans mes propres vérifications précédentes (viewport plus large,
+moins d'enroulement) sans l'être forcément sur l'écran du client. Corrigé
+en ajoutant `items-start` à la grille : chaque cellule garde sa propre
+hauteur naturelle, donc `top-1/2` centre la ligne sur ce qui est
+réellement affiché.
+
+**Lisibilité de la navigation** : liens (`Concept`, `Gammes`, `Modèles`,
+`Procédé`), bouton "Demander un devis" (desktop et menu mobile) passés de
+`text-sm` à `text-base`, avec un léger ajustement de padding vertical du
+bouton pour rester équilibré à la nouvelle taille.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi
+avec les versions patchées ; géométrie des lignes divisoires mesurée sur
+3 largeurs de viewport (1152, 1280, 1440px) confirmant qu'elles restent
+désormais toujours à l'intérieur de la hauteur réelle du contenu de leur
+colonne, jamais au-delà ; capture d'écran conforme ; menu mobile
+vérifié visuellement à la nouvelle taille de texte ; régression complète
+sur les 10 routes sans nouvelle erreur ; `git status` sur
+`package.json`/`package-lock.json` limité aux deux lignes de version
+attendues (pas de changement collatéral).
+
 ## À faire avant la mise en prod
 
+- **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
+  `next`, chaîne `eslint`)** : voir l'entrée ci-dessus — aucun fix
+  disponible sans passer à Next 16 (majeur) ou sans une release amont de
+  Next.js qui corrige ses propres dépendances internes. À surveiller
+  (`npm audit`) et à traiter quand un correctif compatible Next 15.x sort,
+  ou lors d'une décision explicite de migration vers Next 16.
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
   technique : passer à une séquence d'images (frames extraites, swap sur
   scroll) plutôt qu'un `<video>` — c'est la technique la plus fiable

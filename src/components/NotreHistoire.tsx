@@ -91,6 +91,20 @@ import { motion, useReducedMotion } from "framer-motion";
  * au bord gauche de sa colonne, juste à l'endroit où le texte commence.
  * Corrigée avec un décalage fixe (`-left-2`, 8px) qui la place exactement
  * au milieu du gap.
+ *
+ * Retour client : la ligne "tombe encore dans le texte" après le correctif
+ * ci-dessus, sur certaines colonnes. Deuxième cause, distincte de la
+ * première : la grille CSS étire par défaut (`align-items: stretch`)
+ * chaque cellule à la hauteur de la plus haute de sa ligne — le texte
+ * reste naturellement aligné en haut, mais la boîte elle-même s'étire.
+ * La ligne, centrée via `top-1/2` sur *cette boîte étirée* et non sur le
+ * texte réellement visible, se retrouvait bien plus bas que prévu dès
+ * qu'une colonne voisine avait une description plus longue (donc plus de
+ * lignes de texte) — flagrant sur les largeurs où le texte s'enroule
+ * beaucoup. Corrigé en ajoutant `items-start` à la grille : chaque
+ * cellule garde sa propre hauteur naturelle, `top-1/2` centre alors la
+ * ligne sur le contenu réellement affiché, plus sur une hauteur de ligne
+ * partagée.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -555,7 +569,7 @@ function MaterialsShowcase() {
         />
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-8 grid grid-cols-2 items-start gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
         {MATERIALS.map((material, i) => (
           <motion.div
             key={material.title}

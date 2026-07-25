@@ -35,7 +35,7 @@ export default function Nav() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="text-sm font-medium text-encre-doux transition-colors hover:text-foret"
+                className="text-base font-medium text-encre-doux transition-colors hover:text-foret"
               >
                 {link.label}
               </Link>
@@ -45,7 +45,7 @@ export default function Nav() {
 
         <Link
           href="/contact"
-          className="hidden rounded-full bg-foret px-5 py-2 text-sm font-medium text-brume transition-opacity hover:opacity-90 md:inline-block"
+          className="hidden rounded-full bg-foret px-5 py-2.5 text-base font-medium text-brume transition-opacity hover:opacity-90 md:inline-block"
         >
           Demander un devis
         </Link>
@@ -80,7 +80,7 @@ export default function Nav() {
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="py-2 text-sm font-medium text-encre-doux hover:text-foret"
+              className="py-2 text-base font-medium text-encre-doux hover:text-foret"
             >
               {link.label}
             </Link>
@@ -88,7 +88,7 @@ export default function Nav() {
           <Link
             href="/contact"
             onClick={() => setOpen(false)}
-            className="mt-2 rounded-full bg-foret px-5 py-2 text-center text-sm font-medium text-brume"
+            className="mt-2 rounded-full bg-foret px-5 py-2.5 text-center text-base font-medium text-brume"
           >
             Demander un devis
           </Link>
