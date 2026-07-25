@@ -244,16 +244,18 @@ export default function Hero() {
           ),
           1
         );
-        // Le fondu se termine vite (10% de la fenêtre) : un vrai flash
-        // d'apparition net. La montée et le glissement, eux, vont plus loin
-        // et plus vite qu'avant (distance doublée, complétée sur un tiers
-        // de la fenêtre au lieu de plus de la moitié) — un mouvement de
-        // vague plus franc et dynamique — tout en gardant une fenêtre de
-        // scroll plus longue (WAVE_REVEAL_START abaissé) pour que
-        // l'ensemble dure un peu plus.
+        // Retour client : le mouvement restait "tellement léger qu'on le
+        // perçoit pas". La fenêtre de scroll (WAVE_REVEAL_START/END) ne
+        // change pas, mais tout se complète maintenant sur une fraction
+        // bien plus courte de cette fenêtre (montée sur 18% au lieu de
+        // 35%, glissement sur 55% au lieu de 100%) et le glissement
+        // horizontal a une amplitude quasiment doublée (26% au lieu de
+        // 14%) : à vitesse de scroll égale, la vague parcourt sa
+        // trajectoire beaucoup plus vite et sur une plus grande distance,
+        // donc le mouvement devient net et perceptible.
         const opacity = Math.min(waveProgress / 0.1, 1);
-        const riseY = (1 - Math.min(waveProgress / 0.35, 1)) * 100;
-        const driftX = -(1 - waveProgress) * 14;
+        const riseY = (1 - Math.min(waveProgress / 0.18, 1)) * 100;
+        const driftX = -(1 - Math.min(waveProgress / 0.55, 1)) * 26;
         waveRef.current.style.opacity = String(opacity);
         waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
       }

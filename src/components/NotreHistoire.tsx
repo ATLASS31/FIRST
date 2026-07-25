@@ -105,6 +105,19 @@ import { motion, useReducedMotion } from "framer-motion";
  * cellule garde sa propre hauteur naturelle, `top-1/2` centre alors la
  * ligne sur le contenu réellement affiché, plus sur une hauteur de ligne
  * partagée.
+ *
+ * Retour client : les lignes ne sont "pas au même niveau" entre elles —
+ * le correctif précédent était juste dans son objectif (centrer chaque
+ * ligne sur SA colonne) mais visait le mauvais objectif : les colonnes
+ * n'ont pas toutes la même hauteur ("Liteaux & lame d'air" s'enroule sur
+ * 2 lignes de titre), donc un centrage par item donne des positions
+ * absolues différentes d'une colonne à l'autre. Remplacé par un décalage
+ * fixe depuis le haut (`top-2`, plus de `top-1/2`/`-translate-y-1/2`) :
+ * comme la grille aligne déjà le sommet de chaque cellule sur la même
+ * ligne, un décalage fixe retombe mécaniquement au même niveau partout,
+ * quel que soit le nombre de lignes du texte voisin. Épaisseur également
+ * augmentée (`w-px` → `w-[1.5px]`, opacité `/50` → `/60`) — "un peu plus
+ * grasses, sans trop".
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -579,13 +592,20 @@ function MaterialsShowcase() {
             className="relative"
           >
             {i > 0 && (
-              // Courte ligne dorée centrée verticalement plutôt qu'une
-              // bordure pleine hauteur (jugée trop longue) — un repère
-              // discret entre chaque matériau, pas une séparation
-              // structurelle.
+              // Courte ligne dorée à hauteur FIXE depuis le haut de la
+              // ligne de grille, jamais centrée sur la boîte de l'item.
+              // Avec `items-start`, chaque item est déjà aligné en haut de
+              // la rangée — mais "Liteaux & lame d'air" a un titre qui
+              // s'enroule sur 2 lignes, donc sa boîte est plus haute que
+              // les autres. Un centrage `top-1/2` sur SA PROPRE boîte
+              // plaçait donc sa ligne plus bas que les 5 autres : correct
+              // par item, incohérent sur la rangée. Un décalage fixe
+              // depuis le haut (identique pour les 6 colonnes) règle ça —
+              // toutes les lignes tombent au même niveau, quel que soit le
+              // nombre de lignes du texte voisin.
               <span
                 aria-hidden
-                className="absolute -left-2 top-1/2 hidden h-10 w-px -translate-y-1/2 bg-laiton/50 lg:block"
+                className="absolute -left-2 top-2 hidden h-10 w-[1.5px] bg-laiton/60 lg:block"
               />
             )}
             <p className="eyebrow text-[11px] text-encre-douce">

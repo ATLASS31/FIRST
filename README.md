@@ -3169,6 +3169,65 @@ sur les 10 routes sans nouvelle erreur ; `git status` sur
 `package.json`/`package-lock.json` limité aux deux lignes de version
 attendues (pas de changement collatéral).
 
+## Lignes divisoires (niveau unique), nav encore plus grande, vague plus rapide
+
+Le round précédent avait corrigé la cause de fond (`align-items: stretch`)
+mais introduit une tension : centrer chaque ligne sur la hauteur *propre*
+de sa colonne (`top-1/2` sur une boîte désormais bien dimensionnée) est
+géométriquement correct par colonne, mais donne des positions absolues
+*différentes* dès que les colonnes n'ont pas la même hauteur de contenu —
+ce qui arrive pour "Liteaux & lame d'air", dont le titre s'enroule sur 2
+lignes contrairement aux 5 autres. Résultat vu par le client : les lignes
+ne sont "pas au même niveau". Ce n'est pas un bug de calcul, c'est le
+mauvais objectif : centrer par item n'a jamais pu produire un alignement
+de rangée.
+
+**Correctif** : abandon du centrage relatif (`top-1/2 -translate-y-1/2`)
+au profit d'un décalage fixe (`top-2`) identique pour les 6 colonnes.
+Comme la grille aligne déjà le haut de chaque cellule sur la même ligne de
+grille (`items-start` ne change que la *hauteur* de la boîte, pas la
+position de son sommet), un décalage fixe depuis le haut retombe
+mécaniquement au même niveau partout, quel que soit le nombre de lignes du
+texte voisin — vérifié par mesure Playwright : les 5 lignes rapportent le
+même `top` absolu (`-300` dans le test, à une position de scroll donnée),
+alors qu'avant elles se répartissaient sur 3 valeurs différentes.
+
+Au passage, épaisseur légèrement augmentée (`w-px` → `w-[1.5px]`, opacité
+`/50` → `/60`) — "un peu plus grasses, sans trop" — et l'écart au texte
+(`-left-2`, `gap-x-4`) était déjà uniforme partout ; il ne *paraissait* pas
+l'être à cause du désalignement vertical, réglé par le point précédent.
+
+**Navigation, texte encore agrandi** : `text-base` → `text-lg` sur les 4
+mêmes points (liens desktop, CTA desktop, liens menu mobile, CTA mobile),
+sans toucher aux dimensions de `GlassPanel` (padding/rayon inchangés) —
+seul le texte grandit, la pilule s'adapte naturellement à son contenu
+comme demandé ("juste le texte pas la barre").
+
+**Vague sous le hero, mouvement trop léger** : la vague est scrubbée en
+continu sur le scroll (pas une animation temporelle), donc "aller plus
+vite" veut dire parcourir sa trajectoire sur une portion plus courte de la
+fenêtre de scroll (`WAVE_REVEAL_START`/`END` inchangés) plutôt que raccourcir
+une durée. Montée verticale resserrée de 35 % à 18 % de la fenêtre,
+glissement horizontal resserré de 100 % à 55 % et son amplitude quasiment
+doublée (14 % → 26 %). Résultat mesuré : la montée est maintenant terminée
+à ~61 % de la progression du hero (contre ~69 % avant) et le glissement à
+~80 % (contre 100 % avant), sur une distance nettement plus grande — le
+mouvement est net et perceptible au lieu de se diluer sur presque toute la
+section.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+mesure Playwright confirmant les 5 lignes divisoires à un `top` absolu
+identique (contre 3 valeurs différentes avant correctif) ; `font-size`
+calculé du lien de nav confirmé à 18px (`text-lg`) ; échantillonnage de
+l'opacité/transform de la vague à 6 positions de scroll confirmant la
+fenêtre resserrée et l'amplitude augmentée ; régression complète sur les
+10 routes sans nouvelle erreur console (hors 502/403/tunnel déjà connus,
+propres au blocage réseau de ce bac à sable pour le CDN vidéo). Comme pour
+les rounds précédents, ce bac à sable (Chromium sans décodeur H.264, accès
+réseau au CDN bloqué) empêche toute vérification visuelle directe de la
+lecture vidéo — seules les vérifications géométriques/DOM/timing sont
+possibles ici.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
