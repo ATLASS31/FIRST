@@ -3351,6 +3351,37 @@ complète sur les 10 routes sans nouvelle erreur console (hors 502/403/
 tunnel déjà connus, propres au blocage réseau de ce bac à sable pour le
 CDN vidéo).
 
+## Notre histoire : revert du poster (images dupliquées/effacées), juste un peu de vitesse
+
+Le poster statique introduit deux rounds plus tôt (pour combler la brève
+absence de vidéo au rechargement à froid) puis corrigé au round suivant
+(retiré du DOM une fois la vraie vidéo prête, plutôt que juste recouvert)
+a quand même produit un défaut jugé pire que le problème d'origine par le
+client : "il y a la des images dupliquées puis des endroits effacés sur
+des éléments". Cause : le poster (une frame figée) et le canvas (la vraie
+vidéo en cours de lecture) ne représentent jamais exactement le même
+instant — le court intervalle entre "poster affiché" et "poster retiré du
+DOM" pouvait donc montrer un chevauchement visible des deux (un matériau
+dans une position sur l'un, une autre position sur l'autre), perçu comme
+une duplication ou un effacement partiel.
+
+**Revert complet** : poster (`<Image>`, état `posterVisible`,
+`public/materials-poster.webp`) entièrement retiré. Le comportement
+redevient celui d'avant son introduction — un court instant sans vidéo
+visible au rechargement à froid, le temps que `loadeddata` se déclenche —
+jugé par le client préférable à un chevauchement visible. Pas de fix
+alternatif demandé : "à la limite rajoute juste un peu de vitesse aux
+animations c'est tout". `PLAYBACK_RATE` monté de 1,9 à 2,1.
+
+**Vérifications** : `tsc`/`eslint` propres (aucune référence résiduelle à
+`Image`/`posterVisible` après le retrait) ; build de production réussi,
+taille du bundle de la page d'accueil revenue à son niveau d'avant l'ajout
+du poster ; `/materials-poster.webp` confirmé en 404 après suppression du
+fichier ; Playwright confirmant l'absence de tout `<img>` de poster dans
+le DOM et la présence normale de la vidéo/du canvas ; régression complète
+sur les 10 routes sans nouvelle erreur console (hors 502/tunnel déjà
+connus, propres au blocage réseau de ce bac à sable pour le CDN vidéo).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

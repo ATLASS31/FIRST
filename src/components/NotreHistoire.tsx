@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
@@ -133,11 +132,16 @@ import { motion, useReducedMotion } from "framer-motion";
  * Retour client : au rechargement de page (cache froid), la zone vidéo
  * reste vide un court instant avant que la vidéo n'apparaisse — le canvas
  * n'est dessiné qu'à l'événement `loadeddata`, qui attend que le fichier
- * (1,4 Mo) télécharge suffisamment. Corrigé avec une image statique
- * (frame 0 pré-détourée hors-ligne, même seuil chroma-key que `drawSource`)
- * affichée sous la vidéo/le canvas dans l'ordre du DOM : elle occupe
- * l'espace dès le premier rendu, sans état ni JS supplémentaire — voir
- * `<Image src="/materials-poster.webp" .../>` plus bas.
+ * (1,4 Mo) télécharge suffisamment. Une image statique (frame 0
+ * pré-détourée) avait été ajoutée pour combler ce court instant, puis
+ * retirée du DOM une fois la vraie vidéo prête — mais le retour client
+ * suivant a signalé des images dupliquées et des zones effacées sur
+ * certains matériaux (l'image figée et le canvas ne représentaient jamais
+ * exactement le même instant, donc le passage de l'un à l'autre créait un
+ * chevauchement visible). Revert complet : cette brève absence de vidéo
+ * au chargement à froid est un moindre mal comparé à ce chevauchement —
+ * "à la limite rajoute juste un peu de vitesse aux animations c'est
+ * tout". `PLAYBACK_RATE` augmenté en conséquence (voir plus bas).
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -148,9 +152,9 @@ const REGROUP_VIDEO_URL = "/api/materials-video";
 // jamais mémorisé comme un franchissement ponctuel.
 const THRESHOLD_VH = 0.6;
 // Vitesse de lecture des deux vidéos : plus rapide que le temps réel pour
-// un effet "woosh" net (demande client, encore accélérée une fois), sans
+// un effet "woosh" net (demande client, accélérée plusieurs fois), sans
 // devenir brutal comme le "snap" à 650ms abandonné plus tôt dans le projet.
-const PLAYBACK_RATE = 1.9;
+const PLAYBACK_RATE = 2.1;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -243,13 +247,6 @@ function MaterialsShowcase() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
-  // Poster statique affiché le temps que la vraie première frame charge —
-  // doit ensuite disparaître pour de bon, pas juste rester recouvert : le
-  // canvas est transparent partout où le détourage a retiré le fond, donc
-  // un poster jamais masqué reste visible en permanence à travers ces
-  // pixels transparents, y compris pendant l'animation (image figée sous
-  // les matériaux qui bougent). Voir `onExplodeReady`.
-  const [posterVisible, setPosterVisible] = useState(true);
   // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
   // chargées, plutôt qu'une valeur devinée : deviner mal laisse
   // `object-contain` ajouter un vide transparent (invisible une fois le
@@ -368,7 +365,6 @@ function MaterialsShowcase() {
         const showFinal = () => {
           drawFrame(explodeVideo);
           setUnfolded(true);
-          setPosterVisible(false);
         };
         if (Number.isFinite(explodeVideo.duration) && explodeVideo.duration > 0) {
           const onFinalSeeked = () => showFinal();
@@ -384,7 +380,6 @@ function MaterialsShowcase() {
         }
       } else {
         drawFrame(explodeVideo);
-        setPosterVisible(false);
       }
     };
     explodeVideo.addEventListener("loadeddata", onExplodeReady, { once: true });
@@ -586,28 +581,6 @@ function MaterialsShowcase() {
         className="relative -mx-6 lg:mx-0"
         style={{ aspectRatio: videoAspect ? String(videoAspect) : "16 / 9" }}
       >
-        {/* Image statique (frame 0 de la vidéo, détourée hors-ligne au
-            même seuil chroma-key) affichée dès le premier rendu, sous la
-            vidéo/le canvas dans l'ordre du DOM. Sans elle, la zone reste
-            vide le temps que la vidéo (1,4 Mo) télécharge assez pour que
-            `loadeddata` se déclenche — visible surtout à froid (rechargement
-            de page, cache vide) : "au tout début il n'y a pas la vidéo puis
-            elle apparaît après". Retirée du DOM (`posterVisible`) dès que la
-            vraie première frame est dessinée sur le canvas (`onExplodeReady`) :
-            un simple recouvrement visuel ne suffit pas, le canvas est
-            transparent partout où le fond a été détouré, donc un poster
-            jamais démonté restait visible en permanence à travers ces
-            pixels — y compris pendant l'animation, sous les matériaux qui
-            bougent. */}
-        {posterVisible && (
-          <Image
-            src="/materials-poster.webp"
-            alt=""
-            aria-hidden
-            fill
-            className="object-contain"
-          />
-        )}
         <video
           ref={explodeVideoRef}
           src={EXPLODE_VIDEO_URL}
