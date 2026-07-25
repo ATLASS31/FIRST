@@ -2876,6 +2876,55 @@ détourage ni le rendu des frames en cache n'ont pu être vérifiés à l'œil
 ici, seulement la logique (timing, verrouillage, alternance
 cache/repli) et la géométrie.
 
+## Notre histoire : ratio dynamique (écart) + régression de capture corrigée
+
+Retour client : la taille et le centrage du round précédent sont validés
+("parfait bien centré la taille c'est mieux"), mais l'écart avec le texte
+au-dessus est *encore pire* qu'avant, et l'animation est devenue saccadée
+**dans les deux sens** (alors que le repliement était déjà fluide). Le
+client propose aussi d'inverser lui-même la vidéo et de me l'envoyer.
+
+**Écart, cause réelle** : `aspect-square` était un pari sur la forme de la
+vidéo, pas une mesure. Si la vidéo réelle n'est pas carrée (probable —
+une frise de 6 matériaux est plutôt large que carrée), `object-contain`
+centre le contenu dans la boîte carrée et laisse du vide transparent
+au-dessus et en dessous — invisible une fois le fond détouré, mais bien
+réel, et *plus grand* qu'avec `aspect-video` puisque l'écart entre "carré"
+et "vidéo large" est plus important qu'entre "16:9" et "vidéo large". Le
+cadre est maintenant dimensionné dynamiquement sur le vrai ratio de la
+vidéo (`video.videoWidth / video.videoHeight`, mesuré dès que les
+métadonnées chargent, via `style={{ aspectRatio }}`) plutôt que deviné —
+`object-contain` n'a alors plus jamais de vide à ajouter, quelle que soit
+la forme réelle du fichier. Repli sur 16:9 le temps du chargement.
+
+**Régression de fluidité, cause réelle** : le cache de frames ajouté au
+round précédent capturait les bitmaps (`createImageBitmap`) à la
+résolution **native** de la vidéo, sans aucune réduction — alors que le
+dessin sur canvas avait déjà été optimisé pour tourner à la résolution
+d'affichage. Cette capture pleine résolution tournait pendant le
+repliement (la lecture native, jusque-là fluide), ajoutant une charge
+CPU/mémoire qui n'existait pas avant et dégradait la fluidité qui
+fonctionnait déjà — exactement le "saccadé avant et arrière maintenant"
+remonté par le client. Corrigé : la capture utilise maintenant les mêmes
+`resizeWidth`/`resizeHeight` (taille d'affichage × ratio d'écran, comme le
+canvas) que le dessin, via les options natives de `createImageBitmap`.
+
+**Vidéo pré-inversée proposée par le client** : accepté — c'est la vraie
+solution de fond. Avec une vidéo déjà montée dans le bon sens (matériaux
+qui s'écartent), le dépliage pourrait lire nativement vers l'avant, tout
+comme le repliement déjà fluide, et tout le mécanisme de scrub
+manuel + cache de secours deviendrait inutile. En attente du fichier.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+ratio de repli confirmé à l'exécution (`16 / 9`, boîte 390×219 sur un
+viewport 390px tant que la vraie vidéo n'a pas chargé ses métadonnées
+dans ce sandbox) ; écart mesuré toujours à 32px avec le nouveau cadre ;
+scénario de scroll graduel confirmant que le déclenchement directionnel
+fonctionne toujours ; régression complète sur les 10 routes sans nouvelle
+erreur. Le ratio réel une fois la vraie vidéo chargée, et le gain de
+fluidité de la réduction de résolution de capture, restent à confirmer
+côté client — invérifiables ici, CDN vidéo bloqué par le sandbox.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de

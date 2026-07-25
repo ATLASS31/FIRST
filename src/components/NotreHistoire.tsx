@@ -204,6 +204,12 @@ function MaterialsShowcase() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
+  // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
+  // chargées, plutôt qu'une valeur devinée (16:9 ou carré) : deviner mal
+  // laisse `object-contain` ajouter un vide transparent (invisible une
+  // fois le fond détouré) au-dessus/en dessous du contenu réel — c'est ce
+  // qui donnait l'impression d'un écart énorme avec le texte au-dessus.
+  const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const keyColorRef = useRef<[number, number, number] | null>(null);
   const keyingDisabledRef = useRef(false);
   const frameCacheRef = useRef<Map<number, ImageBitmap>>(new Map());
@@ -327,13 +333,27 @@ function MaterialsShowcase() {
   // déjà cette frame sous la main pour l'affichage natif.
   const maybeCaptureFrame = useCallback(() => {
     const video = videoRef.current;
-    if (!video || typeof window.createImageBitmap !== "function") return;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || typeof window.createImageBitmap !== "function") return;
     if (capturingRef.current || video.paused || video.seeking) return;
     const bucket = bucketOf(video.currentTime);
     if (frameCacheRef.current.has(bucket)) return;
     capturingRef.current = true;
+
+    // Capturé à la même résolution réduite que l'affichage, jamais à la
+    // résolution native : des bitmaps pleine résolution consommaient assez
+    // de CPU/mémoire pendant la capture pour faire ramer l'animation en
+    // cours elle-même — y compris le repliement, jusque-là fluide,
+    // régression remontée par le client ("saccadé avant et arrière
+    // maintenant").
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssWidth = canvas.getBoundingClientRect().width || video.videoWidth;
+    const resizeWidth = Math.max(1, Math.min(video.videoWidth, Math.round(cssWidth * dpr)));
+    const scale = resizeWidth / video.videoWidth;
+    const resizeHeight = Math.max(1, Math.round(video.videoHeight * scale));
+
     window
-      .createImageBitmap(video)
+      .createImageBitmap(video, { resizeWidth, resizeHeight, resizeQuality: "low" })
       .then((bitmap) => {
         if (frameCacheRef.current.has(bucket)) {
           bitmap.close();
@@ -357,6 +377,9 @@ function MaterialsShowcase() {
     if (!video || !container) return;
 
     const onLoaded = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setVideoAspect(video.videoWidth / video.videoHeight);
+      }
       video.currentTime = prefersReducedMotion ? 0 : VIDEO_DURATION;
     };
     video.addEventListener("loadedmetadata", onLoaded);
@@ -576,10 +599,17 @@ function MaterialsShowcase() {
     <div ref={containerRef} className="w-full">
       {/* Plein cadre jusqu'aux bords de l'écran sur mobile/tablette (annule
           le px-6 de la section) — les matériaux paraissaient trop petits,
-          resserrés dans la marge de texte. Ratio plus carré sur mobile
-          (encore trop petit en 16:9) ; redevient 16:9 contenu dans la
-          colonne normale à partir de lg (à côté du texte). */}
-      <div className="relative -mx-6 aspect-square lg:mx-0 lg:aspect-video">
+          resserrés dans la marge de texte. Le ratio du cadre colle
+          exactement à la vidéo réelle (`videoAspect`) : deviner (carré,
+          16:9…) laisse `object-contain` ajouter du vide transparent
+          au-dessus/en dessous du contenu quand le ratio deviné est faux —
+          invisible (fond détouré) mais bien présent, d'où l'écart énorme
+          remonté par le client. 16:9 en repli le temps que les métadonnées
+          de la vidéo chargent. */}
+      <div
+        className="relative -mx-6 lg:mx-0"
+        style={{ aspectRatio: videoAspect ? String(videoAspect) : "16 / 9" }}
+      >
         <video
           ref={videoRef}
           src={MATERIALS_VIDEO_URL}
