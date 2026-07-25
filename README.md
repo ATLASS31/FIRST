@@ -3293,6 +3293,64 @@ toujours, ce bac à sable (Chromium sans décodeur H.264, CDN vidéo bloqué)
 empêche toute vérification visuelle directe de la lecture des vidéos —
 vérifications géométriques/DOM/timing uniquement.
 
+## Notre histoire : le poster ne disparaissait jamais ; vague : direction et trou corrigés
+
+Le round précédent introduisait le poster statique et le glissement continu
+de la vague ; deux effets de bord non anticipés, plus une correction de
+direction.
+
+**Le poster restait affiché en permanence** : il était bien recouvert par
+le canvas une fois la vraie vidéo prête, mais seulement là où le canvas
+est opaque. Le détourage chroma-key rend transparents tous les pixels
+identifiés comme fond — donc partout où ce détourage s'applique, le
+poster (une image figée, toujours montée dans le DOM) restait visible EN
+PERMANENCE à travers ces pixels transparents, y compris pendant
+l'animation, sous les matériaux qui bougent réellement : "l'image reste au
+fond, elle disparaît pas au bon moment". C'est aussi la cause du "pare-vapeur
+translucide" vu sur la capture du client : le détourage de la membrane
+Intello (claire, proche de la couleur de fond) n'est jamais parfait à
+100% sur ses bords — une fine bande de pixels y reste semi-transparente
+(alpha entre 0 et 255, zone de fondu du détourage). Tant que rien ne se
+trouvait derrière ces pixels semi-transparents que le fond uni de la
+section, l'imperfection était invisible. Une fois le poster (une PHOTO,
+avec sa propre texture) posé derrière en permanence, cette même bande
+semi-transparente laisse apparaître un mélange visible des deux images —
+la "tache translucide". Corrigé à la racine : un état `posterVisible`
+retire le poster du DOM (pas seulement recouvert visuellement) dès que la
+vraie première frame est dessinée sur le canvas, dans `onExplodeReady` —
+il ne reste alors plus jamais rien derrière le canvas que le fond uni
+d'origine, et l'imperfection de détourage redevient invisible comme avant
+son ajout.
+
+**Vague : mauvaise direction + trou pendant le glissement** : le client
+avait initialement demandé "vers la gauche", puis s'est corrigé — c'est
+bien vers la **droite**. Au passage, un vrai bug géométrique : le
+glissement (`transform: translate(x%, …)`) utilise des `%` relatifs à la
+largeur de l'ÉLÉMENT LUI-MÊME, qui déborde déjà de 12% de chaque côté du
+conteneur (`left`/`right: -12%`, qui eux sont bien relatifs au
+conteneur — les deux propriétés ne partagent pas la même base de calcul).
+Un glissement de 34% de sa propre largeur (124% du conteneur)
+représentait donc en réalité environ 42% de la largeur du conteneur —
+largement plus que les 12% de débord censés le couvrir, d'où un bord vide
+qui apparaissait pendant le scroll ("il n'y a pas de trou hors de
+l'animation" — il y en avait un). Corrigé en calculant le glissement en
+pixels réels (mesurés sur `section.getBoundingClientRect().width`) plutôt
+qu'en `%` de la boîte de l'élément — 20% de la largeur du conteneur, vers
+la droite — et en allongeant le débord (`-12%` → `-24%` sur
+`left`/`right`) pour garder une marge de sécurité confortable.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+Playwright confirmant la disparition effective du poster du DOM (pas
+seulement son recouvrement visuel) après un événement `loadeddata`
+simulé (nécessaire : ce bac à sable n'a pas de décodeur H.264, la vraie
+vidéo ne déclenche jamais cet événement ici) ; mesure géométrique du
+rectangle de la vague à 80% et 100% de la fenêtre de scroll confirmant
+qu'il couvre toujours entièrement la largeur du viewport (bord gauche
+≤ 0, bord droit ≥ largeur du viewport) — donc plus aucun trou ; régression
+complète sur les 10 routes sans nouvelle erreur console (hors 502/403/
+tunnel déjà connus, propres au blocage réseau de ce bac à sable pour le
+CDN vidéo).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

@@ -244,24 +244,29 @@ export default function Hero() {
           ),
           1
         );
-        // Retour client, prise 2 : accélérer la fenêtre (essayé au round
-        // précédent) ne suffisait pas — le glissement se terminait tôt puis
-        // la vague restait immobile pendant le reste du scroll, donc rien
-        // à percevoir comme "mouvement" une fois l'apparition passée. Ce
-        // que le client demande, c'est un vrai glissement vers la gauche,
-        // visible en continu tant qu'on scrolle dans la fenêtre — pas un
-        // réglage fin puis un arrêt. Fondu et montée se terminent vite
-        // (apparition nette), mais le glissement horizontal, lui, dure
-        // maintenant tout le long de `waveProgress` (0 → 1) au lieu de
-        // s'arrêter à 55% : la vague continue de glisser vers la gauche
-        // (X de plus en plus négatif) sur toute la fenêtre de scroll, avec
-        // une amplitude augmentée (34% au lieu de 26%) pour que ce
-        // glissement soit sans ambiguïté perceptible.
+        // Retour client : direction corrigée (c'est bien vers la DROITE,
+        // pas la gauche comme demandé au round précédent), et surtout un
+        // "trou" apparaissait pendant le glissement. Cause du trou :
+        // `translate(x%, ...)` en CSS résout `%` par rapport à la boîte de
+        // l'ÉLÉMENT LUI-MÊME, qui fait 124% de la largeur du conteneur
+        // (débord de 12% de chaque côté via `left/right: -12%`, qui eux
+        // sont bien relatifs au conteneur). Un glissement de 34% de SA
+        // PROPRE largeur (124% du conteneur) représentait donc en réalité
+        // ~42% de la largeur du conteneur — largement plus que le débord
+        // de 12% censé le couvrir, d'où le fond qui apparaissait à nu au
+        // bord opposé. Corrigé en calculant le glissement en pixels
+        // réels (mesurés sur la largeur du conteneur) plutôt qu'en `%` de
+        // la boîte de l'élément, et en allongeant le débord (`-12%` →
+        // `-24%` sur `left`/`right`, cf. JSX) : l'amplitude du glissement
+        // (20% de la largeur du conteneur) reste maintenant nettement en
+        // dessous du débord (24%), avec de la marge, donc plus aucun bord
+        // découvert quelle que soit la position de scroll.
         const opacity = Math.min(waveProgress / 0.08, 1);
         const riseY = (1 - Math.min(waveProgress / 0.2, 1)) * 100;
-        const driftX = -waveProgress * 34;
+        const containerWidth = section.getBoundingClientRect().width;
+        const driftX = waveProgress * 0.2 * containerWidth;
         waveRef.current.style.opacity = String(opacity);
-        waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
+        waveRef.current.style.transform = `translate(${driftX}px, ${riseY}%)`;
       }
 
       if (!ready) {
@@ -426,18 +431,20 @@ export default function Hero() {
             du hero (le haut de la section suivante). Plus large que
             l'écran (bords cachés par l'overflow-hidden du conteneur
             sticky) pour pouvoir glisser horizontalement sans jamais
-            découvrir de bord vide. Toujours entière : jamais un reveal
-            progressif, seulement un fondu + une montée + un glissement
-            (cf. tick()). */}
+            découvrir de bord vide — débord porté à 24% de chaque côté
+            (contre 12% avant) pour couvrir le glissement vers la droite
+            (jusqu'à 20% de la largeur du conteneur, cf. tick()) avec de la
+            marge. Toujours entière : jamais un reveal progressif, seulement
+            un fondu + une montée + un glissement (cf. tick()). */}
         <div
           ref={waveRef}
           aria-hidden
           className="wave-reveal pointer-events-none absolute bottom-0 z-[6] h-32 sm:h-48"
           style={{
-            left: "-12%",
-            right: "-12%",
+            left: "-24%",
+            right: "-24%",
             opacity: 0,
-            transform: "translate(-6%, 100%)",
+            transform: "translate(0px, 100%)",
           }}
         >
           <svg

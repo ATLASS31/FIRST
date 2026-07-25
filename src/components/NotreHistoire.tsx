@@ -243,6 +243,13 @@ function MaterialsShowcase() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unfolded, setUnfolded] = useState(false);
+  // Poster statique affiché le temps que la vraie première frame charge —
+  // doit ensuite disparaître pour de bon, pas juste rester recouvert : le
+  // canvas est transparent partout où le détourage a retiré le fond, donc
+  // un poster jamais masqué reste visible en permanence à travers ces
+  // pixels transparents, y compris pendant l'animation (image figée sous
+  // les matériaux qui bougent). Voir `onExplodeReady`.
+  const [posterVisible, setPosterVisible] = useState(true);
   // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
   // chargées, plutôt qu'une valeur devinée : deviner mal laisse
   // `object-contain` ajouter un vide transparent (invisible une fois le
@@ -361,6 +368,7 @@ function MaterialsShowcase() {
         const showFinal = () => {
           drawFrame(explodeVideo);
           setUnfolded(true);
+          setPosterVisible(false);
         };
         if (Number.isFinite(explodeVideo.duration) && explodeVideo.duration > 0) {
           const onFinalSeeked = () => showFinal();
@@ -376,6 +384,7 @@ function MaterialsShowcase() {
         }
       } else {
         drawFrame(explodeVideo);
+        setPosterVisible(false);
       }
     };
     explodeVideo.addEventListener("loadeddata", onExplodeReady, { once: true });
@@ -583,16 +592,22 @@ function MaterialsShowcase() {
             vide le temps que la vidéo (1,4 Mo) télécharge assez pour que
             `loadeddata` se déclenche — visible surtout à froid (rechargement
             de page, cache vide) : "au tout début il n'y a pas la vidéo puis
-            elle apparaît après". Le canvas la recouvre dès que la vraie
-            première frame est dessinée par-dessus, sans code de transition
-            supplémentaire nécessaire. */}
-        <Image
-          src="/materials-poster.webp"
-          alt=""
-          aria-hidden
-          fill
-          className="object-contain"
-        />
+            elle apparaît après". Retirée du DOM (`posterVisible`) dès que la
+            vraie première frame est dessinée sur le canvas (`onExplodeReady`) :
+            un simple recouvrement visuel ne suffit pas, le canvas est
+            transparent partout où le fond a été détouré, donc un poster
+            jamais démonté restait visible en permanence à travers ces
+            pixels — y compris pendant l'animation, sous les matériaux qui
+            bougent. */}
+        {posterVisible && (
+          <Image
+            src="/materials-poster.webp"
+            alt=""
+            aria-hidden
+            fill
+            className="object-contain"
+          />
+        )}
         <video
           ref={explodeVideoRef}
           src={EXPLODE_VIDEO_URL}
