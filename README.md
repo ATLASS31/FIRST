@@ -2719,6 +2719,52 @@ visuel réel (fluidité du seek et résultat du détourage) reste à confirmer
 côté client, cette fois avec de meilleures chances de fonctionner
 puisque la cause racine du fond non retiré est directement adressée.
 
+## Notre histoire : détourage confirmé, animation déclenchée (fin du scrub continu)
+
+Retour client positif sur le détourage ("bravo boss ta réussis"), avec
+deux ajustements : un petit fragment du fond restait visible en haut à
+gauche, et l'animation liée en continu au scroll n'était toujours "pas
+fluide du tout" — *"je ne veux pas que le slide gère la vitesse de
+l'animation, [...] je descends dans la catégorie, l'animation se lance
+toute seule, je remonte elle se lance de l'autre sens."*
+
+**Fragment de fond non détouré, corrigé** : la couleur de référence pour
+le détourage n'était échantillonnée que sur un seul pixel (coin
+haut-gauche). Le fond du rendu a en réalité un léger dégradé/vignette
+(visible sur la capture du client, coin haut-droit), donc un point unique
+ne couvrait pas toute sa variation. Remplacé par la moyenne des 4 coins de
+l'image, avec un seuil et un fondu de détourage légèrement plus généreux
+(26→34 et 20→30) pour couvrir cette variation sans manger les couleurs
+(plus saturées et plus sombres) des matériaux eux-mêmes.
+
+**Fin du scrub continu, retour à une animation déclenchée** : lier
+`currentTime` en continu à la position de scroll faisait dépendre la
+vitesse perçue de l'animation de la vitesse à laquelle le client
+scrollait — un scroll rapide "saute" des frames, ce qui ne peut jamais
+paraître fluide, quelle que soit la qualité du seek. Remplacé par une
+ligne de déclenchement unique (`THRESHOLD_VH`, 60% de la hauteur d'écran) :
+la franchir en descendant lance le dépliage, la refranchir en remontant
+lance le repliement — chacun à sa propre durée fixe (1150ms / 950ms),
+totalement indépendante de la vitesse de scroll. Différence de technique
+entre les deux sens, choisie pour la fluidité : le dépliage doit faire
+reculer la vidéo (aucun navigateur ne sait le faire nativement), donc
+scrub manuel chaîné sur `seeked` comme dans les rounds précédents ; le
+repliement, lui, avance dans le sens naturel d'enregistrement de la
+vidéo, donc lecture native (`video.play()`, `playbackRate` accéléré) —
+intrinsèquement fluide puisque gérée par le décodeur, même principe que
+le sens "avant" du scroll dans `Hero.tsx`.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+scénario Playwright simulant un scroll normal (pas de saut instantané) à
+travers la ligne de déclenchement dans les deux sens : les légendes
+passent bien de masquées à visibles en descendant, puis de visibles à
+masquées en remontant — confirmant le déclenchement directionnel plutôt
+qu'un lien continu à la position ; régression complète sur les 10 routes
+sans nouvelle erreur. La fluidité perçue réelle du dépliage/repliement
+(qualité du seek et de la lecture accélérée) reste à confirmer côté
+client, cette fois sur un mécanisme dont la vitesse ne dépend plus du
+geste de scroll.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de

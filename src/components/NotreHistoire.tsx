@@ -48,20 +48,44 @@ import { motion, useReducedMotion } from "framer-motion";
  * n'est redemandé que lorsque le précédent est terminé (`!video.seeking`)
  * — c'est ce qui évitait déjà les sauts brutaux dans la version "snap", ici
  * généralisé à un scrub continu plutôt qu'à une durée fixe.
+ *
+ * Cinquième retour, sur cette même version "scrub continu" : "je ne veux
+ * pas que le slide gère la vitesse de l'animation" — lier `currentTime` à
+ * la position de scroll fait dépendre la vitesse perçue de la vitesse à
+ * laquelle le client scrolle (un flick rapide saute des frames), ce qui
+ * ne peut jamais paraître fluide. Retour à une animation déclenchée (pas
+ * liée en continu), mais cette fois à son propre rythme fixe, indépendant
+ * du scroll : descendre dans la section déclenche le dépliage une fois,
+ * remonter au-dessus déclenche le repliement dans l'autre sens — exactement
+ * "je descends, ça se lance ; je remonte, ça se lance dans l'autre sens".
+ * Le dépliage (à rebours, décroissant) reste un scrub manuel chaîné sur
+ * `seeked` (aucun navigateur ne lit une vidéo à l'envers nativement) sur
+ * une durée fixe et généreuse (pas un "snap" de 650ms). Le repliement, lui,
+ * va dans le sens naturel d'enregistrement de la vidéo (croissant) : on
+ * peut donc utiliser `video.play()` natif (accéléré via `playbackRate`),
+ * intrinsèquement fluide puisque géré par le décodeur — même technique que
+ * le sens "avant" du scroll dans Hero.tsx.
+ *
+ * Sixième retour : un petit fragment du fond (coin haut-gauche) n'était pas
+ * détouré — la couleur de fond a un léger dégradé/vignette (rendu studio),
+ * un seul pixel de coin échantillonné ne suffisait pas. La couleur de
+ * référence est maintenant la moyenne des 4 coins, avec un seuil et un
+ * fondu plus généreux pour couvrir la variation du dégradé.
  */
 
 const MATERIALS_VIDEO_URL = "/api/materials-video";
 // Généré à l'endroit (les 6 matériaux glissent les uns vers les autres
 // jusqu'à former un seul bloc) ; on la joue à l'envers, du dernier frame
 // (bloc assemblé, l'état de repos) vers le premier (matériaux écartés,
-// l'état "déplié"), en continu au fil du scroll.
+// l'état "déplié").
 const VIDEO_DURATION = 4;
-// Fenêtre de scroll sur laquelle la séparation se joue : 0 quand le haut
-// du bloc matériaux est encore bas dans le viewport (à peine visible), 1
-// une fois remonté vers le tiers supérieur — un défilement normal, sans
-// pin ni scroll-jacking, juste le passage naturel de la section à l'écran.
-const REVEAL_START_VH = 0.85;
-const REVEAL_END_VH = 0.35;
+// Ligne de déclenchement unique : le haut du bloc matériaux doit remonter
+// au-dessus de cette fraction de la hauteur d'écran. En descendant, la
+// franchir déclenche le dépliage ; en remontant, la refranchir déclenche
+// le repliement — jamais de scroll-jacking, juste une ligne de passage.
+const THRESHOLD_VH = 0.6;
+const EXPLODE_MS = 1150;
+const REGROUP_MS = 950;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -145,11 +169,11 @@ function FeatureIcon({ name }: { name: (typeof FEATURES)[number]["icon"] }) {
 /**
  * Le lecteur vidéo (invisible, `opacity-0`) sert uniquement de source de
  * frames décodées ; c'est le `<canvas>` superposé qui est réellement
- * affiché, une fois le fond détouré. `currentTime` suit en continu la
- * position de scroll (voir `REVEAL_START_VH`/`REVEAL_END_VH`) : jamais de
- * durée fixe, jamais deux seeks en vol en même temps (`!video.seeking`),
- * donc jamais de saut brutal, dans un sens comme dans l'autre. Les
- * légendes suivent la même logique continue et réversible.
+ * affiché, une fois le fond détouré. L'animation est déclenchée par le
+ * franchissement de `THRESHOLD_VH`, pas par la position de scroll en
+ * continu : dépliage (scrub arrière chaîné sur `seeked`) en descendant,
+ * repliement (lecture native accélérée) en remontant — chacun à sa propre
+ * durée fixe, indépendante de la vitesse de scroll.
  */
 function MaterialsShowcase() {
   const prefersReducedMotion = useReducedMotion();
@@ -181,11 +205,30 @@ function MaterialsShowcase() {
       const data = frame.data;
 
       if (!keyColorRef.current) {
-        keyColorRef.current = [data[0], data[1], data[2]];
+        // Moyenne des 4 coins plutôt qu'un seul pixel : le fond du rendu a
+        // un léger dégradé/vignette, un point unique laissait un fragment
+        // non détouré dans un coin.
+        const w = canvas.width;
+        const h = canvas.height;
+        const corners = [
+          0,
+          (w - 1) * 4,
+          (h - 1) * w * 4,
+          ((h - 1) * w + (w - 1)) * 4,
+        ];
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (const idx of corners) {
+          r += data[idx];
+          g += data[idx + 1];
+          b += data[idx + 2];
+        }
+        keyColorRef.current = [r / corners.length, g / corners.length, b / corners.length];
       }
       const [kr, kg, kb] = keyColorRef.current;
-      const threshold = 26;
-      const feather = 20;
+      const threshold = 34;
+      const feather = 30;
 
       for (let i = 0; i < data.length; i += 4) {
         const dr = data[i] - kr;
@@ -229,45 +272,122 @@ function MaterialsShowcase() {
       };
     }
 
-    const getProgress = () => {
-      const rect = container.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const start = vh * REVEAL_START_VH;
-      const end = vh * REVEAL_END_VH;
-      return Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
-    };
+    let cancelled = false;
+    let phase: "grouped" | "exploding" | "exploded" | "regrouping" = "grouped";
+    let lastScrollY = window.scrollY;
+    let playRafId: number | null = null;
+    let hardStop: ReturnType<typeof setTimeout> | null = null;
 
-    let rafId: number | null = null;
-
-    const tick = () => {
-      const progress = getProgress();
-      const targetTime = VIDEO_DURATION * (1 - progress);
-
-      // On ne redemande un seek que si le précédent est bien terminé —
-      // c'est ce qui garantit un mouvement lisse plutôt que des sauts
-      // (voir commentaire de fichier).
-      if (!video.seeking && Math.abs(targetTime - video.currentTime) > 0.015) {
-        try {
-          video.currentTime = targetTime;
-        } catch {
-          // Vidéo pas encore prête (métadonnées non chargées) : on
-          // réessaiera à la frame suivante.
-        }
+    const stopPlayLoop = () => {
+      if (playRafId !== null) {
+        cancelAnimationFrame(playRafId);
+        playRafId = null;
       }
-
-      setUnfolded((prev) => {
-        const next = progress > 0.9;
-        return prev === next ? prev : next;
-      });
-
-      rafId = requestAnimationFrame(tick);
     };
-    rafId = requestAnimationFrame(tick);
+
+    // Dépliage : la vidéo doit reculer (assemblée -> écartée), ce
+    // qu'aucun navigateur ne sait faire nativement — scrub manuel chaîné
+    // sur `seeked` (jamais deux seeks en vol), sur une durée fixe.
+    const runExplode = () => {
+      phase = "exploding";
+      const startTime = video.currentTime;
+      const start = performance.now();
+      if (hardStop) clearTimeout(hardStop);
+      hardStop = setTimeout(() => {
+        video.removeEventListener("seeked", onExplodeSeeked);
+        phase = "exploded";
+        setUnfolded(true);
+      }, EXPLODE_MS + 1200);
+
+      const step = () => {
+        if (cancelled) return;
+        const elapsed = performance.now() - start;
+        const t = Math.min(1, elapsed / EXPLODE_MS);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const target = t >= 1 ? 0 : startTime * (1 - eased);
+        try {
+          video.currentTime = target;
+        } catch {
+          // ignore, on retentera au prochain "seeked"
+        }
+      };
+
+      const onExplodeSeeked = () => {
+        if (cancelled) return;
+        drawFrame();
+        const elapsed = performance.now() - start;
+        if (elapsed < EXPLODE_MS) {
+          step();
+        } else {
+          video.removeEventListener("seeked", onExplodeSeeked);
+          if (hardStop) clearTimeout(hardStop);
+          phase = "exploded";
+          setUnfolded(true);
+        }
+      };
+      video.addEventListener("seeked", onExplodeSeeked);
+      step();
+    };
+
+    // Repliement : la vidéo avance dans son sens naturel d'enregistrement
+    // (écartée -> assemblée) — lecture native accélérée, intrinsèquement
+    // fluide puisque gérée par le décodeur (même principe que le sens
+    // "avant" du scroll dans Hero.tsx).
+    const runRegroup = () => {
+      phase = "regrouping";
+      setUnfolded(false);
+      const remaining = Math.max(VIDEO_DURATION - video.currentTime, 0.1);
+      video.playbackRate = Math.min(Math.max(remaining / (REGROUP_MS / 1000), 1), 8);
+      video.play().catch(() => {});
+
+      const finish = () => {
+        stopPlayLoop();
+        video.pause();
+        video.playbackRate = 1;
+        try {
+          video.currentTime = VIDEO_DURATION;
+        } catch {
+          // ignore
+        }
+        drawFrame();
+        phase = "grouped";
+      };
+
+      const loop = () => {
+        if (cancelled) return;
+        drawFrame();
+        if (video.paused || video.currentTime >= VIDEO_DURATION - 0.03) {
+          finish();
+          return;
+        }
+        playRafId = requestAnimationFrame(loop);
+      };
+      playRafId = requestAnimationFrame(loop);
+    };
+
+    const checkThreshold = () => {
+      if (!container.isConnected) return;
+      const rect = container.getBoundingClientRect();
+      const scrollingDown = window.scrollY > lastScrollY;
+      const scrollingUp = window.scrollY < lastScrollY;
+      lastScrollY = window.scrollY;
+      const pastThreshold = rect.top < window.innerHeight * THRESHOLD_VH;
+
+      if (pastThreshold && scrollingDown && phase === "grouped") {
+        runExplode();
+      } else if (!pastThreshold && scrollingUp && phase === "exploded") {
+        runRegroup();
+      }
+    };
+    window.addEventListener("scroll", checkThreshold, { passive: true });
 
     return () => {
+      cancelled = true;
       video.removeEventListener("loadedmetadata", onLoaded);
       video.removeEventListener("seeked", onSeeked);
-      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", checkThreshold);
+      if (hardStop) clearTimeout(hardStop);
+      stopPlayLoop();
     };
   }, [prefersReducedMotion, drawFrame]);
 
