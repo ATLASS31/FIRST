@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
@@ -118,6 +119,25 @@ import { motion, useReducedMotion } from "framer-motion";
  * quel que soit le nombre de lignes du texte voisin. Épaisseur également
  * augmentée (`w-px` → `w-[1.5px]`, opacité `/50` → `/60`) — "un peu plus
  * grasses, sans trop".
+ *
+ * Retour client : "pas toutes [les lignes] sont grasses" — certaines
+ * paraissaient plus fines que d'autres malgré une classe identique.
+ * Cause : `w-[1.5px]` est une largeur fractionnaire ; selon la position
+ * horizontale exacte de chaque ligne (elle-même dépendante du texte de sa
+ * colonne), le navigateur arrondit ce demi-pixel différemment d'une
+ * colonne à l'autre — certaines bordent un pixel entier net, d'autres
+ * tombent entre deux pixels et sont anti-aliasées, donc visuellement plus
+ * fines/floues. Remplacé par `w-[2px]`, une largeur entière : rendu net
+ * et identique sur les 5 lignes quelle que soit leur position.
+ *
+ * Retour client : au rechargement de page (cache froid), la zone vidéo
+ * reste vide un court instant avant que la vidéo n'apparaisse — le canvas
+ * n'est dessiné qu'à l'événement `loadeddata`, qui attend que le fichier
+ * (1,4 Mo) télécharge suffisamment. Corrigé avec une image statique
+ * (frame 0 pré-détourée hors-ligne, même seuil chroma-key que `drawSource`)
+ * affichée sous la vidéo/le canvas dans l'ordre du DOM : elle occupe
+ * l'espace dès le premier rendu, sans état ni JS supplémentaire — voir
+ * `<Image src="/materials-poster.webp" .../>` plus bas.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -557,6 +577,22 @@ function MaterialsShowcase() {
         className="relative -mx-6 lg:mx-0"
         style={{ aspectRatio: videoAspect ? String(videoAspect) : "16 / 9" }}
       >
+        {/* Image statique (frame 0 de la vidéo, détourée hors-ligne au
+            même seuil chroma-key) affichée dès le premier rendu, sous la
+            vidéo/le canvas dans l'ordre du DOM. Sans elle, la zone reste
+            vide le temps que la vidéo (1,4 Mo) télécharge assez pour que
+            `loadeddata` se déclenche — visible surtout à froid (rechargement
+            de page, cache vide) : "au tout début il n'y a pas la vidéo puis
+            elle apparaît après". Le canvas la recouvre dès que la vraie
+            première frame est dessinée par-dessus, sans code de transition
+            supplémentaire nécessaire. */}
+        <Image
+          src="/materials-poster.webp"
+          alt=""
+          aria-hidden
+          fill
+          className="object-contain"
+        />
         <video
           ref={explodeVideoRef}
           src={EXPLODE_VIDEO_URL}
@@ -605,7 +641,7 @@ function MaterialsShowcase() {
               // nombre de lignes du texte voisin.
               <span
                 aria-hidden
-                className="absolute -left-2 top-2 hidden h-10 w-[1.5px] bg-laiton/60 lg:block"
+                className="absolute -left-2 top-2 hidden h-10 w-[2px] bg-laiton/60 lg:block"
               />
             )}
             <p className="eyebrow text-[11px] text-encre-douce">

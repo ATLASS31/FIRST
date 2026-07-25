@@ -244,18 +244,22 @@ export default function Hero() {
           ),
           1
         );
-        // Retour client : le mouvement restait "tellement léger qu'on le
-        // perçoit pas". La fenêtre de scroll (WAVE_REVEAL_START/END) ne
-        // change pas, mais tout se complète maintenant sur une fraction
-        // bien plus courte de cette fenêtre (montée sur 18% au lieu de
-        // 35%, glissement sur 55% au lieu de 100%) et le glissement
-        // horizontal a une amplitude quasiment doublée (26% au lieu de
-        // 14%) : à vitesse de scroll égale, la vague parcourt sa
-        // trajectoire beaucoup plus vite et sur une plus grande distance,
-        // donc le mouvement devient net et perceptible.
-        const opacity = Math.min(waveProgress / 0.1, 1);
-        const riseY = (1 - Math.min(waveProgress / 0.18, 1)) * 100;
-        const driftX = -(1 - Math.min(waveProgress / 0.55, 1)) * 26;
+        // Retour client, prise 2 : accélérer la fenêtre (essayé au round
+        // précédent) ne suffisait pas — le glissement se terminait tôt puis
+        // la vague restait immobile pendant le reste du scroll, donc rien
+        // à percevoir comme "mouvement" une fois l'apparition passée. Ce
+        // que le client demande, c'est un vrai glissement vers la gauche,
+        // visible en continu tant qu'on scrolle dans la fenêtre — pas un
+        // réglage fin puis un arrêt. Fondu et montée se terminent vite
+        // (apparition nette), mais le glissement horizontal, lui, dure
+        // maintenant tout le long de `waveProgress` (0 → 1) au lieu de
+        // s'arrêter à 55% : la vague continue de glisser vers la gauche
+        // (X de plus en plus négatif) sur toute la fenêtre de scroll, avec
+        // une amplitude augmentée (34% au lieu de 26%) pour que ce
+        // glissement soit sans ambiguïté perceptible.
+        const opacity = Math.min(waveProgress / 0.08, 1);
+        const riseY = (1 - Math.min(waveProgress / 0.2, 1)) * 100;
+        const driftX = -waveProgress * 34;
         waveRef.current.style.opacity = String(opacity);
         waveRef.current.style.transform = `translate(${driftX}%, ${riseY}%)`;
       }

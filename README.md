@@ -3228,6 +3228,71 @@ réseau au CDN bloqué) empêche toute vérification visuelle directe de la
 lecture vidéo — seules les vérifications géométriques/DOM/timing sont
 possibles ici.
 
+## Notre histoire : poster instantané, lignes vraiment identiques, vraie vague vers la gauche
+
+Trois retours après le round précédent : un flash "pas de vidéo" au
+rechargement de page dans "Notre histoire", des lignes divisoires qui, bien
+qu'au même niveau désormais, n'avaient pas toutes la même épaisseur
+visuelle, et la vague sous le hero jugée toujours sans mouvement perceptible
+malgré le réglage précédent (vitesse accrue mais mouvement encore jugé
+absent).
+
+**Flash au chargement à froid** : `MaterialsShowcase` ne dessine le canvas
+qu'à l'événement `loadeddata` de la vidéo de dépliage — avant ça, la zone
+est vide (aucun placeholder). Avec un cache navigateur froid (rechargement
+de page), le fichier (1,4 Mo) met un instant à télécharger assez pour
+déclencher cet événement, d'où la zone visiblement vide un court instant
+avant l'apparition de la vidéo. Corrigé en extrayant hors-ligne la première
+frame de `materials-explode.mp4` (via `ffmpeg-static`, installé
+temporairement puis désinstallé comme lors des rounds précédents), détourée
+avec le même seuil chroma-key que celui utilisé en direct dans le composant
+(couleur de fond mesurée par échantillonnage des 4 coins de la frame, comme
+`drawSource`), exportée en WebP avec alpha (16 Ko, `public/materials-poster.webp`).
+Affichée via `next/image` en position absolue, sous les `<video>`/`<canvas>`
+dans l'ordre du DOM : elle occupe l'espace dès le tout premier rendu, sans
+état ni logique JS supplémentaire — le canvas (transparent tant qu'il n'a
+rien dessiné) la recouvre naturellement dès que la vraie première frame est
+prête.
+
+**Lignes pas toutes aussi épaisses** : cause différente du niveau vertical
+déjà corrigé — `w-[1.5px]` est une largeur fractionnaire, et sa position
+horizontale exacte varie légèrement d'une colonne à l'autre selon la
+largeur du texte voisin. Le navigateur arrondit ce demi-pixel différemment
+selon où il tombe : certaines lignes bordent un pixel entier net, d'autres
+tombent entre deux pixels et sont anti-aliasées, donc perçues plus fines.
+Remplacé par une largeur entière (`w-[2px]`) — rendu net et identique sur
+les 5 lignes, vérifié par mesure Playwright (`width` et `top` identiques
+sur les 5).
+
+**Vague : "le mouvement de vague vers la gauche" manquant** : le réglage du
+round précédent accélérait la trajectoire mais la faisait *aussi* se
+terminer plus tôt dans la fenêtre de scroll — une fois le glissement
+complété (à 55% de la fenêtre), la vague restait statique sur le reste du
+scroll, donc plus rien à percevoir comme "mouvement" passé ce point. Or
+c'est précisément un glissement continu vers la gauche que le client
+demandait, visible tant qu'on scrolle. Le glissement horizontal
+(`driftX`) dure maintenant toute la fenêtre de `waveProgress` (0 → 1) au
+lieu de s'arrêter à 55%, avec une amplitude augmentée (34% au lieu de
+26%) — la vague continue de glisser vers la gauche (translation X de plus
+en plus négative) sur tout le scroll restant, au lieu de se figer après un
+court réglage. Vérifié par échantillonnage du `transform` à 7 positions de
+scroll : la translation X passe de -101px à -607px entre 60% et 100% de la
+fenêtre, un glissement continu et sans ambiguïté au lieu d'un arrêt
+prématuré.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+`git status` sur `package.json`/`package-lock.json` vide après
+désinstallation de `ffmpeg-static` (aucune trace résiduelle) ; Playwright
+confirmant l'image poster présente et dimensionnée dès `domcontentloaded`
+(avant tout scroll ou attente réseau) ; les 5 lignes rapportant un `top` et
+une `width` identiques ; l'échantillonnage du wave-reveal confirmant le
+glissement continu jusqu'à la fin du scroll ; régression complète sur les
+10 routes sans nouvelle erreur console (hors 502/403/tunnel déjà connus,
+propres au blocage réseau de ce bac à sable pour le CDN vidéo). Comme
+toujours, ce bac à sable (Chromium sans décodeur H.264, CDN vidéo bloqué)
+empêche toute vérification visuelle directe de la lecture des vidéos —
+vérifications géométriques/DOM/timing uniquement.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
