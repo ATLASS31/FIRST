@@ -51,15 +51,36 @@ import { motion, useReducedMotion } from "framer-motion";
  * ici, même la nouvelle auto-hébergée. Les navigateurs réels (Chrome,
  * Safari, Firefox grand public) embarquent tous un décodeur H.264 et ne
  * sont pas concernés.
+ *
+ * Retour client : bug de désynchronisation — un scroll haut/bas erratique
+ * pouvait laisser l'affichage bloqué "compact" (matériaux groupés) alors
+ * que la position de scroll réelle aurait dû montrer les matériaux
+ * séparés. Cause : le déclenchement précédent réagissait au *sens* du
+ * dernier scroll (`scrollingDown`/`scrollingUp`) plutôt qu'à la position
+ * actuelle, et ignorait toute inversion de sens pendant qu'une animation
+ * était en cours — une fois lancée, une passe se terminait toujours dans
+ * son sens d'origine, même si l'utilisateur avait entre-temps rebroussé
+ * chemin. Remplacé par un modèle auto-correcteur : à chaque vérification,
+ * l'état désiré ("groupé" ou "déplié") est recalculé uniquement à partir
+ * de la position actuelle par rapport à `THRESHOLD_VH`, jamais du sens du
+ * dernier scroll. Si l'état désiré ne correspond pas à la phase en cours
+ * — y compris en pleine animation dans le mauvais sens — l'animation en
+ * cours est interrompue et repart immédiatement dans le bon sens. Le
+ * résultat visé correspond donc toujours à la position réelle, quel que
+ * soit l'historique de scroll qui y a mené.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
 const REGROUP_VIDEO_URL = "/api/materials-video";
 // Ligne de déclenchement unique : le haut du bloc matériaux doit remonter
-// au-dessus de cette fraction de la hauteur d'écran. En descendant, la
-// franchir déclenche le dépliage ; en remontant, la refranchir déclenche
-// le repliement.
+// au-dessus de cette fraction de la hauteur d'écran pour être considéré
+// "déplié" ; en dessous, c'est "groupé". Recalculé à chaque vérification,
+// jamais mémorisé comme un franchissement ponctuel.
 const THRESHOLD_VH = 0.6;
+// Vitesse de lecture des deux vidéos : un peu plus rapide que le temps
+// réel pour un effet "woosh" plus net (demande client), sans devenir
+// brutal comme le "snap" à 650ms abandonné plus tôt dans le projet.
+const PLAYBACK_RATE = 1.6;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -298,7 +319,6 @@ function MaterialsShowcase() {
     }
 
     let phase: "grouped" | "exploding" | "exploded" | "regrouping" = "grouped";
-    let lastScrollY = window.scrollY;
     let playRafId: number | null = null;
     let hardStop: ReturnType<typeof setTimeout> | null = null;
     // Budget large : le temps qu'une lecture normale prendrait dans le pire
@@ -331,6 +351,7 @@ function MaterialsShowcase() {
       } catch {
         // ignore
       }
+      explodeVideo.playbackRate = PLAYBACK_RATE;
       explodeVideo.play().catch(() => {});
       hardStop = setTimeout(() => {
         stopPlayLoop();
@@ -374,6 +395,7 @@ function MaterialsShowcase() {
       } catch {
         // ignore
       }
+      regroupVideo.playbackRate = PLAYBACK_RATE;
       regroupVideo.play().catch(() => {});
       hardStop = setTimeout(() => {
         stopPlayLoop();
@@ -403,27 +425,41 @@ function MaterialsShowcase() {
       playRafId = requestAnimationFrame(loop);
     };
 
-    const checkThreshold = () => {
+    // Auto-correcteur : l'état désiré ne dépend que de la position actuelle,
+    // jamais du sens du dernier scroll. Une animation en cours dans le
+    // mauvais sens est interrompue et relancée immédiatement dans le bon —
+    // le résultat correspond donc toujours à la position réelle, quel que
+    // soit l'enchaînement de scrolls qui y a mené (voir commentaire de
+    // fichier).
+    const syncState = () => {
       if (!container.isConnected) return;
       const rect = container.getBoundingClientRect();
-      const scrollingDown = window.scrollY > lastScrollY;
-      const scrollingUp = window.scrollY < lastScrollY;
-      lastScrollY = window.scrollY;
-      const pastThreshold = rect.top < window.innerHeight * THRESHOLD_VH;
+      const desiredExploded = rect.top < window.innerHeight * THRESHOLD_VH;
 
-      if (pastThreshold && scrollingDown && phase === "grouped") {
-        runExplode();
-      } else if (!pastThreshold && scrollingUp && phase === "exploded") {
+      if (desiredExploded) {
+        if (phase === "grouped") {
+          runExplode();
+        } else if (phase === "regrouping") {
+          stopPlayLoop();
+          runExplode();
+        }
+      } else if (phase === "exploded") {
+        runRegroup();
+      } else if (phase === "exploding") {
+        stopPlayLoop();
         runRegroup();
       }
     };
-    window.addEventListener("scroll", checkThreshold, { passive: true });
+    window.addEventListener("scroll", syncState, { passive: true });
+    // Couvre le cas d'un chargement déjà scrollé au-delà du seuil (lien
+    // profond, restauration de position) sans attendre un premier scroll.
+    syncState();
 
     return () => {
       cancelled = true;
       explodeVideo.removeEventListener("loadedmetadata", onExplodeMeta);
       explodeVideo.removeEventListener("loadeddata", onExplodeReady);
-      window.removeEventListener("scroll", checkThreshold);
+      window.removeEventListener("scroll", syncState);
       stopPlayLoop();
       explodeVideo.pause();
       regroupVideo.pause();
@@ -474,8 +510,18 @@ function MaterialsShowcase() {
             initial={{ opacity: 0, y: 14 }}
             animate={unfolded ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
             transition={{ duration: 0.5, delay: 0.1 + i * 0.13, ease: [0.22, 1, 0.36, 1] }}
-            className={i > 0 ? "lg:border-l lg:border-laiton/40 lg:pl-4" : ""}
+            className="relative"
           >
+            {i > 0 && (
+              // Courte ligne dorée centrée verticalement plutôt qu'une
+              // bordure pleine hauteur (jugée trop longue) — un repère
+              // discret entre chaque matériau, pas une séparation
+              // structurelle.
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 hidden h-8 w-px -translate-x-1/2 -translate-y-1/2 bg-laiton/50 lg:block"
+              />
+            )}
             <p className="eyebrow text-[11px] text-encre-douce">
               {String(i + 1).padStart(2, "0")}
             </p>

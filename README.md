@@ -2992,6 +2992,71 @@ côté client — cette fois avec de bien meilleures chances, puisque les
 deux directions sont maintenant une lecture native simple, sans aucune
 approximation.
 
+## Notre histoire : bug de désynchronisation, compression vidéo, polish
+
+Retour client : un vrai bug ("bloqué en mode compact" en scrollant de
+façon erratique haut/bas), une demande de compression vidéo, un souhait
+de vitesse "woosh", et les lignes du round précédent jugées trop longues.
+
+**Bug de désynchronisation, cause et correction** : le déclenchement
+réagissait au *sens* du dernier scroll (`scrollingDown`/`scrollingUp`)
+et ignorait toute inversion de sens pendant qu'une animation était en
+cours — une fois lancée, une passe se terminait toujours dans son sens
+d'origine même si l'utilisateur avait entre-temps rebroussé chemin,
+laissant l'affichage dans un état qui ne correspondait plus à la position
+réelle de scroll, sans qu'aucun scroll ultérieur ne puisse le corriger
+(les conditions de déclenchement ne correspondaient plus à l'état bloqué).
+Remplacé par un modèle auto-correcteur (`syncState`) : l'état désiré
+("groupé" ou "déplié") est recalculé à chaque vérification uniquement à
+partir de la position actuelle par rapport à `THRESHOLD_VH`, jamais du
+sens du dernier scroll. Si l'état désiré ne correspond pas à la phase en
+cours — y compris en pleine animation dans le mauvais sens — l'animation
+en cours est interrompue (`stopPlayLoop()`) et relancée immédiatement
+dans le bon sens. Appelé aussi une fois au montage (pas seulement sur
+`scroll`) pour couvrir le cas d'un chargement déjà scrollé au-delà du
+seuil. Testé avec un scénario Playwright simulant un enchaînement
+descend→remonte→redescend erratique : dans les deux tests précédents
+(scroll graduel simple), le bug ne se manifestait pas — il fallait
+spécifiquement une inversion de sens *pendant* l'animation pour le
+déclencher, d'où sa découverte tardive.
+
+**Vidéo compressée** : `public/videos/materials-explode.mp4` passe de
+4,46 Mo à 336 Ko (−93%) — installation temporaire de `ffmpeg-static`
+(`npm install --no-save`, désinstallé après usage, `package.json`
+inchangé) pour disposer d'un vrai binaire ffmpeg dans ce sandbox qui n'en
+a pas nativement. Vidéo source inspectée : 2560×1440, H.264 High profile,
+24fps, 8,9 Mbps, piste audio AAC inutile (la vidéo est toujours coupée
+côté lecteur). Ré-encodée en 1280×720 (bien au-delà de la taille
+d'affichage réelle, jamais plus de ~900px de large sur le site), CRF 23,
+preset `slow`, audio retiré, `+faststart`. Frame extraite et vérifiée
+visuellement (voir capture envoyée) : qualité conservée, pas d'artefact
+visible. Seule cette vidéo pouvait être compressée — celle du repliement
+reste hébergée sur le CDN du client, hors de portée d'un ré-encodage
+local.
+
+**Vitesse "woosh"** : `playbackRate = 1.6` appliqué aux deux vidéos au
+déclenchement (ni le "snap" à durée fixe abandonné plus tôt, ni la vitesse
+naturelle jugée molle) — un compromis entre franc et brutal.
+
+**Lignes courtes et centrées** : la bordure pleine hauteur (`border-l`)
+du round précédent, jugée trop longue, est remplacée par un court trait
+(`h-8`, 32px) positionné en `absolute`, centré verticalement sur le bloc
+via `top-1/2 -translate-y-1/2` — un repère discret entre chaque matériau
+plutôt qu'une séparation structurelle.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+scénario de scroll erratique (descend, remonte avant la fin de
+l'animation, attend, puis redescend) confirmant que l'état final
+correspond toujours à la position réelle de scroll, y compris après
+interruption ; lignes mesurées à l'exécution — 32px de haut, 1px de large,
+laiton 50% d'opacité, positionnées entre chaque matériau (pas sur le
+premier) ; capture d'écran conforme ; régression complète sur les 10
+routes sans nouvelle erreur ; `package.json`/`package-lock.json` non
+modifiés par l'installation temporaire de `ffmpeg-static`. La fluidité
+perçue réelle (vitesse, résultat de la compression) reste à confirmer
+côté client — toujours invérifiable ici, ce sandbox ne dispose d'aucun
+décodeur H.264 (voir round précédent).
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
@@ -3004,11 +3069,6 @@ approximation.
   l'exigerait, quelle que soit la technique de lecture/dessin utilisée. Un
   ré-encodage/upscale IA a été tenté et a empiré le rendu — la vraie
   solution est un nouveau tournage/rendu en plus haute résolution.
-- **Vidéo "dépliage" de Notre histoire non compressée** :
-  `public/videos/materials-explode.mp4` (4,4 Mo) est le fichier fourni par
-  le client, copié tel quel — aucun outil de compression/ré-encodage vidéo
-  disponible dans cet environnement (pas de `ffmpeg`). À passer dans un
-  vrai encodeur avant mise en prod si la taille pose problème.
 - **Rapatrier les médias** (hero, visuels de gammes) : `src/lib/media.ts`
   et `src/lib/gammes.ts` référencent des images/vidéo générées (Higgsfield
   CDN, `d8j0ntlcm91z4.cloudfront.net`) — ce sont des liens de génération,
