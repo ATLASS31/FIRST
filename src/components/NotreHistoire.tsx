@@ -71,6 +71,23 @@ import { motion, useReducedMotion } from "framer-motion";
  * un seul pixel de coin échantillonné ne suffisait pas. La couleur de
  * référence est maintenant la moyenne des 4 coins, avec un seuil et un
  * fondu plus généreux pour couvrir la variation du dégradé.
+ *
+ * Septième retour, mobile : le bloc matériaux pouvait encore grandir, trop
+ * d'écart vertical avec le texte au-dessus, les 4 icônes de preuve mal
+ * centrées, et surtout — le repliement (natif, `video.play()`) est
+ * "parfait, bien fluide", mais le dépliage (scrub arrière manuel) reste
+ * saccadé, le client l'a lui-même correctement diagnostiqué : *"tu as dû
+ * inverser la vidéo, ça doit faire bug."* Exact — aucun navigateur ne
+ * décode une vidéo à l'envers en temps réel, donc chaque `currentTime`
+ * décroissant redemande un nouveau décodage, plus lent qu'une lecture
+ * native. Solution : un cache de frames déjà décodées (`createImageBitmap`,
+ * même technique que le scroll arrière de `Hero.tsx`), rempli
+ * opportunément à chaque lecture avant de la vidéo (repliement réel, mais
+ * aussi une "pré-chauffe" invisible au chargement — lecture accélérée en
+ * tâche de fond avant toute interaction, pour que même le tout premier
+ * dépliage puisse piocher dedans). Le dépliage tente d'abord le cache
+ * (dessin instantané, aucune attente de décodeur) et ne retombe sur un
+ * seek live que pour les zones pas encore en cache.
  */
 
 const MATERIALS_VIDEO_URL = "/api/materials-video";
@@ -86,6 +103,12 @@ const VIDEO_DURATION = 4;
 const THRESHOLD_VH = 0.6;
 const EXPLODE_MS = 1150;
 const REGROUP_MS = 950;
+// Granularité du cache de frames (même valeur que Hero.tsx, déjà éprouvée
+// sur ce site pour le même problème) : assez fin pour paraître fluide sur
+// les 4s de la vidéo, assez grossier pour rester capturable par les
+// événements `timeupdate` du navigateur.
+const CACHE_BUCKET = 0.2;
+const bucketOf = (t: number) => Math.round(t / CACHE_BUCKET);
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },
@@ -183,27 +206,28 @@ function MaterialsShowcase() {
   const [unfolded, setUnfolded] = useState(false);
   const keyColorRef = useRef<[number, number, number] | null>(null);
   const keyingDisabledRef = useRef(false);
+  const frameCacheRef = useRef<Map<number, ImageBitmap>>(new Map());
+  const capturingRef = useRef(false);
 
-  const drawFrame = useCallback(() => {
-    const video = videoRef.current;
+  // Dessine n'importe quelle source image (frame vidéo live OU bitmap mis
+  // en cache) sur le canvas, avec le même détourage — factorisé pour que
+  // le cache et la vidéo live partagent exactement le même rendu.
+  const drawSource = useCallback((source: CanvasImageSource, srcW: number, srcH: number) => {
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0) return;
+    if (!canvas || srcW === 0) return;
 
     // Le canvas est dessiné à la taille d'affichage réelle (× ratio
     // d'écran, plafonné à 2), jamais à la résolution native de la vidéo :
     // recalculer des centaines de milliers de pixels pour le détourage à
     // chaque frame faisait ramer l'animation sur mobile ("saccadé"), alors
     // que l'image affichée est bien plus petite que la source. Le rapport
-    // largeur/hauteur natif de la vidéo est conservé (`object-contain` en
+    // largeur/hauteur natif de la source est conservé (`object-contain` en
     // CSS gère déjà le cadrage), seule la résolution baisse.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const cssWidth = canvas.getBoundingClientRect().width || video.videoWidth;
-    const targetWidth = Math.max(
-      1,
-      Math.min(video.videoWidth, Math.round(cssWidth * dpr))
-    );
-    const scale = targetWidth / video.videoWidth;
-    const targetHeight = Math.max(1, Math.round(video.videoHeight * scale));
+    const cssWidth = canvas.getBoundingClientRect().width || srcW;
+    const targetWidth = Math.max(1, Math.min(srcW, Math.round(cssWidth * dpr)));
+    const scale = targetWidth / srcW;
+    const targetHeight = Math.max(1, Math.round(srcH * scale));
 
     if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
       canvas.width = targetWidth;
@@ -212,7 +236,7 @@ function MaterialsShowcase() {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
 
     if (keyingDisabledRef.current) return;
 
@@ -272,9 +296,64 @@ function MaterialsShowcase() {
     }
   }, []);
 
+  const drawFrame = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0) return;
+    drawSource(video, video.videoWidth, video.videoHeight);
+  }, [drawSource]);
+
+  // Dessine depuis le cache si une frame proche du temps demandé a déjà
+  // été capturée (recherche ±2 buckets, comme Hero.tsx) ; renvoie false
+  // sinon pour laisser l'appelant retomber sur un seek live.
+  const drawCachedFrame = useCallback(
+    (time: number) => {
+      const video = videoRef.current;
+      if (!video || video.videoWidth === 0) return false;
+      const bucket = bucketOf(time);
+      let bitmap = frameCacheRef.current.get(bucket);
+      for (let d = 1; d <= 2 && !bitmap; d++) {
+        bitmap = frameCacheRef.current.get(bucket - d) || frameCacheRef.current.get(bucket + d);
+      }
+      if (!bitmap) return false;
+      drawSource(bitmap, bitmap.width, bitmap.height);
+      return true;
+    },
+    [drawSource]
+  );
+
+  // Capture opportuniste : ne bloque jamais rien, se contente de garnir le
+  // cache pendant que la vidéo joue déjà vers l'avant (repliement réel ou
+  // pré-chauffe en tâche de fond) — gratuit, le décodeur a de toute façon
+  // déjà cette frame sous la main pour l'affichage natif.
+  const maybeCaptureFrame = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || typeof window.createImageBitmap !== "function") return;
+    if (capturingRef.current || video.paused || video.seeking) return;
+    const bucket = bucketOf(video.currentTime);
+    if (frameCacheRef.current.has(bucket)) return;
+    capturingRef.current = true;
+    window
+      .createImageBitmap(video)
+      .then((bitmap) => {
+        if (frameCacheRef.current.has(bucket)) {
+          bitmap.close();
+        } else {
+          frameCacheRef.current.set(bucket, bitmap);
+        }
+      })
+      .catch(() => {
+        // Pas grave : ce bucket restera absent, l'appelant retombera sur
+        // le seek live s'il tombe dessus.
+      })
+      .finally(() => {
+        capturingRef.current = false;
+      });
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     const container = containerRef.current;
+    const frameCache = frameCacheRef.current;
     if (!video || !container) return;
 
     const onLoaded = () => {
@@ -282,15 +361,14 @@ function MaterialsShowcase() {
     };
     video.addEventListener("loadedmetadata", onLoaded);
 
-    const onSeeked = () => drawFrame();
-    video.addEventListener("seeked", onSeeked);
-
     if (prefersReducedMotion) {
-      const onFirstSeeked = () => setUnfolded(true);
+      const onFirstSeeked = () => {
+        drawFrame();
+        setUnfolded(true);
+      };
       video.addEventListener("seeked", onFirstSeeked, { once: true });
       return () => {
         video.removeEventListener("loadedmetadata", onLoaded);
-        video.removeEventListener("seeked", onSeeked);
         video.removeEventListener("seeked", onFirstSeeked);
       };
     }
@@ -300,6 +378,8 @@ function MaterialsShowcase() {
     let lastScrollY = window.scrollY;
     let playRafId: number | null = null;
     let hardStop: ReturnType<typeof setTimeout> | null = null;
+    let warmupActive = false;
+    let warmupDone = false;
 
     const stopPlayLoop = () => {
       if (playRafId !== null) {
@@ -308,10 +388,65 @@ function MaterialsShowcase() {
       }
     };
 
+    // Capture continue pendant toute lecture avant (repliement réel ET
+    // pré-chauffe ci-dessous) : garnit le cache utilisé par le dépliage.
+    video.addEventListener("timeupdate", maybeCaptureFrame);
+
+    const onWarmupProgress = () => {
+      if (cancelled) return;
+      if (video.currentTime >= VIDEO_DURATION - 0.05) stopWarmup();
+    };
+
+    const stopWarmup = () => {
+      if (!warmupActive) return;
+      warmupActive = false;
+      warmupDone = true;
+      video.removeEventListener("timeupdate", onWarmupProgress);
+      video.pause();
+      video.playbackRate = 1;
+      try {
+        video.currentTime = VIDEO_DURATION;
+      } catch {
+        // ignore
+      }
+    };
+
+    // Pré-chauffe invisible du cache : lecture avant accélérée en tâche de
+    // fond dès le chargement, avant toute interaction, pour que même le
+    // tout premier dépliage puisse piocher dans des frames déjà décodées.
+    // Le canvas n'est jamais redessiné pendant ce temps (il continue de
+    // montrer l'état "assemblé" déjà affiché) — seule la capture tourne.
+    const startWarmup = () => {
+      if (warmupDone || warmupActive || cancelled) return;
+      warmupActive = true;
+      video.playbackRate = 4;
+      try {
+        video.currentTime = 0;
+      } catch {
+        // ignore
+      }
+      video.addEventListener("timeupdate", onWarmupProgress);
+      video.play().catch(() => {
+        warmupActive = false;
+        video.removeEventListener("timeupdate", onWarmupProgress);
+      });
+    };
+
+    const onFirstSeeked = () => {
+      drawFrame();
+      startWarmup();
+    };
+    video.addEventListener("seeked", onFirstSeeked, { once: true });
+
     // Dépliage : la vidéo doit reculer (assemblée -> écartée), ce
-    // qu'aucun navigateur ne sait faire nativement — scrub manuel chaîné
-    // sur `seeked` (jamais deux seeks en vol), sur une durée fixe.
+    // qu'aucun navigateur ne sait faire nativement en temps réel. On tente
+    // d'abord le cache de frames (dessin instantané, pas d'attente de
+    // décodeur — c'est ce qui corrige le "saccadé" que le client a
+    // remonté) et on ne retombe sur un seek live que pour les zones pas
+    // encore en cache, en chaînant sur `seeked` (jamais deux seeks en
+    // vol) comme dans la version précédente.
     const runExplode = () => {
+      stopWarmup();
       phase = "exploding";
       const startTime = video.currentTime;
       const start = performance.now();
@@ -322,31 +457,48 @@ function MaterialsShowcase() {
         setUnfolded(true);
       }, EXPLODE_MS + 1200);
 
+      let liveSeekPending = false;
+
+      const finishIfDone = (elapsed: number) => {
+        if (elapsed < EXPLODE_MS) return false;
+        video.removeEventListener("seeked", onExplodeSeeked);
+        if (hardStop) clearTimeout(hardStop);
+        phase = "exploded";
+        setUnfolded(true);
+        return true;
+      };
+
       const step = () => {
         if (cancelled) return;
         const elapsed = performance.now() - start;
+        if (finishIfDone(elapsed)) return;
         const t = Math.min(1, elapsed / EXPLODE_MS);
         const eased = 1 - Math.pow(1 - t, 3);
         const target = t >= 1 ? 0 : startTime * (1 - eased);
+
+        if (drawCachedFrame(target)) {
+          // Déjà en cache : pas d'attente de décodeur, on avance tout de
+          // suite — c'est ce qui rend ce chemin fluide indépendamment de
+          // la vitesse de seek de l'appareil.
+          requestAnimationFrame(step);
+          return;
+        }
+        if (liveSeekPending) return;
+        liveSeekPending = true;
         try {
           video.currentTime = target;
         } catch {
-          // ignore, on retentera au prochain "seeked"
+          liveSeekPending = false;
         }
       };
 
       const onExplodeSeeked = () => {
         if (cancelled) return;
+        liveSeekPending = false;
         drawFrame();
         const elapsed = performance.now() - start;
-        if (elapsed < EXPLODE_MS) {
-          step();
-        } else {
-          video.removeEventListener("seeked", onExplodeSeeked);
-          if (hardStop) clearTimeout(hardStop);
-          phase = "exploded";
-          setUnfolded(true);
-        }
+        if (finishIfDone(elapsed)) return;
+        step();
       };
       video.addEventListener("seeked", onExplodeSeeked);
       step();
@@ -355,8 +507,10 @@ function MaterialsShowcase() {
     // Repliement : la vidéo avance dans son sens naturel d'enregistrement
     // (écartée -> assemblée) — lecture native accélérée, intrinsèquement
     // fluide puisque gérée par le décodeur (même principe que le sens
-    // "avant" du scroll dans Hero.tsx).
+    // "avant" du scroll dans Hero.tsx). Alimente aussi le cache au passage
+    // (via le `timeupdate` déjà branché plus haut).
     const runRegroup = () => {
+      stopWarmup();
       phase = "regrouping";
       setUnfolded(false);
       const remaining = Math.max(VIDEO_DURATION - video.currentTime, 0.1);
@@ -407,20 +561,25 @@ function MaterialsShowcase() {
     return () => {
       cancelled = true;
       video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("seeked", onSeeked);
+      video.removeEventListener("seeked", onFirstSeeked);
+      video.removeEventListener("timeupdate", maybeCaptureFrame);
+      video.removeEventListener("timeupdate", onWarmupProgress);
       window.removeEventListener("scroll", checkThreshold);
       if (hardStop) clearTimeout(hardStop);
       stopPlayLoop();
+      frameCache.forEach((bitmap) => bitmap.close());
+      frameCache.clear();
     };
-  }, [prefersReducedMotion, drawFrame]);
+  }, [prefersReducedMotion, drawFrame, drawCachedFrame, maybeCaptureFrame]);
 
   return (
     <div ref={containerRef} className="w-full">
       {/* Plein cadre jusqu'aux bords de l'écran sur mobile/tablette (annule
           le px-6 de la section) — les matériaux paraissaient trop petits,
-          resserrés dans la marge de texte. Redevient contenu dans la
+          resserrés dans la marge de texte. Ratio plus carré sur mobile
+          (encore trop petit en 16:9) ; redevient 16:9 contenu dans la
           colonne normale à partir de lg (à côté du texte). */}
-      <div className="relative -mx-6 aspect-video lg:mx-0">
+      <div className="relative -mx-6 aspect-square lg:mx-0 lg:aspect-video">
         <video
           ref={videoRef}
           src={MATERIALS_VIDEO_URL}
@@ -462,7 +621,7 @@ function MaterialsShowcase() {
 export default function NotreHistoire() {
   return (
     <section className="relative overflow-hidden bg-ciel px-6 py-20 sm:py-24">
-      <div className="relative z-10 mx-auto grid max-w-7xl gap-16 lg:grid-cols-[1fr_2fr] lg:items-center">
+      <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_2fr] lg:items-center lg:gap-16">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
           <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
@@ -486,7 +645,10 @@ export default function NotreHistoire() {
 
           <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
             {FEATURES.map((feature) => (
-              <div key={feature.label} className="flex flex-col items-start gap-3">
+              <div
+                key={feature.label}
+                className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left"
+              >
                 <span aria-hidden className="text-laiton">
                   <FeatureIcon name={feature.icon} />
                 </span>

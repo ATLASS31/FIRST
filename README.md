@@ -2810,6 +2810,72 @@ sans nouvelle erreur. La fluidité réelle sur un téléphone physique reste
 mesurer un vrai gain de FPS sur un appareil mobile réel depuis ce
 sandbox.
 
+## Notre histoire : cache de frames (dépliage fluide) + ajustements mobile
+
+Retour très positif ("bravo boss ta réussis"), avec un diagnostic client
+particulièrement juste sur le point restant : *"l'animation quand les
+matériaux se regroupent c'est parfait bien fluide, mais quand ils se
+séparent c'est saccadé, sûrement parce que tu as dû inverser la vidéo que
+je t'ai envoyé, donc ça doit faire bug."* Exactement ça — confirmé et
+corrigé ci-dessous. Plus trois ajustements mobile : encore agrandir le
+bloc matériaux, réduire l'écart avec le texte au-dessus, centrer les 4
+icônes de preuve.
+
+**Dépliage saccadé, cause confirmée et corrigée** : le repliement
+(`video.play()` natif, sens d'enregistrement de la vidéo) est fluide par
+construction — le décodeur gère la lecture avant en temps réel, comme
+n'importe quelle vidéo web. Le dépliage, lui, doit reculer dans le temps
+(assemblé → écarté), ce qu'aucun navigateur ne fait nativement : chaque
+`currentTime` décroissant redemande un nouveau décodage depuis la
+dernière image-clé, plus lent et plus irrégulier qu'une lecture
+native — exactement le "bug" que le client a lui-même diagnostiqué en
+disant qu'on avait dû "inverser la vidéo". Solution reprise de
+`Hero.tsx`, qui a déjà résolu ce problème pour son propre scroll arrière :
+un cache de frames déjà décodées (`createImageBitmap`), rempli
+opportunément à chaque lecture avant de la vidéo — le vrai repliement,
+mais aussi une **pré-chauffe invisible** au chargement de la page (lecture
+accélérée ×4 en tâche de fond, avant toute interaction, le canvas
+continuant d'afficher l'état "assemblé" déjà visible pendant ce temps)
+pour que même le tout premier dépliage puisse s'appuyer sur des frames
+déjà en mémoire plutôt que de dépendre uniquement du décodeur en direct.
+Le dépliage tente maintenant le cache à chaque étape (dessin instantané,
+aucune attente) et ne retombe sur un seek vidéo live que pour les rares
+zones pas encore capturées, avec le même verrou anti-chevauchement
+qu'avant (jamais deux seeks en vol).
+
+**Mobile : encore agrandir** — le ratio du bloc passe de 16:9 à carré
+(`aspect-square`) sur mobile/tablette (toujours 16:9 à partir de `lg`,
+à côté du texte), donnant nettement plus de hauteur d'affichage à largeur
+égale.
+
+**Mobile : écart trop grand** — l'espacement entre la colonne de texte et
+le bloc matériaux (`gap-16`, 64px, hérité du grid parent qui empile les
+deux colonnes sur mobile) est réduit à `gap-8` (32px) en dessous de `lg`,
+où il reste inchangé pour la mise en page à deux colonnes still côte à
+côte.
+
+**Mobile : icônes mal centrées** — les 4 preuves (icône + valeur +
+libellé) étaient alignées à gauche dans leur cellule de grille, comme le
+reste du texte en prose au-dessus, mais rendu à la façon "carte" ça
+tirait mal l'œil. Centré (icône, valeur, libellé) en dessous de `sm`,
+inchangé (aligné à gauche) à partir de `sm`.
+
+**Vérifications** : `tsc`/`eslint` propres (avertissement react-hooks
+sur une ref capturée dans le cleanup corrigé en copiant la référence dans
+une variable locale, comme recommandé) ; build de production réussi ;
+géométrie mesurée à l'exécution — bloc matériaux 390×390 (carré, bord à
+bord) sur un viewport 390px, 810×456 (ratio 1.78, soit 16:9) sur desktop ;
+gap réel mesuré à 32px sur mobile (contre 64px avant) ; icônes centrées
+sur mobile, alignées à gauche sur desktop, confirmé par les styles
+calculés ; scénario de scroll graduel confirmant que le déclenchement
+directionnel fonctionne toujours ; régression complète sur les 10 routes
+sans nouvelle erreur. Comme toujours, la fluidité réelle du dépliage une
+fois le cache alimenté reste à confirmer visuellement côté client — le
+CDN vidéo est bloqué dans ce sandbox, donc ni la pré-chauffe ni le
+détourage ni le rendu des frames en cache n'ont pu être vérifiés à l'œil
+ici, seulement la logique (timing, verrouillage, alternance
+cache/repli) et la géométrie.
+
 ## À faire avant la mise en prod
 
 - **Si la vidéo du hero est toujours saccadée** malgré le changement de
