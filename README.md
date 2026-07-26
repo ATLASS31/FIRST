@@ -3569,6 +3569,65 @@ boucle re-testée après la réécriture de `drawFrame` (cycle toujours
 fonctionnel) ; régression complète sur les 10 routes sans nouvelle erreur
 console.
 
+## 3 piliers : le flood fill était "pire" — abandon du détourage, fond assorti
+
+Retour client après le flood fill livré au round précédent : "ça va pas
+c'est pire même... la technique marche pas" — les 3 captures montraient
+une fragmentation en tâches sur le bois, l'horloge ET la maison, plus
+visible que le "surexposé" d'avant. Deux causes réelles diagnostiquées,
+mesurées plutôt que devinées :
+
+- **Une seule couleur clé partagée entre les 3 vidéos** : elle n'était
+  échantillonnée qu'une fois, sur la première vidéo, puis réutilisée pour
+  les 2 autres — alors que le fond d'atelier des 3 rendus diffère
+  légèrement d'une vidéo à l'autre (écart mesuré de ~6 à ~9 entre leurs
+  coins). Corrigé en donnant à chaque vidéo sa propre couleur clé,
+  échantillonnée sur ses propres pixels.
+- **Les tests précédents ne rejouaient pas de vraie vidéo** : la
+  validation du flood fill (round précédent) chargeait des frames
+  figées (`<img>`), pas une vidéo qui joue vraiment image par image. Un
+  test construit cette fois avec un vrai élément `<video>` (transcodé en
+  VP9, seul codec que ce bac à sable sait décoder, lu en avant via
+  `.play()` + une boucle `requestAnimationFrame` — jamais de seek direct,
+  qui s'est avéré indépendamment peu fiable dans ce bac à sable) a
+  reproduit la même fragmentation sévère que les captures du client — une
+  première, après deux méthodologies de test qui n'y arrivaient pas.
+
+Le fix de la clé par vidéo est réel mais n'expliquait qu'une fraction du
+problème (vérifié par comparaison directe, écart mineur). Le vrai
+diagnostic : sur ce tournage volontairement ton sur ton, l'écart de
+couleur objet/fond (~5 à ~40 selon la zone) est du même ordre de grandeur
+que le bruit de compression vidéo réel — aucun seuil fixe ne peut tenir de
+façon stable sur les 3 vidéos et sur toute leur durée, quelle que soit la
+sophistication de l'algorithme (distance globale ou flood fill).
+
+**Décision : abandon complet du détourage au pixel.** Plutôt que de
+continuer à complexifier une méthode intrinsèquement fragile pour ce
+tournage, `drawFrame` ne fait plus que dessiner la vidéo telle quelle sur
+le canvas (plus de masque, plus de `getImageData`/`putImageData`, plus de
+couleur clé). Le fond d'atelier des 3 vidéos a été mesuré directement sur
+les frames extraites (~rgb(229, 218, 208) en moyenne) et c'est cette
+teinte qui habille maintenant le conteneur carré (coins arrondis, ombre
+douce) : le cadre de la vidéo se fond dans son entourage au lieu d'être
+découpé, sans aucune fragilité pixel par pixel. Cohérent avec la photo de
+référence du client, qui montrait déjà un aplat crème continu sur toute
+la composition, objet compris — jamais une découpe nette.
+
+**Vitesse de transition** : ajouté `PLAYBACK_RATE = 1.7` (vidéos lues à
+1.7× plutôt qu'à vitesse native), répondant à "au moment de la transition
+faire en sorte que l'animation aille plus vite".
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+boucle re-testée (Matière → Temps → Espace → Matière sur 4 lectures du
+sous-titre, cycle toujours fonctionnel) ; couleur de fond du conteneur
+vérifiée programmatiquement (`rgb(229, 218, 208)`, correspond à la mesure
+sur les 3 vidéos) ; régression complète sur les 10 routes sans nouvelle
+erreur. Limite persistante de ce bac à sable : Chromium n'a pas de
+décodeur H.264, donc le rendu final (objet net sur fond assorti, sans
+aucune coupure) ne peut être confirmé à l'écran que par le client sur son
+propre navigateur — mais avec le détourage supprimé, il n'y a techniquement
+plus rien qui puisse fragmenter l'image.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

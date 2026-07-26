@@ -22,31 +22,28 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * boucle") — la vidéo suivante se lance après un temps de pause fixe
  * (`HOLD_MS`), pas au franchissement d'une position de scroll.
  *
- * Fond des vidéos détouré au `<canvas>` — mais PAS avec la même technique
- * que les matériaux de "Notre histoire" (distance de couleur globale) :
- * essayée d'abord, elle "surexposait" l'objet ("il faut que les éléments
- * soient bien visibles à 100%"). Cause mesurée en échantillonnant les
- * pixels des vraies vidéos : contrairement aux matériaux (bois foncé sur
- * fond clair, bonne séparation), ces rendus sont volontairement ton sur
- * ton — la façade de l'horloge et les murs de la maison sont PARFOIS PLUS
- * PROCHES en couleur du fond que le bruit du fond lui-même (écart mesuré
- * ~5-6 sur les murs de la maison contre ~19-24 de variation du fond).
- * Un seuil de distance de couleur globale ne peut donc pas séparer les
- * deux sans effacer une partie de l'objet — ce n'est pas réglable en
- * ajustant juste le seuil, c'est la méthode qui ne convient pas ici.
+ * Détourage au pixel : essayé, abandonné. Deux techniques testées
+ * (distance de couleur globale, puis remplissage par propagation/flood
+ * fill depuis les bords) ont chacune été livrées puis rejetées par le
+ * client : la première "surexposait" l'objet (le seuil devait englober le
+ * bruit du fond, qui chevauche la couleur de l'objet sur ce tournage ton
+ * sur ton — façade de l'horloge et murs de la maison mesurés à ~5-6 de
+ * distance du fond, soit MOINS que la variation du fond lui-même,
+ * ~19-30) ; la seconde, plus robuste en théorie, restait démontrée fragile
+ * à l'usage réel (lue vraiment image par image, pas sur une frame figée) —
+ * retour client : "la technique marche pas... c'est pire". Avec un tel
+ * écart de couleur objet/fond, du même ordre que le bruit de compression
+ * vidéo réel, aucun seuil fixe ne tient sur les 3 vidéos et sur toute leur
+ * durée.
  *
- * Remplacé par un remplissage par propagation (flood fill / BFS) depuis
- * les bords de l'image, sur un petit canvas basse résolution (96×96,
- * calcul quasi gratuit) : seuls les pixels à la fois proches de la
- * couleur du fond ET reliés aux bords sans traverser une rupture de
- * couleur (le rebord de l'horloge, l'arête du toit...) sont considérés
- * "fond". Un pixel à l'intérieur de l'objet qui a la même couleur que le
- * fond mais qui n'est PAS relié aux bords (parce qu'une rupture de
- * couleur l'entoure) reste opaque à 100%, même si sa couleur seule
- * ressemblerait à un match. Le masque basse résolution est ensuite
- * suréchantillonné (interpolation bilinéaire) sur l'image pleine
- * résolution — le bord de l'objet reste net, la transition de quelques
- * pixels donnant un anti-crénelage naturel plutôt qu'un contour dur.
+ * Plutôt que de continuer à complexifier une méthode intrinsèquement
+ * fragile pour ce tournage, le fond n'est plus retiré du tout : la vidéo
+ * s'affiche telle quelle (son propre fond d'atelier, mesuré ~rgb(229,
+ * 218, 208) sur les 3 rendus), et c'est le conteneur qui adopte cette
+ * même teinte chaude en fond. Le cadre carré de la vidéo se fond dans son
+ * entourage au lieu d'être découpé — cohérent avec la photo de référence
+ * du client, qui montrait déjà un unique aplat crème continu sur toute la
+ * composition, objet compris.
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -97,8 +94,12 @@ const STEPS = [
 // Temps de pause sur chaque état statique avant de lancer la transition
 // suivante — le temps de lire le texte associé.
 const HOLD_MS = 3200;
-// Filet de sécurité par transition (vidéos de ~3s chacune, large marge).
+// Filet de sécurité par transition (vidéos de ~3s chacune à vitesse 1x,
+// large marge même accéléré).
 const TRANSITION_TIMEOUT_MS = 6000;
+// Vitesse de lecture des transitions — demande client ("l'animation aille
+// plus vite"), vidéos de ~3s à vitesse native jugées trop lentes.
+const PLAYBACK_RATE = 1.7;
 
 function StepIcon({ name }: { name: (typeof STEPS)[number]["icon"] }) {
   const common = {
@@ -142,9 +143,6 @@ export default function ThreePiliers() {
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
   const [activeStep, setActiveStep] = useState<0 | 1 | 2>(0);
-  const keyColorRef = useRef<[number, number, number] | null>(null);
-  const keyingDisabledRef = useRef(false);
-  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
@@ -163,134 +161,10 @@ export default function ThreePiliers() {
       canvas.width = targetWidth;
       canvas.height = targetHeight;
     }
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    if (keyingDisabledRef.current) return;
-
-    try {
-      // Détourage par propagation (flood fill) plutôt que par simple
-      // distance de couleur — voir la note en tête de fichier : ces rendus
-      // sont ton sur ton (l'objet peut être PLUS proche de la couleur du
-      // fond que le bruit du fond lui-même), une distance de couleur seule
-      // efface donc des pans entiers de l'objet. Calculé sur un petit
-      // canvas basse résolution (rapide) puis suréchantillonné.
-      const MASK_SIZE = 96;
-      if (!maskCanvasRef.current) {
-        maskCanvasRef.current = document.createElement("canvas");
-        maskCanvasRef.current.width = MASK_SIZE;
-        maskCanvasRef.current.height = MASK_SIZE;
-      }
-      const maskCanvas = maskCanvasRef.current;
-      const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
-      if (!maskCtx) throw new Error("no mask context");
-      maskCtx.clearRect(0, 0, MASK_SIZE, MASK_SIZE);
-      maskCtx.drawImage(video, 0, 0, MASK_SIZE, MASK_SIZE);
-      const maskFrame = maskCtx.getImageData(0, 0, MASK_SIZE, MASK_SIZE);
-      const maskData = maskFrame.data;
-
-      if (!keyColorRef.current) {
-        // Moyenne des 4 coins (fond d'atelier légèrement dégradé),
-        // échantillonnée une seule fois puis réutilisée pour les 3 vidéos.
-        const corners = [
-          0,
-          (MASK_SIZE - 1) * 4,
-          (MASK_SIZE - 1) * MASK_SIZE * 4,
-          ((MASK_SIZE - 1) * MASK_SIZE + (MASK_SIZE - 1)) * 4,
-        ];
-        let r = 0;
-        let g = 0;
-        let b = 0;
-        for (const idx of corners) {
-          r += maskData[idx];
-          g += maskData[idx + 1];
-          b += maskData[idx + 2];
-        }
-        keyColorRef.current = [r / corners.length, g / corners.length, b / corners.length];
-      }
-      const [kr, kg, kb] = keyColorRef.current;
-      // Seuil calé sur les pixels réels des 3 vidéos (échantillonnés hors
-      // ligne, et vérifié visuellement sur les vraies frames extraites) :
-      // 22 (le bruit du fond de l'horloge) laissait des zones de fond non
-      // détourées sur la vidéo maison — son dégradé d'atelier varie
-      // jusqu'à ~24-30 selon la zone, plus que celui de l'horloge. 30
-      // couvre proprement ce dégradé sur les 3 vidéos tout en restant
-      // sous la plus proche rupture de couleur sur l'objet (~35+).
-      const threshold = 30;
-      const t2 = threshold * threshold;
-
-      const isBg = new Uint8Array(MASK_SIZE * MASK_SIZE);
-      const visited = new Uint8Array(MASK_SIZE * MASK_SIZE);
-      const queue = new Int32Array(MASK_SIZE * MASK_SIZE);
-      let qHead = 0;
-      let qTail = 0;
-
-      const tryEnqueue = (x: number, y: number) => {
-        if (x < 0 || y < 0 || x >= MASK_SIZE || y >= MASK_SIZE) return;
-        const idx = y * MASK_SIZE + x;
-        if (visited[idx]) return;
-        visited[idx] = 1;
-        const di = idx * 4;
-        const dr = maskData[di] - kr;
-        const dg = maskData[di + 1] - kg;
-        const db = maskData[di + 2] - kb;
-        if (dr * dr + dg * dg + db * db < t2) {
-          isBg[idx] = 1;
-          queue[qTail++] = idx;
-        }
-      };
-
-      for (let x = 0; x < MASK_SIZE; x++) {
-        tryEnqueue(x, 0);
-        tryEnqueue(x, MASK_SIZE - 1);
-      }
-      for (let y = 0; y < MASK_SIZE; y++) {
-        tryEnqueue(0, y);
-        tryEnqueue(MASK_SIZE - 1, y);
-      }
-      while (qHead < qTail) {
-        const idx = queue[qHead++];
-        const x = idx % MASK_SIZE;
-        const y = (idx / MASK_SIZE) | 0;
-        tryEnqueue(x + 1, y);
-        tryEnqueue(x - 1, y);
-        tryEnqueue(x, y + 1);
-        tryEnqueue(x, y - 1);
-      }
-
-      // Applique le masque basse résolution à l'image pleine résolution,
-      // avec interpolation bilinéaire pour un bord lisse plutôt qu'un
-      // contour en escalier.
-      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = frame.data;
-      const sx = MASK_SIZE / canvas.width;
-      const sy = MASK_SIZE / canvas.height;
-      for (let y = 0; y < canvas.height; y++) {
-        const my = y * sy;
-        const my0 = Math.min(MASK_SIZE - 1, Math.floor(my));
-        const my1 = Math.min(MASK_SIZE - 1, my0 + 1);
-        const fy = my - my0;
-        for (let x = 0; x < canvas.width; x++) {
-          const mx = x * sx;
-          const mx0 = Math.min(MASK_SIZE - 1, Math.floor(mx));
-          const mx1 = Math.min(MASK_SIZE - 1, mx0 + 1);
-          const fx = mx - mx0;
-          const v00 = isBg[my0 * MASK_SIZE + mx0];
-          const v10 = isBg[my0 * MASK_SIZE + mx1];
-          const v01 = isBg[my1 * MASK_SIZE + mx0];
-          const v11 = isBg[my1 * MASK_SIZE + mx1];
-          const vTop = v00 + (v10 - v00) * fx;
-          const vBot = v01 + (v11 - v01) * fx;
-          const bgAmount = vTop + (vBot - vTop) * fy;
-          data[(y * canvas.width + x) * 4 + 3] = Math.round((1 - bgAmount) * 255);
-        }
-      }
-      ctx.putImageData(frame, 0, 0);
-    } catch {
-      keyingDisabledRef.current = true;
-    }
   }, []);
 
   useEffect(() => {
@@ -339,7 +213,7 @@ export default function ThreePiliers() {
 
       const start = () => {
         if (cancelled) return;
-        video.playbackRate = 1;
+        video.playbackRate = PLAYBACK_RATE;
         video.play().catch(() => {});
         hardStop = setTimeout(() => {
           stopRaf();
@@ -435,7 +309,7 @@ export default function ThreePiliers() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div
             ref={containerRef}
-            className="relative mx-auto aspect-square w-full max-w-md lg:max-w-none"
+            className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-[2.5rem] bg-[#e5dad0] shadow-[0_30px_60px_-30px_rgba(26,22,20,0.25)] lg:max-w-none"
           >
             <video
               ref={video0Ref}
