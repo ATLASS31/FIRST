@@ -337,45 +337,70 @@ export default function ThreePiliers() {
   const step = STEPS[activeStep];
 
   return (
-    <section id="concept" className="relative overflow-hidden py-28">
+    <section id="concept" className="relative overflow-hidden pb-28 pt-12 sm:pt-16">
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
-          <div
-            ref={containerRef}
-            className="relative order-2 mx-auto aspect-square w-full max-w-md overflow-hidden rounded-[2.5rem] bg-[#e5dad0] shadow-[0_30px_60px_-30px_rgba(26,22,20,0.25)] lg:order-1 lg:max-w-none"
-          >
-            <video
-              ref={video0Ref}
-              src={TRANSITIONS[0]}
-              muted
-              playsInline
-              preload="auto"
+          <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
+            {/* Contour tracé à la main autour du cadre, demandé par le
+                client sur un croquis annoté — une ligne organique et
+                légèrement irrégulière plutôt qu'un simple rectangle
+                parfait, pour un rendu plus artisanal/"3D esquissé".
+                Volontairement en dehors du cadre (jamais coupé par son
+                `overflow-hidden`) et discret (`text-encre/20`) : un seul
+                accent signature, pas une décoration qui prend le dessus. */}
+            <svg
               aria-hidden
-              className="absolute inset-0 h-full w-full object-contain opacity-0"
-            />
-            <video
-              ref={video1Ref}
-              src={TRANSITIONS[1]}
-              muted
-              playsInline
-              preload="auto"
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain opacity-0"
-            />
-            <video
-              ref={video2Ref}
-              src={TRANSITIONS[2]}
-              muted
-              playsInline
-              preload="auto"
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain opacity-0"
-            />
-            <canvas
-              ref={canvasRef}
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-contain"
-            />
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="pointer-events-none absolute inset-0 h-full w-full overflow-visible text-encre/25"
+            >
+              <path
+                d="M4,9 C28,-5 68,-7 97,3 C110,8 108,52 101,59 C95,65 111,90 97,98 C66,111 27,102 1,99 C-11,95 -7,53 0,49 C6,45 -9,17 4,9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <div
+              ref={containerRef}
+              className="absolute inset-0 overflow-hidden rounded-[2.5rem] bg-[#e5dad0] shadow-[0_30px_60px_-30px_rgba(26,22,20,0.25)]"
+            >
+              <video
+                ref={video0Ref}
+                src={TRANSITIONS[0]}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain opacity-0"
+              />
+              <video
+                ref={video1Ref}
+                src={TRANSITIONS[1]}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain opacity-0"
+              />
+              <video
+                ref={video2Ref}
+                src={TRANSITIONS[2]}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain opacity-0"
+              />
+              <canvas
+                ref={canvasRef}
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            </div>
           </div>
 
           <div className="order-1 lg:order-2">

@@ -3822,6 +3822,52 @@ ordre mobile texte-au-dessus toujours actif ; boucle re-testée (Matière →
 Temps → Espace) ; régression complète sur les 10 routes sans nouvelle
 erreur.
 
+## 3 piliers : gap vague/texte réduit, contour esquissé à la main sur le cadre
+
+Deux retours visuels, un bloqué :
+
+**Gap vague → texte** : le padding-top de la section (`py-28`, 112px)
+créait un grand vide crème entre la fin de la vague du Hero et le début
+du contenu. Réduit à `pt-12 sm:pt-16` (48-64px), padding bas inchangé
+(`pb-28`) — resserre la transition sans toucher à la vague elle-même.
+
+**Contour "3D" esquissé sur le cadre** : demande client sur une capture
+annotée à la main (une ligne organique tracée autour du cadre plutôt
+qu'un simple rectangle). Ajouté en SVG : un chemin unique aux points de
+contrôle intentionnellement irréguliers, positionné exactement sur les
+coordonnées du cadre (`viewBox 0 0 100 100`, `inset-0`) mais avec des
+points qui débordent largement au-delà de cet espace (jusqu'à -11/111) —
+le SVG n'étant pas coupé (`overflow-visible`, pas de classe
+`overflow-hidden` dessus), les portions du tracé qui dépassent 0-100
+restent visibles tout autour du cadre plutôt que d'être masquées.
+Premier essai raté : un cadre agrandi de 40px (`-inset-5`) avec un
+tracé inséré de quelques % à l'intérieur de CET espace élargi — quasi
+entièrement caché derrière le cadre opaque, presque invisible sauf un
+petit crochet à un angle (le tracé était, en réalité, plus À
+L'INTÉRIEUR du cadre que le cadre lui-même). Corrigé en faisant
+coïncider exactement les coordonnées du SVG avec celles du cadre, pour
+que le débordement du tracé soit géométriquement garanti quelle que
+soit la taille réelle du cadre à l'écran (pas de mélange marge-fixe +
+inset-en-pourcentage, source du bug). Discret (`text-encre/25`), un seul
+accent signature — pas une décoration qui prend le dessus.
+
+**Ombres de feuilles (bloqué)** : demande d'ajouter des ombres de
+feuilles floutées en noir aux mêmes positions que le croquis du client,
+à partir de 2 photos de feuilles fournies (fond à retirer, silhouette
+noire, léger flou). Techniquement impossible à traiter dans ce tour :
+contrairement aux vidéos (reçues avec un chemin de fichier explicite via
+la syntaxe `@[upload path ...]`), les captures d'écran et les 2 photos de
+feuilles sont arrivées comme contenu de conversation (visibles, mais
+sans octets de fichier accessibles) — aucune opération pixel
+(suppression de fond, silhouette, flou) n'est possible sans le fichier
+réel. À redemander au client en pièce jointe, comme pour les vidéos.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+gap resserré confirmé visuellement (capture avant/après) ; contour
+confirmé visible sur les 4 côtés du cadre (capture zoomée) en desktop ET
+mobile ; mécanique de boucle re-testée (Matière → Temps) ; régression
+complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
