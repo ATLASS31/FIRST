@@ -3526,6 +3526,49 @@ sable ne permet aucune vérification visuelle directe de la lecture des
 vidéos elles-mêmes (pas de décodeur H.264) — vérifications géométriques/
 DOM/timing uniquement.
 
+## 3 piliers : détourage "surexposé" — remplacement par un flood fill
+
+Retour client sur la refonte précédente : l'animation est réussie, mais le
+détourage rend l'objet "surexposé" — "il faut que les éléments soient bien
+visibles à 100%". Diagnostiqué en échantillonnant les vrais pixels des 3
+vidéos (frame extraite, script Node) plutôt qu'en devinant : contrairement
+aux matériaux de "Notre histoire" (bois foncé sur fond clair, bonne
+séparation), ces rendus sont volontairement **ton sur ton** — la façade de
+l'horloge et les murs de la maison sont mesurés à seulement ~5-6 unités de
+distance de couleur de la couleur de fond échantillonnée, alors que le
+bruit du fond lui-même varie de ~19 à ~30 selon la vidéo. Le détourage par
+distance de couleur globale (même méthode que les matériaux) ne pouvait
+donc pas séparer l'un de l'autre sans effacer une partie de l'objet —
+c'était la méthode qui ne convenait pas ici, pas juste un réglage de seuil
+à ajuster.
+
+**Remplacé par un détourage par propagation (flood fill / BFS)** : un
+pixel n'est retiré que s'il est à la fois proche de la couleur du fond ET
+relié aux bords de l'image sans traverser une rupture de couleur (le
+rebord de l'horloge, l'ombre portée...). Un pixel à l'intérieur de l'objet
+qui partage la couleur du fond mais qui est enfermé par une telle rupture
+reste opaque à 100%, peu importe sa couleur. Calculé sur un petit canvas
+basse résolution (96×96, coût quasi nul) puis suréchantillonné avec
+interpolation bilinéaire sur l'image pleine résolution pour un bord lisse.
+
+**Validation avant intégration** : l'algorithme a d'abord été vérifié sur
+un buffer synthétique (un anneau de couleur nettement différente entourant
+une zone intérieure à la même couleur que le "fond") pour confirmer que la
+logique protège bien l'intérieur — puis rejoué sur de vraies frames
+extraites des 3 vidéos (chargées comme `<img>` dans une page de test,
+canvas réel du navigateur, Playwright) pour caler le seuil : 22 (bruit du
+fond de l'horloge) laissait des zones de fond non détourées sur la vidéo
+maison (son dégradé d'atelier varie davantage, jusqu'à ~30) ; 30 couvre
+proprement le dégradé des 3 vidéos tout en restant sous la rupture de
+couleur la plus proche sur l'objet (~35+) — confirmé visuellement sur les
+4 états clés (bois ×2, horloge, maison) : objet pleinement opaque, fond
+proprement retiré, plus de "surexposition".
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+boucle re-testée après la réécriture de `drawFrame` (cycle toujours
+fonctionnel) ; régression complète sur les 10 routes sans nouvelle erreur
+console.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

@@ -22,10 +22,32 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * boucle") — la vidéo suivante se lance après un temps de pause fixe
  * (`HOLD_MS`), pas au franchissement d'une position de scroll.
  *
- * Fond des vidéos détouré au `<canvas>`, même technique que les matériaux
- * (couleur de fond échantillonnée aux 4 coins, détourage par distance au
- * carré + bande de fondu) : sans ça, le fond d'atelier chaud des rendus
- * (mesuré ~rgb(225,215,205)) tranchait nettement avec le fond de la page.
+ * Fond des vidéos détouré au `<canvas>` — mais PAS avec la même technique
+ * que les matériaux de "Notre histoire" (distance de couleur globale) :
+ * essayée d'abord, elle "surexposait" l'objet ("il faut que les éléments
+ * soient bien visibles à 100%"). Cause mesurée en échantillonnant les
+ * pixels des vraies vidéos : contrairement aux matériaux (bois foncé sur
+ * fond clair, bonne séparation), ces rendus sont volontairement ton sur
+ * ton — la façade de l'horloge et les murs de la maison sont PARFOIS PLUS
+ * PROCHES en couleur du fond que le bruit du fond lui-même (écart mesuré
+ * ~5-6 sur les murs de la maison contre ~19-24 de variation du fond).
+ * Un seuil de distance de couleur globale ne peut donc pas séparer les
+ * deux sans effacer une partie de l'objet — ce n'est pas réglable en
+ * ajustant juste le seuil, c'est la méthode qui ne convient pas ici.
+ *
+ * Remplacé par un remplissage par propagation (flood fill / BFS) depuis
+ * les bords de l'image, sur un petit canvas basse résolution (96×96,
+ * calcul quasi gratuit) : seuls les pixels à la fois proches de la
+ * couleur du fond ET reliés aux bords sans traverser une rupture de
+ * couleur (le rebord de l'horloge, l'arête du toit...) sont considérés
+ * "fond". Un pixel à l'intérieur de l'objet qui a la même couleur que le
+ * fond mais qui n'est PAS relié aux bords (parce qu'une rupture de
+ * couleur l'entoure) reste opaque à 100%, même si sa couleur seule
+ * ressemblerait à un match. Le masque basse résolution est ensuite
+ * suréchantillonné (interpolation bilinéaire) sur l'image pleine
+ * résolution — le bord de l'objet reste net, la transition de quelques
+ * pixels donnant un anti-crénelage naturel plutôt qu'un contour dur.
+ *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
  * une vidéo que personne ne regarde encore au chargement de la page.
@@ -122,6 +144,7 @@ export default function ThreePiliers() {
   const [activeStep, setActiveStep] = useState<0 | 1 | 2>(0);
   const keyColorRef = useRef<[number, number, number] | null>(null);
   const keyingDisabledRef = useRef(false);
+  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
@@ -148,48 +171,120 @@ export default function ThreePiliers() {
     if (keyingDisabledRef.current) return;
 
     try {
-      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = frame.data;
+      // Détourage par propagation (flood fill) plutôt que par simple
+      // distance de couleur — voir la note en tête de fichier : ces rendus
+      // sont ton sur ton (l'objet peut être PLUS proche de la couleur du
+      // fond que le bruit du fond lui-même), une distance de couleur seule
+      // efface donc des pans entiers de l'objet. Calculé sur un petit
+      // canvas basse résolution (rapide) puis suréchantillonné.
+      const MASK_SIZE = 96;
+      if (!maskCanvasRef.current) {
+        maskCanvasRef.current = document.createElement("canvas");
+        maskCanvasRef.current.width = MASK_SIZE;
+        maskCanvasRef.current.height = MASK_SIZE;
+      }
+      const maskCanvas = maskCanvasRef.current;
+      const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+      if (!maskCtx) throw new Error("no mask context");
+      maskCtx.clearRect(0, 0, MASK_SIZE, MASK_SIZE);
+      maskCtx.drawImage(video, 0, 0, MASK_SIZE, MASK_SIZE);
+      const maskFrame = maskCtx.getImageData(0, 0, MASK_SIZE, MASK_SIZE);
+      const maskData = maskFrame.data;
 
       if (!keyColorRef.current) {
-        // Moyenne des 4 coins (fond d'atelier légèrement dégradé), même
-        // technique que `drawSource` dans `NotreHistoire.tsx`. Échantillonné
-        // une seule fois puis réutilisé pour les 3 vidéos : même fond
-        // d'atelier sur les 3 rendus.
-        const w = canvas.width;
-        const h = canvas.height;
+        // Moyenne des 4 coins (fond d'atelier légèrement dégradé),
+        // échantillonnée une seule fois puis réutilisée pour les 3 vidéos.
         const corners = [
           0,
-          (w - 1) * 4,
-          (h - 1) * w * 4,
-          ((h - 1) * w + (w - 1)) * 4,
+          (MASK_SIZE - 1) * 4,
+          (MASK_SIZE - 1) * MASK_SIZE * 4,
+          ((MASK_SIZE - 1) * MASK_SIZE + (MASK_SIZE - 1)) * 4,
         ];
         let r = 0;
         let g = 0;
         let b = 0;
         for (const idx of corners) {
-          r += data[idx];
-          g += data[idx + 1];
-          b += data[idx + 2];
+          r += maskData[idx];
+          g += maskData[idx + 1];
+          b += maskData[idx + 2];
         }
         keyColorRef.current = [r / corners.length, g / corners.length, b / corners.length];
       }
       const [kr, kg, kb] = keyColorRef.current;
-      const threshold = 34;
-      const feather = 30;
+      // Seuil calé sur les pixels réels des 3 vidéos (échantillonnés hors
+      // ligne, et vérifié visuellement sur les vraies frames extraites) :
+      // 22 (le bruit du fond de l'horloge) laissait des zones de fond non
+      // détourées sur la vidéo maison — son dégradé d'atelier varie
+      // jusqu'à ~24-30 selon la zone, plus que celui de l'horloge. 30
+      // couvre proprement ce dégradé sur les 3 vidéos tout en restant
+      // sous la plus proche rupture de couleur sur l'objet (~35+).
+      const threshold = 30;
       const t2 = threshold * threshold;
-      const tf2 = (threshold + feather) * (threshold + feather);
 
-      for (let i = 0; i < data.length; i += 4) {
-        const dr = data[i] - kr;
-        const dg = data[i + 1] - kg;
-        const db = data[i + 2] - kb;
-        const dist2 = dr * dr + dg * dg + db * db;
-        if (dist2 < t2) {
-          data[i + 3] = 0;
-        } else if (dist2 < tf2) {
-          const dist = Math.sqrt(dist2);
-          data[i + 3] = Math.round(((dist - threshold) / feather) * 255);
+      const isBg = new Uint8Array(MASK_SIZE * MASK_SIZE);
+      const visited = new Uint8Array(MASK_SIZE * MASK_SIZE);
+      const queue = new Int32Array(MASK_SIZE * MASK_SIZE);
+      let qHead = 0;
+      let qTail = 0;
+
+      const tryEnqueue = (x: number, y: number) => {
+        if (x < 0 || y < 0 || x >= MASK_SIZE || y >= MASK_SIZE) return;
+        const idx = y * MASK_SIZE + x;
+        if (visited[idx]) return;
+        visited[idx] = 1;
+        const di = idx * 4;
+        const dr = maskData[di] - kr;
+        const dg = maskData[di + 1] - kg;
+        const db = maskData[di + 2] - kb;
+        if (dr * dr + dg * dg + db * db < t2) {
+          isBg[idx] = 1;
+          queue[qTail++] = idx;
+        }
+      };
+
+      for (let x = 0; x < MASK_SIZE; x++) {
+        tryEnqueue(x, 0);
+        tryEnqueue(x, MASK_SIZE - 1);
+      }
+      for (let y = 0; y < MASK_SIZE; y++) {
+        tryEnqueue(0, y);
+        tryEnqueue(MASK_SIZE - 1, y);
+      }
+      while (qHead < qTail) {
+        const idx = queue[qHead++];
+        const x = idx % MASK_SIZE;
+        const y = (idx / MASK_SIZE) | 0;
+        tryEnqueue(x + 1, y);
+        tryEnqueue(x - 1, y);
+        tryEnqueue(x, y + 1);
+        tryEnqueue(x, y - 1);
+      }
+
+      // Applique le masque basse résolution à l'image pleine résolution,
+      // avec interpolation bilinéaire pour un bord lisse plutôt qu'un
+      // contour en escalier.
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = frame.data;
+      const sx = MASK_SIZE / canvas.width;
+      const sy = MASK_SIZE / canvas.height;
+      for (let y = 0; y < canvas.height; y++) {
+        const my = y * sy;
+        const my0 = Math.min(MASK_SIZE - 1, Math.floor(my));
+        const my1 = Math.min(MASK_SIZE - 1, my0 + 1);
+        const fy = my - my0;
+        for (let x = 0; x < canvas.width; x++) {
+          const mx = x * sx;
+          const mx0 = Math.min(MASK_SIZE - 1, Math.floor(mx));
+          const mx1 = Math.min(MASK_SIZE - 1, mx0 + 1);
+          const fx = mx - mx0;
+          const v00 = isBg[my0 * MASK_SIZE + mx0];
+          const v10 = isBg[my0 * MASK_SIZE + mx1];
+          const v01 = isBg[my1 * MASK_SIZE + mx0];
+          const v11 = isBg[my1 * MASK_SIZE + mx1];
+          const vTop = v00 + (v10 - v00) * fx;
+          const vBot = v01 + (v11 - v01) * fx;
+          const bgAmount = vTop + (vBot - vTop) * fy;
+          data[(y * canvas.width + x) * 4 + 3] = Math.round((1 - bgAmount) * 255);
         }
       }
       ctx.putImageData(frame, 0, 0);
