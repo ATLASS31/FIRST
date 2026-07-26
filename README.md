@@ -3667,6 +3667,64 @@ suivante, 3 clics rapprochés (double-clic + un de plus) ne font avancer
 que d'UNE seule étape (garde `transitioning` confirmée) ; régression
 complète sur les 10 routes sans nouvelle erreur.
 
+## 3 piliers : vrai fond vert (chroma key) + ombre synthétique + frise centrée
+
+Le client a refourni les 3 vidéos, cette fois tournées sur un vrai fond
+vert dédié au détourage — fini le tournage ton sur ton du round précédent
+qui avait forcé l'abandon complet du détourage pixel. Mesuré sur les
+nouveaux rendus : fond à rgb(19, 255, 8) sur les 4 coins des 3 vidéos,
+quasi identique d'une vidéo à l'autre, avec un bord objet/fond très net
+(1 seul pixel de transition mesuré directement sur les frames extraites).
+Le vert y domine par un écart énorme (canal vert supérieur de 230+ aux
+deux autres) alors qu'aucune teinte bois/horloge/maison ne s'en approche
+(canal rouge toujours dominant ou égal chez le sujet, y compris dans les
+zones sombres comme le renfoncement de la porte, vérifié directement sur
+les pixels) — un vrai fond dédié, sans plus l'ambiguïté du premier
+tournage.
+
+**Détourage par dominance du vert** : `spill = canal vert − max(rouge,
+bleu)`. Fond si `spill ≥ 160`, sujet si `spill ≤ 60`, dégradé linéaire
+entre les deux pour l'anti-crénelage. Suppression de spill sur tout pixel
+où `spill > 0` (pas seulement les pixels semi-transparents comme dans un
+premier essai) : plafonner le canal vert au max(rouge, bleu) supprime le
+liseré verdâtre résiduel sur les pixels de bord devenus pleinement
+opaques après compression — mesuré et confirmé à zéro pixel résiduel
+après correction (contre ~230 avant, sur un test réel).
+
+**Ombre synthétique** : ces rendus n'ont pas d'ombre portée (le sujet
+"flotte" sur le vert). Recalculée à chaque frame à partir de la boîte
+englobante des pixels opaques du sujet (min/max x/y), calculée pendant le
+même passage pixel par pixel que le détourage — sans coût
+supplémentaire — puis peinte comme une ellipse à dégradé radial sous le
+sujet avant de le composer par-dessus. Suit donc naturellement la largeur
+et la position réelles du sujet pendant toute la métamorphose bois →
+horloge → maison, sans réglage par vidéo.
+
+**Contrainte technique** : `putImageData` remplace des pixels bruts sans
+composer avec l'alpha du contenu déjà présent sur le canvas — impossible
+donc de peindre l'ombre directement sur le canvas visible puis d'y
+`putImageData` le sujet détouré par-dessus (ça effacerait l'ombre aux
+endroits transparents). Résolu avec un canvas hors-écran dédié
+(`objectCanvasRef`) qui reçoit le sujet détouré via `putImageData`, puis
+composé sur le canvas visible via `drawImage` (qui, lui, respecte l'alpha
+normalement) par-dessus l'ombre déjà peinte.
+
+**Frise (retour capture annotée)** : les libellés "01 / Matière" etc.
+étaient alignés à gauche de leur colonne de grille, alors que le point de
+la frise est centré sur cette même colonne — désaligné visuellement.
+Corrigé en centrant le contenu de chaque colonne (`items-center
+text-center`) pour qu'il tombe exactement sous son point.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+détourage + ombre validés sur une vraie lecture vidéo (transcodage VP9,
+seul codec décodable dans ce bac à sable, lu via `.play()` + boucle
+`requestAnimationFrame` reproduisant exactement le code de production) —
+objet net sans fragmentation, ombre qui suit la boîte englobante pendant
+toute la métamorphose bois→horloge, 0 pixel de liseré vert résiduel
+mesuré programmatiquement ; mécanique de boucle re-testée en prod
+(Matière → Temps → Espace → Matière) ; régression complète sur les 10
+routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

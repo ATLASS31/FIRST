@@ -22,28 +22,38 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * boucle") — la vidéo suivante se lance après un temps de pause fixe
  * (`HOLD_MS`), pas au franchissement d'une position de scroll.
  *
- * Détourage au pixel : essayé, abandonné. Deux techniques testées
- * (distance de couleur globale, puis remplissage par propagation/flood
- * fill depuis les bords) ont chacune été livrées puis rejetées par le
- * client : la première "surexposait" l'objet (le seuil devait englober le
- * bruit du fond, qui chevauche la couleur de l'objet sur ce tournage ton
- * sur ton — façade de l'horloge et murs de la maison mesurés à ~5-6 de
- * distance du fond, soit MOINS que la variation du fond lui-même,
- * ~19-30) ; la seconde, plus robuste en théorie, restait démontrée fragile
- * à l'usage réel (lue vraiment image par image, pas sur une frame figée) —
- * retour client : "la technique marche pas... c'est pire". Avec un tel
- * écart de couleur objet/fond, du même ordre que le bruit de compression
- * vidéo réel, aucun seuil fixe ne tient sur les 3 vidéos et sur toute leur
- * durée.
+ * Détourage au pixel : deux tentatives sur le premier tournage (studio
+ * ton sur ton, sans fond dédié) ont échoué — distance de couleur globale
+ * ("surexposé"), puis flood fill ("c'est pire", fragmenté à l'usage réel).
+ * Diagnostic de l'époque : sur CE tournage, l'écart de couleur objet/fond
+ * était du même ordre que le bruit de compression vidéo, donc aucun seuil
+ * ne pouvait tenir — d'où le choix, à l'époque, d'abandonner le détourage
+ * et de matcher le fond du conteneur à la teinte du studio.
  *
- * Plutôt que de continuer à complexifier une méthode intrinsèquement
- * fragile pour ce tournage, le fond n'est plus retiré du tout : la vidéo
- * s'affiche telle quelle (son propre fond d'atelier, mesuré ~rgb(229,
- * 218, 208) sur les 3 rendus), et c'est le conteneur qui adopte cette
- * même teinte chaude en fond. Le cadre carré de la vidéo se fond dans son
- * entourage au lieu d'être découpé — cohérent avec la photo de référence
- * du client, qui montrait déjà un unique aplat crème continu sur toute la
- * composition, objet compris.
+ * Le client a depuis refourni les 3 vidéos tournées sur un vrai fond vert
+ * (chroma key), rgb(19, 255, 8) mesuré sur les 3 rendus, quasiment
+ * identique aux 4 coins de chaque vidéo — un fond dédié au détourage,
+ * plus la même contrainte ton sur ton. Le vert y est dominant par un très
+ * grand écart (canal vert ≈230+ au-dessus des deux autres canaux) alors
+ * qu'aucune teinte bois/horloge/maison ne s'en approche (canal rouge
+ * toujours dominant ou égal) : un test de "dominance du vert" (le canal
+ * vert moins le max des deux autres) sépare donc le sujet du fond sans
+ * ambiguïté, contrairement au premier tournage. Un pixel est fond si cet
+ * écart dépasse `KEY_HIGH`, sujet si sous `KEY_LOW`, dégradé linéaire
+ * entre les deux (anti-crénelage). Les pixels de bord partiellement
+ * transparents subissent en plus une suppression de spill (le vert du
+ * fond qui déteint sur 1-2 pixels de bord) en plafonnant leur canal vert
+ * au max(rouge, bleu) du même pixel.
+ *
+ * Ces vidéos n'ayant pas d'ombre portée (l'objet "flotte" sur le vert),
+ * une ombre est resynthétisée : la boîte englobante du sujet (min/max x/y
+ * des pixels opaques) est calculée à chaque frame pendant le même passage
+ * pixel par pixel que le détourage — sans coût supplémentaire — puis une
+ * ellipse dégradée (radiale, sombre puis transparente) est peinte sous le
+ * sujet avant de composer l'objet détouré par-dessus. Recalculée à chaque
+ * frame, elle suit naturellement la largeur et la position du sujet
+ * pendant toute la métamorphose (bois → horloge → maison), sans jeu de
+ * paramètres par vidéo.
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -100,6 +110,12 @@ const TRANSITION_TIMEOUT_MS = 6000;
 // Vitesse de lecture des transitions — demande client ("l'animation aille
 // plus vite"), vidéos de ~3s à vitesse native jugées trop lentes.
 const PLAYBACK_RATE = 1.7;
+// Seuils du détourage fond vert (voir note en tête de fichier) : écart
+// mesuré sur les vraies vidéos entre le fond (spill ≈ 236) et le sujet
+// (spill négatif) — larges marges des deux côtés, feather de quelques
+// pixels seulement pour l'anti-crénelage du bord réel (~1-2px mesurés).
+const KEY_LOW = 60;
+const KEY_HIGH = 160;
 
 function StepIcon({ name }: { name: (typeof STEPS)[number]["icon"] }) {
   const common = {
@@ -153,6 +169,12 @@ export default function ThreePiliers() {
   // déclencher la même mécanique de transition que la boucle automatique,
   // sans dupliquer cette mécanique ni la sortir de l'effet.
   const skipForwardRef = useRef<(() => void) | null>(null);
+  // Canvas hors-écran réutilisé d'une frame à l'autre : reçoit le sujet
+  // détouré (couleurs + alpha du fond vert) avant d'être composé par
+  // `drawImage` sur le canvas visible, par-dessus l'ombre synthétique.
+  // `putImageData` remplace des pixels bruts sans composer avec l'alpha —
+  // il lui faut donc sa propre surface, distincte du canvas final.
+  const objectCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
@@ -173,8 +195,98 @@ export default function ThreePiliers() {
     }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    if (!objectCanvasRef.current) {
+      objectCanvasRef.current = document.createElement("canvas");
+    }
+    const objectCanvas = objectCanvasRef.current;
+    if (objectCanvas.width !== canvas.width || objectCanvas.height !== canvas.height) {
+      objectCanvas.width = canvas.width;
+      objectCanvas.height = canvas.height;
+    }
+    const octx = objectCanvas.getContext("2d", { willReadFrequently: true });
+    if (!octx) return;
+
+    octx.clearRect(0, 0, objectCanvas.width, objectCanvas.height);
+    octx.drawImage(video, 0, 0, objectCanvas.width, objectCanvas.height);
+
+    const frame = octx.getImageData(0, 0, objectCanvas.width, objectCanvas.height);
+    const data = frame.data;
+    let minX = objectCanvas.width;
+    let maxX = 0;
+    let minY = objectCanvas.height;
+    let maxY = 0;
+    let hasSubject = false;
+
+    for (let y = 0; y < objectCanvas.height; y++) {
+      const rowStart = y * objectCanvas.width;
+      for (let x = 0; x < objectCanvas.width; x++) {
+        const i = (rowStart + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Dominance du vert : le fond de ces tournages est un vert pur
+        // (~rgb(19,255,8)), sans ambiguïté possible avec les teintes
+        // bois/crème du sujet (canal rouge toujours dominant ou égal chez
+        // lui). Voir la note en tête de fichier.
+        const spill = g - Math.max(r, b);
+        let alpha: number;
+        if (spill >= KEY_HIGH) {
+          alpha = 0;
+        } else if (spill <= KEY_LOW) {
+          alpha = 1;
+        } else {
+          alpha = 1 - (spill - KEY_LOW) / (KEY_HIGH - KEY_LOW);
+        }
+        if (alpha > 0 && spill > 0) {
+          // Suppression de spill : sur les pixels de bord (partiellement
+          // transparents, mais aussi certains pixels devenus pleinement
+          // opaques après compression) le vert du fond déteint un peu sur
+          // la couleur du sujet — plafonner le canal vert évite un liseré
+          // verdâtre une fois composé sur le nouveau fond. Sans effet sur
+          // les pixels bien à l'intérieur du sujet (vert déjà sous
+          // max(rouge, bleu) chez lui, `min` ne change rien).
+          data[i + 1] = Math.min(g, Math.max(r, b));
+        }
+        data[i + 3] = Math.round(alpha * 255);
+        if (alpha > 0.5) {
+          hasSubject = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    octx.putImageData(frame, 0, 0);
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    if (hasSubject) {
+      // Ombre resynthétisée : ces tournages n'en ont pas (le sujet
+      // "flotte" sur le vert). Recalculée à partir de la boîte englobante
+      // du sujet à CETTE frame — elle suit donc naturellement la largeur
+      // et la position réelles pendant toute la métamorphose.
+      const bboxWidth = maxX - minX;
+      const shadowWidth = bboxWidth * 0.78;
+      const shadowHeight = shadowWidth * 0.16;
+      const centerX = (minX + maxX) / 2;
+      const shadowY = maxY - shadowHeight * 0.3;
+
+      ctx.save();
+      ctx.translate(centerX, shadowY);
+      ctx.scale(1, shadowHeight / shadowWidth);
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, shadowWidth / 2);
+      gradient.addColorStop(0, "rgba(26, 22, 20, 0.3)");
+      gradient.addColorStop(1, "rgba(26, 22, 20, 0)");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, shadowWidth / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.drawImage(objectCanvas, 0, 0);
   }, []);
 
   useEffect(() => {
@@ -453,7 +565,10 @@ export default function ThreePiliers() {
                 </div>
                 <div className="mt-4 grid grid-cols-3">
                   {STEPS.map((s, i) => (
-                    <div key={s.id} className="flex flex-col gap-1">
+                    <div
+                      key={s.id}
+                      className="flex flex-col items-center gap-1 text-center"
+                    >
                       <span
                         className={`eyebrow text-[11px] transition-colors duration-300 ${
                           i === activeStep ? "text-laiton" : "text-encre-douce/50"
