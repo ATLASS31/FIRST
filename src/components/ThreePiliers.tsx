@@ -341,29 +341,20 @@ export default function ThreePiliers() {
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
-            {/* Contour tracé à la main autour du cadre, demandé par le
-                client sur un croquis annoté — une ligne organique et
-                légèrement irrégulière plutôt qu'un simple rectangle
-                parfait, pour un rendu plus artisanal/"3D esquissé".
-                Volontairement en dehors du cadre (jamais coupé par son
-                `overflow-hidden`) et discret (`text-encre/20`) : un seul
-                accent signature, pas une décoration qui prend le dessus. */}
-            <svg
+            {/* Vrai relief plutôt qu'un simple contour dessiné — premier
+                essai (une ligne organique tracée autour du cadre) jugé
+                "ressemble à rien" par le client, qui voulait un vrai effet
+                3D, pas juste des lignes. Ici : une face arrière massive,
+                même forme que le cadre, légèrement décalée en bas à droite
+                et teintée plus sombre — la tranche de cette face arrière,
+                visible sur les bords droit et bas du cadre, donne
+                l'épaisseur/le volume (technique "carte empilée" classique
+                pour un relief net et lisible, pas une texture subtile
+                qu'on remarque à peine). */}
+            <div
               aria-hidden
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="pointer-events-none absolute inset-0 h-full w-full overflow-visible text-encre/25"
-            >
-              <path
-                d="M4,9 C28,-5 68,-7 97,3 C110,8 108,52 101,59 C95,65 111,90 97,98 C66,111 27,102 1,99 C-11,95 -7,53 0,49 C6,45 -9,17 4,9"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
+              className="absolute inset-0 translate-x-3 translate-y-3 rounded-[2.5rem] bg-[#c9a878] sm:translate-x-4 sm:translate-y-4"
+            />
             <div
               ref={containerRef}
               className="absolute inset-0 overflow-hidden rounded-[2.5rem] bg-[#e5dad0] shadow-[0_30px_60px_-30px_rgba(26,22,20,0.25)]"

@@ -3868,6 +3868,35 @@ confirmé visible sur les 4 côtés du cadre (capture zoomée) en desktop ET
 mobile ; mécanique de boucle re-testée (Matière → Temps) ; régression
 complète sur les 10 routes sans nouvelle erreur.
 
+## 3 piliers : le contour esquissé remplacé par un vrai relief 3D
+
+Retour client sur le contour SVG organique du round précédent : "ça
+ressemble à rien... je veux vrai effet 3D... t'as fais des lignes mais
+non" — une ligne fine, même irrégulière, ne se lit pas comme un vrai
+relief à l'usage réel.
+
+**Remplacé par une carte empilée** : une face arrière, même forme que le
+cadre (`rounded-[2.5rem]`), décalée en bas-à-droite
+(`translate-x-3 translate-y-3`, un peu plus sur `sm:`) et teintée plus
+sombre (`#c9a878`, une nuance plus riche de la même famille crème). Sa
+tranche reste visible sur les bords droit et bas du cadre (celui-ci étant
+opaque et décalé par rapport à elle) — une technique "carte empilée"
+classique et immédiatement lisible comme relief, contrairement à une
+ligne décorative fine. Remplace entièrement le contour esquissé
+(retiré).
+
+**Photos de feuilles toujours bloquées** : le client a renvoyé les mêmes
+2 photos + capture, à nouveau en contenu de conversation plutôt qu'en
+pièce jointe fichier (vérifié : aucun nouveau fichier dans le dossier
+d'uploads de la session). Toujours aucun octet accessible pour un
+traitement pixel — en attente d'un envoi en pièce jointe comme pour les
+vidéos.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+relief confirmé visuellement en desktop et mobile (capture) — tranche
+visible et nette sur 2 côtés, lecture 3D immédiate ; régression complète
+sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
