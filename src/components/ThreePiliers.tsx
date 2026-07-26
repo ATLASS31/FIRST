@@ -35,6 +35,22 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * large que la colonne texte (`lg:grid-cols-[1.35fr_1fr]`, au lieu d'un
  * partage égal) — demande client ("grandis bien la vidéo sur PC").
  *
+ * Ombres de feuilles : le client a fourni 2 photos (fond blanc) et un
+ * croquis annoté montrant deux branches en ombre, une en haut à gauche du
+ * cadre, une en bas à droite. Détourées via l'outil Higgsfield
+ * `remove_background` (import serveur-à-serveur via `media_import_url` —
+ * le réseau de ce bac à sable bloque en sortie le CDN où les photos
+ * étaient hébergées, mais Higgsfield les récupère depuis SON propre
+ * serveur, pas depuis ce bac à sable). Le noir et le flou ne sont pas
+ * pré-appliqués sur l'image : un filtre CSS (`brightness(0)` peint tout
+ * pixel opaque en noir sans toucher à l'alpha détouré, `blur` adoucit le
+ * contour) suffit, pas besoin d'un aller-retour de traitement pixel
+ * supplémentaire. Ces images restent hébergées sur le CDN Higgsfield
+ * (`d8j0ntlcm91z4.cloudfront.net`, déjà autorisé dans
+ * `next.config.ts` pour les visuels produit des gammes) plutôt que
+ * copiées dans `public/` — accessibles aux vrais visiteurs du site, mais
+ * pas prévisualisables depuis ce bac à sable (même blocage réseau).
+ *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
  * une vidéo que personne ne regarde encore au chargement de la page.
@@ -354,6 +370,34 @@ export default function ThreePiliers() {
             <div
               aria-hidden
               className="absolute inset-0 translate-x-3 translate-y-3 rounded-[2.5rem] bg-[#c9a878] sm:translate-x-4 sm:translate-y-4"
+            />
+            {/* Ombres de feuilles, demandées par le client sur son
+                croquis annoté (deux branches, une en haut à gauche, une
+                en bas à droite, hors du cadre). Les 2 photos fournies ont
+                été détourées via Higgsfield (`remove_background`) — le
+                fond blanc d'origine est retiré, ne reste que la
+                silhouette alpha de la branche. Le noir + le flou ne sont
+                PAS pré-appliqués sur l'image : un simple filtre CSS
+                (`brightness(0)` peint tout pixel opaque en noir pur sans
+                toucher à l'alpha, `blur` adoucit le contour) suffit et
+                évite un aller-retour de traitement pixel. Ces images sont
+                hébergées sur le CDN Higgsfield (pas de copie locale : le
+                réseau de ce bac à sable bloque ce domaine en sortie,
+                voir le commentaire git pour le détail) — accessible aux
+                vrais visiteurs du site, mais pas prévisualisable
+                localement ici. Desktop uniquement : encombrerait la
+                colonne mobile, plus étroite. */}
+            <img
+              src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute -left-20 -top-16 hidden w-56 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
+            />
+            <img
+              src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute -bottom-16 -right-20 hidden w-56 rotate-180 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
             />
             <div
               ref={containerRef}
