@@ -3782,6 +3782,46 @@ Matière) ; conteneur sans fond propre confirmé programmatiquement ; ordre
 mobile/desktop confirmé programmatiquement ; régression complète sur les
 10 routes sans nouvelle erreur.
 
+## 3 piliers : retour aux vidéos et au cadre d'origine, vidéo agrandie sur PC
+
+Retour client sur le fond vert (round précédent) : jugé "trop low quality"
+à l'usage réel sur PC. Demande explicite de revenir en arrière — aux
+anciennes vidéos ET au traitement d'origine, pas d'itération
+supplémentaire sur le détourage.
+
+**Vidéos** : le client a réenvoyé les 3 fichiers d'origine (mêmes noms de
+fichier `hf_...`, mêmes tailles en octets que le tout premier envoi —
+vérifié directement, pas supposé). Restaurées depuis l'historique git
+(`git show 72f3da7:public/videos/...`) plutôt que recompressées à
+nouveau : diff contre ce commit vide, donc bit-à-bit identiques à ce qui
+tournait avant le passage au fond vert.
+
+**Code** : tout le détourage (dominance du vert, suppression de spill,
+canvas de travail réduit) et l'ombre synthétique du round précédent sont
+retirés — `drawFrame` revient à un simple `drawImage` du frame vidéo tel
+quel, comme avant le premier essai de détourage. Le conteneur retrouve son
+cadre crème arrondi (`bg-[#e5dad0] rounded-[2.5rem]`, teinte mesurée sur
+les vidéos d'origine) pour que le carré vidéo s'intègre proprement dans
+la section plutôt que de trancher. Gardés intacts (indépendants du
+choix vidéo) : les points de frise, la flèche d'avance manuelle,
+`PLAYBACK_RATE = 1.7`, l'ordre mobile texte-au-dessus-de-l'animation.
+
+**Vidéo agrandie sur PC** : nouvelle demande ("grandis bien la vidéo sur
+PC"). La grille desktop passe d'un partage égal (`lg:grid-cols-2`) à
+`lg:grid-cols-[1.35fr_1fr]` — la colonne vidéo prend nettement plus de
+place que la colonne texte (mesuré : conteneur vidéo à 597px de large à
+1400px de viewport, contre ~510px avant, soit +17%). Gap resserré à
+`lg:gap-16` (au lieu de 20) pour compenser visuellement le texte devenu
+plus étroit. Mobile non affecté (toujours pleine largeur, `max-w-md`).
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+fichiers vidéo confirmés identiques à la version pré-fond-vert (diff git
+vide) ; cadre confirmé programmatiquement (fond `rgb(229,218,208)`, coins
+arrondis 40px) ; conteneur desktop mesuré à 597px (vs ~510px avant) ;
+ordre mobile texte-au-dessus toujours actif ; boucle re-testée (Matière →
+Temps → Espace) ; régression complète sur les 10 routes sans nouvelle
+erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
