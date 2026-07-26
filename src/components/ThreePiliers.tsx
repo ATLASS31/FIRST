@@ -53,7 +53,27 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * sujet avant de composer l'objet détouré par-dessus. Recalculée à chaque
  * frame, elle suit naturellement la largeur et la position du sujet
  * pendant toute la métamorphose (bois → horloge → maison), sans jeu de
- * paramètres par vidéo.
+ * paramètres par vidéo. Sa largeur est volontairement un peu SUPÉRIEURE à
+ * la boîte englobante (`shadowWidth = bboxWidth * 1.12`) : une largeur
+ * inférieure (essayée d'abord) restait entièrement cachée derrière
+ * l'objet opaque pour toute forme à base plate (bois, maison, dont la
+ * silhouette occupe déjà toute la largeur jusqu'en bas) — seul le disque
+ * de l'horloge, qui s'arrondit vers un point, laissait alors l'ombre
+ * dépasser sur les côtés ("l'ombre rend bien seulement sur l'horloge").
+ * Un léger dépassement garanti la rend visible quelle que soit la forme.
+ *
+ * Le conteneur n'a plus de fond ni de cadre propres : une fois le sujet
+ * proprement détouré (fond vert réel, contrairement au premier tournage),
+ * il se pose directement sur le fond de la page — plus la peine d'un
+ * cadre crème pour masquer un fond de vidéo non retiré.
+ *
+ * Le détourage (lecture/écriture pixel par pixel) tourne sur un canvas de
+ * travail à résolution réduite (`KEY_SCALE`), pas sur la pleine résolution
+ * d'affichage — la version pleine résolution (jusqu'à ~2M pixels/frame en
+ * desktop, DPR 2) donnait une animation "pas très fluide" en usage réel.
+ * Le résultat est réagrandi via `drawImage` (lissage bilinéaire natif du
+ * canvas) au moment de la composition finale, qui elle reste à pleine
+ * résolution d'affichage.
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -116,6 +136,13 @@ const PLAYBACK_RATE = 1.7;
 // pixels seulement pour l'anti-crénelage du bord réel (~1-2px mesurés).
 const KEY_LOW = 60;
 const KEY_HIGH = 160;
+// Résolution du canvas de travail utilisé pour le détourage, relative à la
+// résolution d'affichage — retour client ("pas très fluide en vrai") : la
+// lecture/écriture pixel par pixel en pleine résolution (jusqu'à ~2M
+// pixels par frame en desktop, DPR 2) coûtait trop cher à 24-60 im/s.
+// 0.6 ramène ça à ~36% des pixels, quasiment sans perte visible une fois
+// le résultat réagrandi (lissage bilinéaire natif du canvas).
+const KEY_SCALE = 0.6;
 
 function StepIcon({ name }: { name: (typeof STEPS)[number]["icon"] }) {
   const common = {
@@ -196,31 +223,40 @@ export default function ThreePiliers() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Le détourage (lecture/écriture pixel par pixel) tourne sur un canvas
+    // de travail réduit (`KEY_SCALE`), pas sur la pleine résolution
+    // d'affichage — c'était trop de calcul par frame ("pas très fluide en
+    // vrai"), voir note en tête de fichier. Le canvas final reste net : le
+    // `drawImage` de recomposition, lui, dessine à la pleine résolution
+    // d'affichage, avec le lissage bilinéaire natif du canvas.
+    const workWidth = Math.max(1, Math.round(canvas.width * KEY_SCALE));
+    const workHeight = Math.max(1, Math.round(canvas.height * KEY_SCALE));
+
     if (!objectCanvasRef.current) {
       objectCanvasRef.current = document.createElement("canvas");
     }
     const objectCanvas = objectCanvasRef.current;
-    if (objectCanvas.width !== canvas.width || objectCanvas.height !== canvas.height) {
-      objectCanvas.width = canvas.width;
-      objectCanvas.height = canvas.height;
+    if (objectCanvas.width !== workWidth || objectCanvas.height !== workHeight) {
+      objectCanvas.width = workWidth;
+      objectCanvas.height = workHeight;
     }
     const octx = objectCanvas.getContext("2d", { willReadFrequently: true });
     if (!octx) return;
 
-    octx.clearRect(0, 0, objectCanvas.width, objectCanvas.height);
-    octx.drawImage(video, 0, 0, objectCanvas.width, objectCanvas.height);
+    octx.clearRect(0, 0, workWidth, workHeight);
+    octx.drawImage(video, 0, 0, workWidth, workHeight);
 
-    const frame = octx.getImageData(0, 0, objectCanvas.width, objectCanvas.height);
+    const frame = octx.getImageData(0, 0, workWidth, workHeight);
     const data = frame.data;
-    let minX = objectCanvas.width;
+    let minX = workWidth;
     let maxX = 0;
-    let minY = objectCanvas.height;
+    let minY = workHeight;
     let maxY = 0;
     let hasSubject = false;
 
-    for (let y = 0; y < objectCanvas.height; y++) {
-      const rowStart = y * objectCanvas.width;
-      for (let x = 0; x < objectCanvas.width; x++) {
+    for (let y = 0; y < workHeight; y++) {
+      const rowStart = y * workWidth;
+      for (let x = 0; x < workWidth; x++) {
         const i = (rowStart + x) * 4;
         const r = data[i];
         const g = data[i + 1];
@@ -265,13 +301,25 @@ export default function ThreePiliers() {
     if (hasSubject) {
       // Ombre resynthétisée : ces tournages n'en ont pas (le sujet
       // "flotte" sur le vert). Recalculée à partir de la boîte englobante
-      // du sujet à CETTE frame — elle suit donc naturellement la largeur
-      // et la position réelles pendant toute la métamorphose.
-      const bboxWidth = maxX - minX;
-      const shadowWidth = bboxWidth * 0.78;
-      const shadowHeight = shadowWidth * 0.16;
-      const centerX = (minX + maxX) / 2;
-      const shadowY = maxY - shadowHeight * 0.3;
+      // du sujet à CETTE frame (remise à l'échelle du canvas de travail
+      // réduit vers le canvas d'affichage) — elle suit donc naturellement
+      // la largeur et la position réelles pendant toute la métamorphose.
+      const toDisplay = 1 / KEY_SCALE;
+      const dMinX = minX * toDisplay;
+      const dMaxX = maxX * toDisplay;
+      const dMaxY = maxY * toDisplay;
+      const bboxWidth = dMaxX - dMinX;
+      // Largeur LÉGÈREMENT SUPÉRIEURE à la boîte englobante, jamais
+      // inférieure : sinon l'ombre reste entièrement cachée derrière
+      // l'objet opaque (dessiné juste après, par-dessus) pour toute forme
+      // à base plate (bois, maison) — leur silhouette occupe déjà toute la
+      // largeur de la boîte jusqu'en bas, contrairement au disque de
+      // l'horloge qui s'arrondit vers un point et laissait l'ombre dépasser
+      // sur les côtés. Un dépassement garanti la rend visible pour les 3.
+      const shadowWidth = bboxWidth * 1.12;
+      const shadowHeight = shadowWidth * 0.14;
+      const centerX = (dMinX + dMaxX) / 2;
+      const shadowY = dMaxY - shadowHeight * 0.1;
 
       ctx.save();
       ctx.translate(centerX, shadowY);
@@ -286,7 +334,7 @@ export default function ThreePiliers() {
       ctx.restore();
     }
 
-    ctx.drawImage(objectCanvas, 0, 0);
+    ctx.drawImage(objectCanvas, 0, 0, workWidth, workHeight, 0, 0, canvas.width, canvas.height);
   }, []);
 
   useEffect(() => {
@@ -464,7 +512,7 @@ export default function ThreePiliers() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div
             ref={containerRef}
-            className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-[2.5rem] bg-[#e5dad0] shadow-[0_30px_60px_-30px_rgba(26,22,20,0.25)] lg:max-w-none"
+            className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none"
           >
             <video
               ref={video0Ref}
@@ -500,7 +548,7 @@ export default function ThreePiliers() {
             />
           </div>
 
-          <div>
+          <div className="order-1 lg:order-2">
             <AnimatePresence mode="wait">
               <motion.div
                 key={`icon-${activeStep}`}

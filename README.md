@@ -3725,6 +3725,63 @@ mesuré programmatiquement ; mécanique de boucle re-testée en prod
 (Matière → Temps → Espace → Matière) ; régression complète sur les 10
 routes sans nouvelle erreur.
 
+## 3 piliers : cadre retiré, détourage fluidifié, ombre bois/maison, ordre mobile
+
+Quatre retours sur le round précédent, tous corrigés :
+
+**Cadre retiré** : le fond vert dédié fonctionnant proprement ("nickel"),
+le cadre crème arrondi (`bg-[#e5dad0] rounded-[2.5rem] shadow-[...]`)
+n'a plus lieu d'être — il datait du round où le détourage avait été
+abandonné et servait à masquer le fond de studio non retiré. Le
+conteneur ne porte plus aucun fond/cadre propre : l'objet détouré se
+pose directement sur le fond de la page.
+
+**Fluidité** : le détourage (lecture/écriture pixel par pixel) tournait à
+pleine résolution d'affichage — mesuré précisément via une instrumentation
+`performance.now()` autour de `drawFrame`, rejouée sur une vraie vidéo
+(transcodage VP9, ce bac à sable ne décode pas le H.264 des fichiers
+finaux) : **~44ms par frame en pleine résolution**, largement au-dessus du
+budget de 16ms d'une image à 60 im/s — un vrai bloqueur de fluidité,
+confirmé plutôt que supposé. Calculé désormais sur un canvas de travail
+réduit à 60% de la résolution d'affichage (`KEY_SCALE = 0.6`, ~36% des
+pixels), puis réagrandi via `drawImage` au moment de la composition
+finale (lissage bilinéaire natif du canvas, perte de netteté minime).
+Même test après correction : **~9ms par frame**, soit environ 5× plus
+rapide, et 143 frames traitées sur la durée de lecture contre seulement 59
+avant — confirmé, pas juste plausible.
+
+**Ombre bois/maison** : ne rendait bien que sur l'horloge. Cause
+identifiée : l'ombre (une ellipse) était dessinée plus ÉTROITE que la
+boîte englobante du sujet (`shadowWidth = bboxWidth * 0.78`) et centrée
+majoritairement À L'INTÉRIEUR de cette boîte — pour le disque de
+l'horloge, qui s'arrondit vers un point en bas, une bonne partie de
+l'ellipse dépassait quand même sur les côtés du disque (visible). Mais
+pour une forme à base plate (le cylindre de bois, la maison), la
+silhouette occupe déjà toute la largeur de la boîte jusqu'en bas :
+l'ellipse plus étroite restait alors entièrement cachée derrière l'objet
+opaque (dessiné juste après, par-dessus) — invisible, quelle que soit son
+opacité. Corrigé en rendant l'ombre légèrement plus LARGE que la boîte
+englobante (`* 1.12`, jamais moins) : ses bords dépassent alors toujours
+un peu de la silhouette, quelle que soit la forme (pointue ou à base
+plate), garantissant sa visibilité sur les 3 objets. Revérifié sur une
+vraie lecture vidéo (maison→bois) : ombre nettement visible aux deux
+extrémités (maison au départ, bois à l'arrivée).
+
+**Ordre mobile** : le texte apparaissait sous l'animation sur mobile,
+demande client inversée ("texte en haut puis en bas l'animation"). Grille
+CSS inchangée (toujours `lg:grid-cols-2`), ordre visuel piloté par
+`order-1`/`order-2` (mobile) vs `lg:order-1`/`lg:order-2` (desktop, ordre
+d'origine préservé : vidéo à gauche, texte à droite) — pas de changement
+de structure DOM, seulement de placement visuel par breakpoint. Vérifié
+par Playwright : texte au-dessus du canvas en mobile (390px), vidéo à
+gauche du texte en desktop (1400px), comme avant.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+mécanique de boucle re-testée en prod (Matière → Temps → Espace →
+Matière) ; conteneur sans fond propre confirmé programmatiquement ; ordre
+mobile/desktop confirmé programmatiquement ; régression complète sur les
+10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
