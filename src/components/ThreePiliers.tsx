@@ -143,6 +143,16 @@ export default function ThreePiliers() {
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
   const [activeStep, setActiveStep] = useState<0 | 1 | 2>(0);
+  // Miroir synchrone de `activeStep` : la boucle vit dans un `useEffect`
+  // dont les closures ne voient jamais l'état React à jour. Le bouton
+  // "avancer" (déclenché par un clic, donc en dehors du cycle de rendu)
+  // a besoin de connaître l'étape courante au moment du clic, pas celle
+  // capturée à la création de l'effet.
+  const currentStepRef = useRef<0 | 1 | 2>(0);
+  // Rempli par l'effet ci-dessous : permet au bouton "avancer" (JSX) de
+  // déclencher la même mécanique de transition que la boucle automatique,
+  // sans dupliquer cette mécanique ni la sortir de l'effet.
+  const skipForwardRef = useRef<(() => void) | null>(null);
 
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
@@ -188,6 +198,15 @@ export default function ThreePiliers() {
       }
     };
 
+    // `setActiveStep` seul ne suffit pas au bouton "avancer" : il ne verra
+    // jamais la valeur mise à jour (fermeture figée au montage de
+    // l'effet). Chaque bascule d'étape passe donc par ce helper, qui met
+    // aussi à jour `currentStepRef` en plus de l'état React.
+    const goToStep = (step: 0 | 1 | 2) => {
+      currentStepRef.current = step;
+      setActiveStep(step);
+    };
+
     if (prefersReducedMotion) {
       const onReady = () => {
         if (cancelled) return;
@@ -200,6 +219,13 @@ export default function ThreePiliers() {
       };
     }
 
+    // Vrai pendant toute la durée d'une transition (vidéo en cours de
+    // lecture, du premier appel de `playTransition` jusqu'au changement
+    // d'étape) — empêche le bouton "avancer" de déclencher une 2e
+    // transition par-dessus celle déjà en cours (double-clic, ou clic
+    // pendant la lecture).
+    let transitioning = false;
+
     const scheduleHold = (step: 0 | 1 | 2) => {
       holdTimeout = setTimeout(() => {
         if (cancelled) return;
@@ -208,6 +234,7 @@ export default function ThreePiliers() {
     };
 
     const playTransition = (fromStep: 0 | 1 | 2) => {
+      transitioning = true;
       const video = videos[fromStep];
       const toStep = (((fromStep + 1) % 3) as 0 | 1 | 2);
 
@@ -218,7 +245,8 @@ export default function ThreePiliers() {
         hardStop = setTimeout(() => {
           stopRaf();
           video.pause();
-          setActiveStep(toStep);
+          transitioning = false;
+          goToStep(toStep);
           scheduleHold(toStep);
         }, TRANSITION_TIMEOUT_MS);
 
@@ -239,7 +267,8 @@ export default function ThreePiliers() {
               hardStop = null;
             }
             video.pause();
-            setActiveStep(toStep);
+            transitioning = false;
+            goToStep(toStep);
             scheduleHold(toStep);
             return;
           }
@@ -262,6 +291,19 @@ export default function ThreePiliers() {
       }
     };
 
+    // Bouton "avancer" (frise, clic manuel) : coupe l'attente en cours et
+    // lance tout de suite la transition suivante — pour les clients qui
+    // ne veulent pas attendre la boucle automatique. Ignoré si une
+    // transition est déjà en train de jouer (évite les doubles-déclenchements).
+    skipForwardRef.current = () => {
+      if (cancelled || transitioning || !started) return;
+      if (holdTimeout) {
+        clearTimeout(holdTimeout);
+        holdTimeout = null;
+      }
+      playTransition(currentStepRef.current);
+    };
+
     // Ne dépend PAS d'un événement vidéo (`loadeddata`) pour démarrer : ça a
     // été essayé, puis corrigé — cet événement demande que le décodeur ait
     // vraiment une frame prête, et rien ne garantit qu'il se déclenche vite
@@ -276,7 +318,7 @@ export default function ThreePiliers() {
       if (started || cancelled) return;
       started = true;
       drawFrame(v0);
-      setActiveStep(0);
+      goToStep(0);
       scheduleHold(0);
     };
 
@@ -298,6 +340,7 @@ export default function ThreePiliers() {
       if (hardStop) clearTimeout(hardStop);
       observer.disconnect();
       videos.forEach((v) => v.pause());
+      skipForwardRef.current = null;
     };
   }, [prefersReducedMotion, drawFrame]);
 
@@ -382,34 +425,76 @@ export default function ThreePiliers() {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-14 sm:mt-16">
-              <div className="relative h-px w-full bg-encre-douce/15">
-                <motion.div
-                  className="absolute inset-y-0 w-1/3 bg-laiton"
-                  animate={{ left: `${(activeStep * 100) / 3}%` }}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                />
-              </div>
-              <div className="mt-4 grid grid-cols-3">
-                {STEPS.map((s, i) => (
-                  <div key={s.id} className="flex flex-col gap-1">
+            <div className="mt-14 flex items-center gap-6 sm:mt-16">
+              <div className="flex-1">
+                <div className="relative h-px w-full bg-encre-douce/15">
+                  <motion.div
+                    className="absolute inset-y-0 w-1/3 bg-laiton"
+                    animate={{ left: `${(activeStep * 100) / 3}%` }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                  {/* Un point au centre de chaque tiers : marque la position
+                      exacte de chaque étape sur la frise plutôt qu'une simple
+                      barre pleine, cohérent avec une vraie séquence 01→02→03. */}
+                  {STEPS.map((s, i) => (
                     <span
-                      className={`eyebrow text-[11px] transition-colors duration-300 ${
-                        i === activeStep ? "text-laiton" : "text-encre-douce/50"
+                      key={s.id}
+                      aria-hidden
+                      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-300 ${
+                        i < activeStep
+                          ? "h-1.5 w-1.5 bg-laiton"
+                          : i === activeStep
+                            ? "h-2.5 w-2.5 bg-laiton shadow-[0_0_0_4px_rgba(173,138,85,0.18)]"
+                            : "h-1.5 w-1.5 border border-encre-douce/30 bg-brume"
                       }`}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span
-                      className={`text-sm font-medium transition-colors duration-300 ${
-                        i === activeStep ? "text-encre" : "text-encre-douce"
-                      }`}
-                    >
-                      {s.tabLabel}
-                    </span>
-                  </div>
-                ))}
+                      style={{ left: `${((i + 0.5) * 100) / 3}%` }}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 grid grid-cols-3">
+                  {STEPS.map((s, i) => (
+                    <div key={s.id} className="flex flex-col gap-1">
+                      <span
+                        className={`eyebrow text-[11px] transition-colors duration-300 ${
+                          i === activeStep ? "text-laiton" : "text-encre-douce/50"
+                        }`}
+                      >
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={`text-sm font-medium transition-colors duration-300 ${
+                          i === activeStep ? "text-encre" : "text-encre-douce"
+                        }`}
+                      >
+                        {s.tabLabel}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {!prefersReducedMotion && (
+                <motion.button
+                  type="button"
+                  onClick={() => skipForwardRef.current?.()}
+                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.05 }}
+                  aria-label="Passer à l'étape suivante"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-laiton/40 text-laiton transition-colors duration-300 hover:border-laiton hover:bg-laiton/10"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M4 12h15M13 6l6 6-6 6" />
+                  </svg>
+                </motion.button>
+              )}
             </div>
           </div>
         </div>

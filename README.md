@@ -3628,6 +3628,45 @@ aucune coupure) ne peut être confirmé à l'écran que par le client sur son
 propre navigateur — mais avec le détourage supprimé, il n'y a techniquement
 plus rien qui puisse fragmenter l'image.
 
+## 3 piliers : frise à points + flèche pour avancer manuellement
+
+Retour client, capture annotée à la main : des points au milieu de chaque
+tiers de la frise (au lieu d'une simple barre pleine), et une flèche
+premium cliquable pour que les clients pressés puissent avancer plus vite
+que la boucle automatique.
+
+**Points de frise** : un point par étape, centré sur son tiers (`left:
+(i+0.5)*100/3%`). Encode l'état de chaque étape plutôt que de décorer :
+plein et petit si déjà passée, plein et plus grand avec un halo laiton
+doux si active, creux (bordure fine, fond assorti à la page) si à venir —
+cohérent avec le principe "01/02/03" déjà en place : une vraie séquence,
+donc des marqueurs numérotés qui ont un sens.
+
+**Flèche "avancer"** : bouton circulaire (même langage que le rond-icône
+au-dessus du texte) placé à droite de la frise, tout du long verticalement
+centré. Techniquement, la boucle automatique vit entièrement dans les
+fermetures (`closures`) d'un seul `useEffect` — le bouton, déclenché par un
+clic en dehors du cycle de rendu React, ne peut pas lire `activeStep` à
+jour ni appeler `playTransition` directement sans dupliquer toute la
+mécanique de transition. Résolu avec deux refs exposées par l'effet :
+`currentStepRef` (miroir synchrone de l'étape active, mis à jour par un
+nouveau helper `goToStep` qui remplace tous les `setActiveStep` directs) et
+`skipForwardRef` (pointe vers une fonction `skipForward` définie dans
+l'effet, qui annule l'attente en cours — `clearTimeout(holdTimeout)` — et
+relance `playTransition` immédiatement sur l'étape courante). Un flag
+`transitioning` (vrai du lancement de la vidéo jusqu'au changement d'étape)
+protège contre les double-clics : un clic pendant qu'une transition joue
+déjà est ignoré plutôt que d'empiler une deuxième transition. Masqué sous
+`prefers-reduced-motion` (dans ce mode, la boucle et toute sa mécanique de
+transition n'existent pas — rien à accélérer).
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+Playwright — bouton présent et cliquable, 3 points détectés, un clic isolé
+suivi d'une pause suffisante fait bien avancer le sous-titre à l'étape
+suivante, 3 clics rapprochés (double-clic + un de plus) ne font avancer
+que d'UNE seule étape (garde `transitioning` confirmée) ; régression
+complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
