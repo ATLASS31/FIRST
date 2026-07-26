@@ -3462,6 +3462,70 @@ Playwright des trois écarts autour du bouton CTA (13px/13px/13px) ;
 capture d'écran de la pilule confirmant l'équilibre visuel ; régression
 complète sur les 10 routes sans nouvelle erreur console.
 
+## Refonte complète des 3 piliers : objet qui se transforme en boucle (bois → horloge → maison)
+
+Demande client, référence visuelle à l'appui : remplacer entièrement
+l'ancienne section "3 piliers" (3 cartes glass côte à côte, sans objet) par
+une mise en page à deux colonnes — à gauche un objet qui se transforme en
+boucle continue, à droite un texte qui change avec lui, en bas une frise à
+3 étapes (Matière / Temps / Espace) qui suit l'étape active. Le client a
+fourni 3 vidéos, chacune une transformation complète dans un seul sens
+(jamais besoin de les lire à l'envers, comme demandé) : bois→horloge,
+horloge→maison, maison→bois — la troisième referme la boucle. Vérifié à
+l'extraction (première/dernière frame de chaque clip) que l'enchaînement
+est parfait avant tout code : la dernière frame de chaque vidéo correspond
+exactement à la première de la suivante.
+
+**Vidéos** : 1440×1440, 24fps, ~3s chacune, H.264/AAC — son retiré
+(inutile) et recompressées (CRF 20, preset slow) : ~3,3 Mo → ~1,3 Mo en
+moyenne par clip, netteté du grain du bois vérifiée sur une frame extraite
+après compression. Fond d'atelier chaud mesuré (~rgb(225, 215, 205)),
+nettement différent du fond de la page — détourage au `<canvas>` requis
+("fait en sorte qu'on ne voit pas le fond des vidéos"), même technique que
+les matériaux de "Notre histoire" (couleur échantillonnée aux 4 coins,
+détourage par distance au carré + bande de fondu). Contenu textuel de
+chaque pilier (subtitle/title/body) conservé à l'identique de l'ancienne
+version — seule la mise en forme change, aucune copie inventée pour
+correspondre à l'image de référence (qui ne sert que de modèle de mise en
+page, pas de source de contenu).
+
+**Boucle automatique, pas de scroll** : contrairement aux matériaux
+(déclenchés par un seuil de scroll), ici "il y a pas d'animation au
+scroll, juste en boucle" — chaque état statique (bois/horloge/maison)
+tient `HOLD_MS` (3,2s, le temps de lire le texte), puis la transition
+suivante se lance automatiquement. La boucle ne démarre qu'une fois la
+section effectivement visible (`IntersectionObserver`, une seule fois) —
+pas la peine de faire tourner une vidéo que personne ne regarde encore.
+
+**Bug trouvé en vérifiant dans ce bac à sable** : la première version ne
+démarrait la boucle qu'après l'événement `loadeddata` de la première
+vidéo — or cet événement ne s'est jamais déclenché ici (Chromium sans
+décodeur H.264, déjà documenté pour les matériaux), donc rien ne
+démarrait jamais, pas même le filet de sécurité. Corrigé en découplant le
+démarrage de la boucle de tout événement vidéo : la bascule ne dépend plus
+que de la visibilité de la section, `drawFrame`/`.play()` étant déjà sans
+risque si la vidéo n'est pas encore prête, et le filet de sécurité
+(`TRANSITION_TIMEOUT_MS`, 6s) faisant de toute façon avancer l'étape même
+si la vidéo ne joue jamais. Ce même filet est ce qui permet de vérifier la
+mécanique dans ce bac à sable : un cycle complet (bois → temps → espace →
+retour à bois) a été observé en mesurant le sous-titre affiché à chaque
+palier de temps.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+Playwright confirmant le cycle complet (les 4 mesures dans l'ordre : "Une
+matière vivante" → "De la signature à la pose" → "Neuf combinaisons" →
+retour à "Une matière vivante") ; couleur du libellé d'étape active
+confirmée distincte de celle des 2 autres (`rgb(26, 22, 20)` contre
+`rgb(107, 102, 94)`) ; capture d'écran confirmant la mise en page (icône,
+eyebrow, titre, frise) proche de la référence à chaque étape ; capture
+mobile confirmant l'empilement vertical ; `prefers-reduced-motion`
+confirmé : reste sur "Une matière vivante" sans jamais boucler ; les 3
+fichiers vidéo confirmés servis (200) ; régression complète sur les 10
+routes sans nouvelle erreur console. Comme pour les matériaux, ce bac à
+sable ne permet aucune vérification visuelle directe de la lecture des
+vidéos elles-mêmes (pas de décodeur H.264) — vérifications géométriques/
+DOM/timing uniquement.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
