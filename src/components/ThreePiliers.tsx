@@ -52,37 +52,27 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * de teinte pile là où il se voit, sans jamais mordre sur le sujet au
  * centre puisque le dégradé ne démarre qu'à ~72% du rayon.
  *
- * Ombres de feuilles : 2 photos détourées via Higgsfield
- * (`remove_background`, import serveur-à-serveur via `media_import_url`
- * — le réseau de ce bac à sable bloque en sortie le CDN où les photos
- * étaient hébergées, mais Higgsfield les récupère depuis SON propre
- * serveur). Noir + flou en CSS (`brightness(0)` peint tout pixel opaque
- * en noir sans toucher à l'alpha détouré, `blur` adoucit le contour), pas
- * pré-appliqués sur l'image. Un premier placement collé aux bords du
- * cadre débordait dessus (l'image contient une bonne marge autour de la
- * branche, donc "collé au cadre" empiétait visuellement sur l'objet) —
- * corrigé sur nouveau croquis client : les feuilles sont désormais
- * positionnées aux coins extrêmes de la SECTION entière (pas du cadre),
- * une en haut à gauche près de la nav, une en bas à droite au-delà de la
- * frise, largement dégagées de l'objet et du texte. Toujours jugées mal
- * placées au round suivant : ancrées sur le conteneur de CONTENU
- * (`max-w-6xl`, qui s'arrête pile à la fin de la grille) plutôt que sur
- * la SECTION elle-même (qui inclut le padding bas `pb-28`), la feuille
- * bas-droite retombait pile sur la frise/flèche au lieu de se poser
- * au-delà. Corrigé en déplaçant les deux images enfants directs de
- * `<section>` (avant le conteneur de contenu dans le DOM), positionnées
- * par rapport à la boîte de section complète (`top-0`/`bottom-0` +
- * `translate`) — la bas-droite tombe maintenant dans la zone de padding,
- * clairement après la frise. Réduites en taille et opacité (moins
- * intrusives) et le flou est renforcé. `aspect-square` + `object-contain`
- * réservent une empreinte prévisible même si l'image ne charge pas
- * (utile pour la vérification géométrique dans ce bac à sable, voir plus
- * bas), sans jamais déformer l'image réelle quel que soit son ratio
- * d'origine. Restent hébergées sur le CDN Higgsfield
- * (`d8j0ntlcm91z4.cloudfront.net`, autorisé dans `next.config.ts`) plutôt
- * que copiées dans `public/` — accessibles aux vrais visiteurs, pas
- * prévisualisables depuis ce bac à sable (blocage réseau, revérifié à ce
- * round : toujours refusé).
+ * Bug de taille du halo, trouvé après un retour client ("on revoit la
+ * différence, même sur le bois") : sans mot-clé de taille explicite, un
+ * `radial-gradient` utilise `farthest-corner` par défaut — le rayon à
+ * 100% est calé sur la distance au COIN le plus éloigné. Sur un cadre
+ * carré, le milieu d'un bord n'est qu'à ~70,7% de cette distance (ratio
+ * du rayon inscrit au rayon circonscrit), pile EN DESSOUS du seuil
+ * transparent à 72% choisi ici — le halo ne couvrait donc quasiment pas
+ * le milieu des bords, seulement les coins, laissant le liseré exposé
+ * pile là où l'œil le remarque le plus (les bords, pas les coins).
+ * Corrigé en forçant `farthest-side` : le rayon à 100% est alors calé sur
+ * la distance au bord le plus proche, donc le milieu de chaque bord est
+ * intégralement couvert, et les coins (au-delà de ce rayon) le sont aussi
+ * puisqu'un dégradé continue avec la couleur du dernier point après elle.
+ *
+ * Ombres de feuilles : retirées. 3 repositionnements successifs (collées
+ * au cadre, coins du cadre avec marge, coins de la section avec/sans
+ * débordement) n'ont jamais donné un résultat jugé correct par le client
+ * ("enlève les feuilles, ça marche pas") — abandonnées plutôt que
+ * retentées une 4e fois à l'aveugle sans pouvoir les prévisualiser
+ * localement (CDN bloqué par la politique réseau de ce bac à sable, déjà
+ * confirmé refusé à plusieurs reprises).
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -390,44 +380,12 @@ export default function ThreePiliers() {
 
   return (
     <section id="concept" className="relative overflow-hidden pb-28 pt-12 sm:pt-16">
-      {/* Ombres de feuilles, demandées par le client sur son croquis
-          annoté. Les 2 photos fournies ont été détourées via Higgsfield
-          (`remove_background`) — le fond blanc d'origine est retiré, ne
-          reste que la silhouette alpha de la branche. Le noir + le flou
-          ne sont PAS pré-appliqués sur l'image : un simple filtre CSS
-          (`brightness(0)` peint tout pixel opaque en noir pur sans
-          toucher à l'alpha, `blur` adoucit le contour) suffit et évite un
-          aller-retour de traitement pixel. Enfants directs de `<section>`
-          (pas du conteneur `max-w-6xl` interne, qui s'arrête à la fin de
-          la grille et ne couvre pas le padding bas `pb-28`) : ancrées sur
-          la boîte de section complète (`top-0`/`left-0` et
-          `bottom-0`/`right-0`), de sorte que la feuille bas-droite tombe
-          dans la zone de padding, clairement après la frise, au lieu de
-          retomber dessus. Volontairement PAS de `translate` pour les
-          faire déborder hors de la section : celle-ci garde
-          `overflow-hidden` (rien d'autre ne dépend de ce clip, mais le
-          retirer risquerait un scrollbar horizontal sur tout le site,
-          aucun garde-fou global `overflow-x` n'existe) donc tout ce qui
-          dépasserait serait rogné à vif — un bord dur au milieu d'une
-          forme floue, pire que l'ancien souci de position. Les images
-          restent entièrement à l'intérieur de la boîte de section, collées
-          pile aux coins. Voir le commentaire git en tête de fichier pour
-          l'historique des repositionnements précédents. `aspect-square` +
-          `object-contain` réservent une empreinte prévisible sans jamais
-          déformer l'image réelle. Desktop uniquement : encombrerait la
-          mise en page mobile, plus étroite. */}
-      <img
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute left-0 top-0 hidden aspect-square w-48 object-contain opacity-20 [filter:brightness(0)_blur(6px)] lg:block"
-      />
-      <img
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute bottom-0 right-0 hidden aspect-square w-48 rotate-180 object-contain opacity-20 [filter:brightness(0)_blur(6px)] lg:block"
-      />
+      {/* Ombres de feuilles retirées : 3 repositionnements successifs
+          (collées au cadre, coins du cadre avec marge, coins de la
+          section) n'ont jamais donné un résultat jugé correct par le
+          client ("enlève les feuilles, ça marche pas"). Voir le
+          commentaire git en tête de fichier pour l'historique complet —
+          pas réintroduites depuis. */}
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
@@ -481,7 +439,7 @@ export default function ThreePiliers() {
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background:
-                    "radial-gradient(ellipse at center, transparent 72%, var(--brume) 100%)",
+                    "radial-gradient(ellipse farthest-side at center, transparent 72%, var(--brume) 100%)",
                 }}
               />
             </div>

@@ -121,6 +121,7 @@ export default function RentabiliteCalculator() {
                   step={5}
                   value={surface}
                   onChange={setSurface}
+                  showTicks
                 />
               </div>
             </div>

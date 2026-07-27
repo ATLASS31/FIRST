@@ -4101,6 +4101,59 @@ minime, pas de recouvrement du sujet) ; halo confirmé résoudre à la même
 couleur que `--brume` ; feuilles confirmées masquées sur mobile ;
 régression complète sur les 10 routes sans nouvelle erreur.
 
+## 3 piliers : bug de halo trouvé (farthest-corner), feuilles abandonnées ; calculateur : repères de pas
+
+Retour avec captures d'écran à l'appui : le halo du round précédent
+n'a PAS résolu le liseré — visible encore "même sur le bois", pourtant
+la forme la plus simple. Et sur les feuilles, verdict sans appel : "ça
+marche pas, enlève-les". Message groupé avec un 3e sujet sans rapport,
+le calculateur de rentabilité, dont le slider de surface semblait
+n'avancer que de 10 en 10.
+
+**Vrai bug trouvé dans le halo, pas juste un réglage à affiner** : le
+`radial-gradient` du round précédent n'indiquait pas de mot-clé de
+taille, donc CSS utilise `farthest-corner` par défaut — le rayon à 100%
+est calé sur la distance au coin le plus éloigné du centre. Sur un cadre
+carré, le milieu d'un bord n'est qu'à ~70,7% de cette distance (rayon
+inscrit / rayon circonscrit d'un carré), pile SOUS le seuil transparent
+choisi (72%) : le halo ne couvrait donc quasiment pas le milieu des
+bords, seulement les coins — exactement l'inverse de ce qu'il fallait,
+puisque l'œil remarque d'abord une ligne droite sur un bord, pas un
+point dans un coin. Corrigé en forçant `farthest-side` : le rayon à 100%
+est calé sur la distance au bord le plus proche, donc le milieu de
+chaque bord est intégralement couvert (et les coins aussi, au-delà de ce
+rayon un dégradé CSS continue avec la couleur du dernier point).
+Vérifié programmatiquement (computed style du gradient).
+
+**Feuilles de plantes retirées** : 3 repositionnements successifs
+(collées au cadre, coins du cadre, coins de section avec puis sans
+débordement) n'ont jamais convaincu le client — décision de les
+abandonner plutôt que retenter un 4e essai à l'aveugle sans pouvoir les
+prévisualiser localement (CDN toujours bloqué par la politique réseau du
+bac à sable). Les 2 `<img>`, leurs commentaires dédiés et la logique de
+positionnement associée sont supprimés du composant.
+
+**Calculateur : le pas de 5 existait déjà, juste invisible** — avant de
+toucher au code, vérification empirique via Playwright (clavier +
+clic-glisser sur `[role="slider"]`) : `min=20`, `max=100`, `step=5`
+fonctionnaient déjà correctement des deux façons (60→65→70...,
+20→25→30...) — pas un bug de logique. Le vrai problème : rien sur le
+rail ne signale visuellement qu'un pas de 5 existe entre les dizaines,
+donc à l'usage (clic approximatif à la souris) on ne rencontre presque
+que des dizaines rondes, d'où le "j'ai l'impression que ça saute de 10
+en 10". Ajout d'un prop `showTicks` optionnel à `PremiumSlider` (composant
+partagé, donc pas activé ailleurs par défaut) : un trait fin à chaque pas
+sur le rail, sous la barre de remplissage. Pas de changement numérique
+puisqu'il n'y en avait pas besoin — un problème de perception/visibilité,
+pas de calcul.
+
+**Vérifications** : `tsc`/`eslint` propres sur les 3 fichiers touchés
+(plus aucun warning `<img>`, les feuilles ayant disparu) ; build de
+production réussi ; DOM confirmé sans trace des feuilles (`leafImgCount:
+0`) ; halo confirmé résoudre en `farthest-side` ; 15 traits de repère
+détectés sur le rail du calculateur, aux bonnes positions (25/30/35...) ;
+régression complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

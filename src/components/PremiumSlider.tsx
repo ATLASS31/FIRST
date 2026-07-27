@@ -10,6 +10,7 @@ export default function PremiumSlider({
   value,
   onChange,
   label,
+  showTicks = false,
 }: {
   min: number;
   max: number;
@@ -17,10 +18,21 @@ export default function PremiumSlider({
   value: number;
   onChange: (value: number) => void;
   label: string;
+  /** Repères visuels sur le rail : un trait à chaque `step`, plus haut et
+   *  chiffré tous les 2 crans. Sans ça, le seul indice qu'un pas de 5 (par
+   *  exemple) est possible est de le trouver au clavier ou par hasard à la
+   *  souris — retour client sur le calculateur : perçu comme un pas de 10
+   *  ("il y a pas de 5") alors que le code permettait déjà 25/35/45... */
+  showTicks?: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const percent = ((value - min) / (max - min)) * 100;
+
+  const ticks: number[] = [];
+  if (showTicks) {
+    for (let t = min; t <= max; t += step) ticks.push(t);
+  }
 
   const valueFromClientX = useCallback(
     (clientX: number) => {
@@ -68,6 +80,15 @@ export default function PremiumSlider({
       className="relative flex h-8 cursor-pointer items-center outline-none"
     >
       <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-brume/15">
+        {showTicks &&
+          ticks.slice(1, -1).map((t) => (
+            <span
+              key={t}
+              aria-hidden
+              className="absolute top-0 h-full w-px bg-encre/25"
+              style={{ left: `${((t - min) / (max - min)) * 100}%` }}
+            />
+          ))}
         <div
           className="h-full rounded-full bg-gradient-to-r from-laiton/70 to-laiton"
           style={{ width: `${percent}%` }}
