@@ -22,38 +22,25 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * boucle") — la vidéo suivante se lance après un temps de pause fixe
  * (`HOLD_MS`), pas au franchissement d'une position de scroll.
  *
- * Détourage au pixel : historique mouvementé. Deux tentatives sur le
- * premier tournage (studio ton sur ton, sans fond dédié) avaient échoué
- * (distance de couleur globale "surexposée", puis flood fill fragmenté à
- * l'usage réel) ; un premier fond vert avait ensuite été jugé "trop low
- * quality" et tout le détourage abandonné (retour au cadre crème). Le
- * client a depuis refourni les 3 vidéos, retournées sur fond vert en
- * "bonne qualité" cette fois, et redemandé explicitement le rendu détouré
- * "sans fond" façon photo produit (aucun cadre, l'objet posé directement
- * sur le fond de la page). Le détourage par dominance du vert — validé au
- * round du premier fond vert — est donc restauré tel quel : fond vert pur
- * mesuré à nouveau ~rgb(10-15, 235-250, 10-27) sur les 3 nouvelles
- * vidéos (léger bruit de teinte d'une vidéo à l'autre, toujours large
- * séparation du sujet). Un pixel est fond si `canal vert − max(rouge,
- * bleu)` dépasse `KEY_HIGH`, sujet si sous `KEY_LOW`, dégradé linéaire
- * entre les deux (anti-crénelage) ; suppression de spill sur les pixels
- * de bord (le vert du fond qui déteint un peu) en plafonnant leur canal
- * vert au max(rouge, bleu). Calculé sur un canvas de travail réduit
- * (`KEY_SCALE`, ~36% des pixels) pour rester fluide, puis réagrandi via
- * `drawImage` (lissage bilinéaire natif) à la composition finale.
- *
- * Ces tournages n'ayant pas d'ombre portée (le sujet "flotte" sur le
- * vert), une ombre est resynthétisée à chaque frame depuis la boîte
- * englobante du sujet (calculée pendant le même passage pixel par pixel
- * que le détourage) : une ellipse dégradée, légèrement plus LARGE que
- * cette boîte (`* 1.12`, jamais plus étroite — sinon elle reste cachée
- * derrière l'objet opaque pour toute forme à base plate comme le bois ou
- * la maison), peinte avant de composer l'objet détouré par-dessus. Le
- * conteneur lui-même n'a plus aucun fond/cadre propre — l'objet détouré
- * se pose directement sur le fond de la page, comme une vraie photo
- * produit. Sur desktop, la colonne vidéo est volontairement plus large
- * que la colonne texte (`lg:grid-cols-[1.35fr_1fr]`) — demande client
- * ("grandis bien la vidéo sur PC").
+ * Détourage au pixel : historique mouvementé sur 3 tournages successifs
+ * (distance de couleur globale, flood fill, fond vert) — le fond vert,
+ * même une fois fluidifié et son ombre corrigée, restait "tout pixélisé"
+ * à l'usage réel : le canvas de travail réduit (`KEY_SCALE`, nécessaire
+ * pour rester fluide) revenait à afficher l'objet à ~60% de la résolution
+ * d'affichage réagrandie, visible à l'œil une fois la vidéo agrandie sur
+ * PC. Le client a tranché : plus de détourage du tout. Les 3 vidéos ont
+ * été retournées une troisième fois, cette fois directement sur un fond
+ * qui matche la teinte de la page (mesuré ~rgb(251, 250, 243) sur les 3
+ * nouveaux rendus, à comparer à `--brume` #f7f5f0 = rgb(247, 245, 240) —
+ * à 2% près, l'écart se perd dans le rendu réel) et avec une ombre
+ * portée déjà présente dans le rendu — la vidéo s'affiche donc telle
+ * quelle (`drawImage` direct, sans lecture de pixels), sans perte de
+ * netteté possible puisqu'il n'y a plus de traitement entre la vidéo et
+ * l'écran. Le conteneur n'a lui-même plus aucun fond/cadre propre —
+ * l'objet se pose directement sur le fond de la page. Sur desktop, la
+ * colonne vidéo est volontairement plus large que la colonne texte
+ * (`lg:grid-cols-[1.35fr_1fr]`) — demande client ("grandis bien la vidéo
+ * sur PC").
  *
  * Ombres de feuilles : 2 photos détourées via Higgsfield
  * (`remove_background`, import serveur-à-serveur via `media_import_url`
@@ -61,13 +48,17 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * étaient hébergées, mais Higgsfield les récupère depuis SON propre
  * serveur). Noir + flou en CSS (`brightness(0)` peint tout pixel opaque
  * en noir sans toucher à l'alpha détouré, `blur` adoucit le contour), pas
- * pré-appliqués sur l'image. Positionnées collées aux bords gauche/droite
- * du cadre (une légèrement plus haute à gauche, l'autre plus basse à
- * droite — retour client après un premier placement en diagonale des
- * coins, jugé mal placé). Restent hébergées sur le CDN Higgsfield
- * (`d8j0ntlcm91z4.cloudfront.net`, autorisé dans `next.config.ts`)
- * plutôt que copiées dans `public/` — accessibles aux vrais visiteurs,
- * pas prévisualisables depuis ce bac à sable (même blocage réseau).
+ * pré-appliqués sur l'image. Un premier placement collé aux bords du
+ * cadre débordait dessus (l'image contient une bonne marge autour de la
+ * branche, donc "collé au cadre" empiétait visuellement sur l'objet) —
+ * corrigé sur nouveau croquis client : les feuilles sont désormais
+ * positionnées aux coins extrêmes de la SECTION entière (pas du cadre),
+ * une en haut à gauche près de la nav, une en bas à droite au-delà de la
+ * frise, largement dégagées de l'objet et du texte. Restent hébergées
+ * sur le CDN Higgsfield (`d8j0ntlcm91z4.cloudfront.net`, autorisé dans
+ * `next.config.ts`) plutôt que copiées dans `public/` — accessibles aux
+ * vrais visiteurs, pas prévisualisables depuis ce bac à sable (blocage
+ * réseau).
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -124,18 +115,6 @@ const TRANSITION_TIMEOUT_MS = 6000;
 // Vitesse de lecture des transitions — demande client ("l'animation aille
 // plus vite"), vidéos de ~3s à vitesse native jugées trop lentes.
 const PLAYBACK_RATE = 1.7;
-// Seuils du détourage fond vert (voir note en tête de fichier) : écart
-// mesuré sur les vraies vidéos entre le fond (spill ≈ 220-240) et le
-// sujet (spill négatif) — larges marges des deux côtés, feather de
-// quelques pixels seulement pour l'anti-crénelage du bord réel.
-const KEY_LOW = 60;
-const KEY_HIGH = 160;
-// Résolution du canvas de travail utilisé pour le détourage, relative à la
-// résolution d'affichage — la lecture/écriture pixel par pixel en pleine
-// résolution (jusqu'à ~2M pixels par frame en desktop, DPR 2) coûtait
-// trop cher à 24-60 im/s. 0.6 ramène ça à ~36% des pixels, quasiment sans
-// perte visible une fois le résultat réagrandi (lissage bilinéaire natif).
-const KEY_SCALE = 0.6;
 
 function StepIcon({ name }: { name: (typeof STEPS)[number]["icon"] }) {
   const common = {
@@ -189,12 +168,6 @@ export default function ThreePiliers() {
   // déclencher la même mécanique de transition que la boucle automatique,
   // sans dupliquer cette mécanique ni la sortir de l'effet.
   const skipForwardRef = useRef<(() => void) | null>(null);
-  // Canvas hors-écran réutilisé d'une frame à l'autre : reçoit le sujet
-  // détouré (couleurs + alpha du fond vert) avant d'être composé par
-  // `drawImage` sur le canvas visible, par-dessus l'ombre synthétique.
-  // `putImageData` remplace des pixels bruts sans composer avec l'alpha —
-  // il lui faut donc sa propre surface, distincte du canvas final.
-  const objectCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
@@ -215,119 +188,11 @@ export default function ThreePiliers() {
     }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // Le détourage (lecture/écriture pixel par pixel) tourne sur un canvas
-    // de travail réduit (`KEY_SCALE`), pas sur la pleine résolution
-    // d'affichage — voir note en tête de fichier. Le canvas final reste
-    // net : le `drawImage` de recomposition, lui, dessine à la pleine
-    // résolution d'affichage, avec le lissage bilinéaire natif du canvas.
-    const workWidth = Math.max(1, Math.round(canvas.width * KEY_SCALE));
-    const workHeight = Math.max(1, Math.round(canvas.height * KEY_SCALE));
-
-    if (!objectCanvasRef.current) {
-      objectCanvasRef.current = document.createElement("canvas");
-    }
-    const objectCanvas = objectCanvasRef.current;
-    if (objectCanvas.width !== workWidth || objectCanvas.height !== workHeight) {
-      objectCanvas.width = workWidth;
-      objectCanvas.height = workHeight;
-    }
-    const octx = objectCanvas.getContext("2d", { willReadFrequently: true });
-    if (!octx) return;
-
-    octx.clearRect(0, 0, workWidth, workHeight);
-    octx.drawImage(video, 0, 0, workWidth, workHeight);
-
-    const frame = octx.getImageData(0, 0, workWidth, workHeight);
-    const data = frame.data;
-    let minX = workWidth;
-    let maxX = 0;
-    let minY = workHeight;
-    let maxY = 0;
-    let hasSubject = false;
-
-    for (let y = 0; y < workHeight; y++) {
-      const rowStart = y * workWidth;
-      for (let x = 0; x < workWidth; x++) {
-        const i = (rowStart + x) * 4;
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        // Dominance du vert : le fond de ces tournages est un vert pur,
-        // sans ambiguïté possible avec les teintes bois/crème du sujet
-        // (canal rouge toujours dominant ou égal chez lui). Voir la note
-        // en tête de fichier.
-        const spill = g - Math.max(r, b);
-        let alpha: number;
-        if (spill >= KEY_HIGH) {
-          alpha = 0;
-        } else if (spill <= KEY_LOW) {
-          alpha = 1;
-        } else {
-          alpha = 1 - (spill - KEY_LOW) / (KEY_HIGH - KEY_LOW);
-        }
-        if (alpha > 0 && spill > 0) {
-          // Suppression de spill : sur les pixels de bord (partiellement
-          // transparents, mais aussi certains pixels devenus pleinement
-          // opaques après compression) le vert du fond déteint un peu sur
-          // la couleur du sujet — plafonner le canal vert évite un liseré
-          // verdâtre une fois composé sur le nouveau fond. Sans effet sur
-          // les pixels bien à l'intérieur du sujet (vert déjà sous
-          // max(rouge, bleu) chez lui, `min` ne change rien).
-          data[i + 1] = Math.min(g, Math.max(r, b));
-        }
-        data[i + 3] = Math.round(alpha * 255);
-        if (alpha > 0.5) {
-          hasSubject = true;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-    octx.putImageData(frame, 0, 0);
-
+    // Aucun détourage : la vidéo est déjà rendue sur un fond assorti au
+    // site et avec sa propre ombre portée (voir note en tête de fichier)
+    // — dessin direct à pleine résolution, rien à perdre en netteté.
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (hasSubject) {
-      // Ombre resynthétisée : ces tournages n'ont pas d'ombre portée (le
-      // sujet "flotte" sur le vert). Recalculée à partir de la boîte
-      // englobante du sujet à CETTE frame (remise à l'échelle du canvas
-      // de travail réduit vers le canvas d'affichage) — elle suit donc
-      // naturellement la largeur et la position réelles pendant toute la
-      // métamorphose.
-      const toDisplay = 1 / KEY_SCALE;
-      const dMinX = minX * toDisplay;
-      const dMaxX = maxX * toDisplay;
-      const dMaxY = maxY * toDisplay;
-      const bboxWidth = dMaxX - dMinX;
-      // Largeur LÉGÈREMENT SUPÉRIEURE à la boîte englobante, jamais
-      // inférieure : sinon l'ombre reste entièrement cachée derrière
-      // l'objet opaque (dessiné juste après, par-dessus) pour toute forme
-      // à base plate (bois, maison) — leur silhouette occupe déjà toute la
-      // largeur de la boîte jusqu'en bas, contrairement au disque de
-      // l'horloge qui s'arrondit vers un point et laissait l'ombre dépasser
-      // sur les côtés. Un dépassement garanti la rend visible pour les 3.
-      const shadowWidth = bboxWidth * 1.12;
-      const shadowHeight = shadowWidth * 0.14;
-      const centerX = (dMinX + dMaxX) / 2;
-      const shadowY = dMaxY - shadowHeight * 0.1;
-
-      ctx.save();
-      ctx.translate(centerX, shadowY);
-      ctx.scale(1, shadowHeight / shadowWidth);
-      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, shadowWidth / 2);
-      gradient.addColorStop(0, "rgba(26, 22, 20, 0.3)");
-      gradient.addColorStop(1, "rgba(26, 22, 20, 0)");
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(0, 0, shadowWidth / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.drawImage(objectCanvas, 0, 0, workWidth, workHeight, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   }, []);
 
   useEffect(() => {
@@ -502,46 +367,48 @@ export default function ThreePiliers() {
   return (
     <section id="concept" className="relative overflow-hidden pb-28 pt-12 sm:pt-16">
       <div className="relative mx-auto max-w-6xl px-6">
+        {/* Ombres de feuilles, demandées par le client sur son croquis
+            annoté. Les 2 photos fournies ont été détourées via Higgsfield
+            (`remove_background`) — le fond blanc d'origine est retiré, ne
+            reste que la silhouette alpha de la branche. Le noir + le flou
+            ne sont PAS pré-appliqués sur l'image : un simple filtre CSS
+            (`brightness(0)` peint tout pixel opaque en noir pur sans
+            toucher à l'alpha, `blur` adoucit le contour) suffit et évite
+            un aller-retour de traitement pixel. Positionnées aux coins
+            extrêmes de toute la SECTION (pas du cadre vidéo) : un premier
+            essai collé aux bords du cadre débordait dessus (l'image
+            contient une bonne marge autour de la branche avant que la
+            silhouette ne commence), et un second essai encore trop près
+            a de nouveau été jugé mal placé sur un nouveau croquis client
+            — corrigé en ancrant les deux images sur ce conteneur de
+            section entier plutôt que sur le cadre, une en haut à gauche,
+            une en bas à droite, largement dégagées de l'objet et du
+            texte. Ces images sont hébergées sur le CDN Higgsfield (pas de
+            copie locale : le réseau de ce bac à sable bloque ce domaine
+            en sortie, voir le commentaire git pour le détail) —
+            accessible aux vrais visiteurs du site, mais pas
+            prévisualisable localement ici. Desktop uniquement :
+            encombrerait la mise en page mobile, plus étroite. */}
+        <img
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -left-8 -top-12 hidden w-64 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
+        />
+        <img
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -bottom-12 hidden w-64 rotate-180 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
+        />
         <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
-            {/* Ombres de feuilles, demandées par le client sur son croquis
-                annoté (deux branches encadrant le cadre). Les 2 photos
-                fournies ont été détourées via Higgsfield
-                (`remove_background`) — le fond blanc d'origine est
-                retiré, ne reste que la silhouette alpha de la branche. Le
-                noir + le flou ne sont PAS pré-appliqués sur l'image : un
-                simple filtre CSS (`brightness(0)` peint tout pixel opaque
-                en noir pur sans toucher à l'alpha, `blur` adoucit le
-                contour) suffit et évite un aller-retour de traitement
-                pixel. Collées aux bords gauche/droite (pas aux coins en
-                diagonale, premier essai jugé mal placé) : la branche de
-                gauche un peu plus haute, celle de droite un peu plus
-                basse — demande client exacte. Ces images sont hébergées
-                sur le CDN Higgsfield (pas de copie locale : le réseau de
-                ce bac à sable bloque ce domaine en sortie, voir le
-                commentaire git pour le détail) — accessible aux vrais
-                visiteurs du site, mais pas prévisualisable localement
-                ici. Desktop uniquement : encombrerait la colonne mobile,
-                plus étroite. */}
-            <img
-              src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
-              alt=""
-              aria-hidden
-              className="pointer-events-none absolute -left-24 top-[20%] hidden w-56 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
-            />
-            <img
-              src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
-              alt=""
-              aria-hidden
-              className="pointer-events-none absolute -right-24 top-1/2 hidden w-56 rotate-180 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
-            />
-            {/* Plus de cadre ni de fond propre : le sujet, désormais bien
-                détouré (voir note en tête de fichier), se pose
-                directement sur le fond de la page, comme une vraie photo
-                produit — demande client explicite ("enlève le cadre").
-                `overflow-hidden` n'est plus nécessaire non plus : il n'y a
-                plus de forme à cadrer, l'objet détouré définit lui-même
-                ses propres contours. */}
+            {/* Plus de cadre ni de fond propre : la vidéo, déjà rendue sur
+                un fond assorti au site (voir note en tête de fichier), se
+                pose directement sur le fond de la page, comme une vraie
+                photo produit. `overflow-hidden` n'est plus nécessaire non
+                plus : il n'y a plus de cadre à masquer, juste la vidéo
+                telle quelle. */}
             <div ref={containerRef} className="absolute inset-0">
               <video
                 ref={video0Ref}

@@ -3991,6 +3991,60 @@ confirmé sans fond/cadre programmatiquement ; positions et attributs des
 Temps → Espace) ; régression complète sur les 10 routes sans nouvelle
 erreur.
 
+## 3 piliers : 3e lot de vidéos fond-site, détourage abandonné, feuilles au coin de section
+
+Le client signale que le rendu détouré paraît "tout pixélisé, pas premium
+du tout" une fois affiché en grand sur PC — diagnostic : le canvas de
+travail réduit (`KEY_SCALE=0.6`, ajouté au round précédent pour tenir le
+budget de 16 ms/frame) redevient visible à l'agrandissement desktop, le
+gain de fluidité se payant en netteté perçue. Plutôt que retenter un
+compromis perf/qualité sur ce mécanisme, le client a retourné les 3
+vidéos une troisième fois, cette fois directement sur un fond assorti à
+la teinte de la page, avec ombre portée déjà incluse dans le rendu, en
+demandant explicitement de ne pas toucher la couleur de fond.
+
+**Fond vérifié, pas de code à ajuster** : couleur de fond mesurée sur les
+coins des frames extraites des 3 nouveaux fichiers (~rgb(251, 250, 243)),
+comparée à `--brume` (#f7f5f0 = rgb(247, 245, 240)) définie dans
+`globals.css` — écart ~2%, imperceptible en usage réel. Ordre
+bois→horloge→horloge→maison→maison→bois identifié comme d'habitude par
+extraction ffmpeg de la première/dernière frame de chaque fichier et
+comparaison visuelle. Vidéos compressées (`libx264 -crf 20 -preset slow
+-movflags +faststart`) et remplacées dans `public/videos/`.
+
+**Détourage entièrement retiré** : plus de raison de garder le pipeline
+chroma-key (constantes `KEY_LOW`/`KEY_HIGH`/`KEY_SCALE`, canvas de travail
+séparé, suppression de spill, ombre synthétique) puisque la vidéo arrive
+déjà posée sur le bon fond avec sa propre ombre. `drawFrame` redevient un
+simple `clearRect` + `drawImage` à pleine résolution — plus de
+manipulation pixel par pixel, donc plus de pixelisation possible par
+construction, pas seulement par réglage.
+
+**Feuilles déplacées au coin de la section, pas du cadre** : nouveau
+schéma du client montrant les feuilles aux coins de la section entière
+(haut-gauche près de la nav, bas-droite après la frise), pas collées au
+bord de la carte comme demandé au round précédent. Cause du malentendu
+précédent : les photos de feuilles ont une marge vide généreuse autour de
+la branche elle-même, donc même "collé au cadre" la forme visible
+débordait encore sur la carte. Les deux `<img>` sont remontées d'enfants
+du wrapper `.aspect-square` de la carte à enfants directs du conteneur de
+section (`-left-8 -top-12` / `-right-8 -bottom-12`, agrandies `w-56` →
+`w-64`), positionnées relativement à toute la section plutôt qu'à la
+carte.
+
+**Vérifications** : `tsc`/`eslint` propres (2 warnings `<img>` déjà
+acceptés) ; build de production réussi ; DOM confirmé via Playwright — les
+2 images sont bien enfants du conteneur de section (plus de la carte),
+classes et `src` corrects, les 3 vidéos servies pointent vers les
+nouveaux fichiers ; boucle re-testée (Matière → Temps → Espace, cycle
+~29 s) ; régression complète sur les 10 routes sans nouvelle erreur.
+Limite connue du bac à sable, déjà rencontrée aux rounds précédents : les
+2 images de feuilles restent bloquées par la politique réseau du
+sandbox (`d8j0ntlcm91z4.cloudfront.net` refusé), confirmé via
+`naturalWidth: 0` malgré `complete: true` — n'affecte que la prévisualisation
+locale, le domaine est déjà whitelisté dans `next.config.ts` donc les
+visiteurs réels chargent les images normalement.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
