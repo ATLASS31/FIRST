@@ -114,11 +114,16 @@ export default function RentabiliteCalculator() {
                 />
               </div>
               <div className="mt-4">
+                {/* step=10 : demande client explicite ("c'est de 10 en
+                    10 pas de 5 en 5"), après un round où step=5 avait
+                    été gardé par erreur en pensant corriger un problème
+                    de perception plutôt qu'une vraie demande de pas.
+                    `showTicks` reste actif — apprécié tel quel. */}
                 <PremiumSlider
                   label="Surface du module"
                   min={20}
                   max={100}
-                  step={5}
+                  step={10}
                   value={surface}
                   onChange={setSurface}
                   showTicks

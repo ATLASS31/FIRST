@@ -85,6 +85,13 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * `NotreHistoire.tsx`) ne peut de toute façon jamais lire ces vidéos à
  * l'écran ici ; c'est ce filet de sécurité qui permet de vérifier la
  * mécanique (changement d'étape, texte, frise) malgré tout.
+ *
+ * Espace avant "Notre histoire" (`pb-28` flat à l'origine, 112px sur
+ * tous les écrans) : jugé trop vide sur mobile, où le vide s'ajoute à
+ * l'ordre inversé (texte puis vidéo) qui laisse déjà le grand carré de
+ * la vidéo en dernier avant la section suivante. Réduit et rendu
+ * responsive (`pb-16 sm:pb-20 lg:pb-24`) — plus resserré sur mobile où
+ * le vide se voyait le plus, un peu resserré aussi sur desktop.
  */
 
 const TRANSITIONS = [
@@ -379,7 +386,7 @@ export default function ThreePiliers() {
   const step = STEPS[activeStep];
 
   return (
-    <section id="concept" className="relative overflow-hidden pb-28 pt-12 sm:pt-16">
+    <section id="concept" className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16 lg:pb-24">
       {/* Ombres de feuilles retirées : 3 repositionnements successifs
           (collées au cadre, coins du cadre avec marge, coins de la
           section) n'ont jamais donné un résultat jugé correct par le

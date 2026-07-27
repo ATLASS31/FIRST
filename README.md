@@ -4154,6 +4154,40 @@ production réussi ; DOM confirmé sans trace des feuilles (`leafImgCount:
 détectés sur le rail du calculateur, aux bonnes positions (25/30/35...) ;
 régression complète sur les 10 routes sans nouvelle erreur.
 
+## 3 piliers : espacement mobile/desktop resserré ; calculateur : pas corrigé à 10
+
+Bonne nouvelle confirmée par le client : le fix du halo (round précédent,
+`farthest-side`) a marché — "on ne voit plus le fond !". Deux ajustements
+restants, l'un visuel sur la même section, l'autre une correction de ma
+propre erreur d'interprétation sur le calculateur.
+
+**Espace avant "Notre histoire" resserré** : `pb-28` (112px, fixe sur
+tous les écrans) laissait un grand vide crème entre le bas de la carte
+vidéo et le début de la section suivante — plus visible sur mobile, où
+l'ordre inversé (texte puis vidéo) place déjà le grand carré vidéo juste
+avant ce vide. Rendu responsive et réduit : `pb-16 sm:pb-20 lg:pb-24`
+(64px mobile, 80px tablette, 96px desktop) — resserrement plus marqué là
+où le client l'a signalé (mobile), plus léger sur desktop comme demandé
+("pareil aussi un peu").
+
+**Calculateur : correction d'une erreur d'interprétation du round
+précédent** — le message initial du client ("c'est de 10 en 10 en mode
+20m 30m 40m... jusqu'à 100 mais il y a pas de 5") avait été lu comme une
+plainte ("je ne trouve pas les valeurs à 5"), alors que c'était une
+description de ce qu'il voulait déjà (des paliers de 10, pas de 5) — le
+round précédent avait donc gardé `step={5}` et ajouté des repères visuels
+pour "révéler" un pas de 5 qui n'était jamais demandé. Corrigé sans
+ambiguïté possible cette fois ("c'est de 10 en 10 pas de 5 en 5") :
+`step={10}`. Les repères visuels sur le rail (`showTicks`) sont
+conservés tels quels — appréciés indépendamment du pas exact.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production réussi ;
+padding de section confirmé programmatiquement (64px mobile / 96px
+desktop) ; séquence clavier du slider confirmée sur des paliers de 10
+(60→70→80→90→100) ; 7 repères visuels détectés sur le rail, aux bonnes
+positions (30/40/50/60/70/80/90) ; régression complète sur les 10 routes
+sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
