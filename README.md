@@ -4321,6 +4321,58 @@ avec `LoadingScreen` temporairement retiré de l'arbre ; image
 pré-détourée de Notre histoire confirmée chargée (`naturalWidth: 1920`) ;
 régression complète sur les 10 routes sans nouvelle erreur.
 
+## Écran de chargement retiré, vrai bug de superposition corrigé sur Notre histoire
+
+Retour à deux voix sur le round précédent : l'écran de chargement 3D est
+jugé "pas fou" et retiré (le client garde l'idée de placer le logo
+ailleurs un jour) ; et surtout, un vrai bug trouvé sur le fix du "pop"
+de Notre histoire — capture d'écran à l'appui, une fois les matériaux
+dépliés, on voyait la pose groupée (l'image de secours) transparaître
+derrière la pose dépliée réelle.
+
+**Écran de chargement 3D : retiré proprement** — `LoadingScreen.tsx`
+supprimé, son import et son montage retirés de `layout.tsx`,
+`three`/`@react-three/fiber`/`@react-three/drei` désinstallés (plus
+aucun usage dans le code, ~187 Ko gzip économisés sur le bundle partagé
+de toutes les pages). Le fichier `.glb` du blason (`public/models/`)
+et son correctif de compilation dans `GlassPanel.tsx` (toujours valide
+et inoffensif sans la dépendance, vérifié par un `tsc` propre après
+désinstallation) sont conservés — le client garde l'intention de
+réutiliser le logo ailleurs.
+
+**Le vrai bug derrière le "pop" corrigé au round précédent** : l'image
+de secours (frame 0, pose "groupée") restait un enfant permanent du DOM
+sous le canvas, sur l'hypothèse que `drawImage` peint toujours
+l'intégralité du rectangle du canvas donc la recouvre mécaniquement.
+Hypothèse fausse : le DÉTOURAGE rend transparents tous les pixels de
+fond quelle que soit la pose, et une fois les matériaux DÉPLIÉS (bien
+plus larges qu'à l'état groupé), les zones de fond transparentes
+changent de forme — l'image de secours, elle, ne change jamais (toujours
+la pose groupée), donc redevenait visible par transparence dans ces
+zones, superposée à la vraie vidéo. Corrigé en arrêtant de compter sur
+la seule couverture de pixels : l'image est maintenant explicitement
+masquée (`display: none` posé directement via une ref DOM, pas un état
+React qui ajouterait un rendu de latence) dans le même appel synchrone
+que le tout premier `drawImage` réel, avant même que le navigateur ait
+pu peindre quoi que ce soit entre les deux. Une fois masquée, elle ne
+peut plus jamais réapparaître quelle que soit la pose suivante — le
+problème n'est plus une question de couverture de pixels mais de
+présence dans le DOM, donc ne peut plus se reproduire même sur une pose
+totalement différente.
+
+**Espace resserré une seconde fois** : `pb-16/sm:pb-20/lg:pb-24` d'un
+round précédent toujours jugé trop grand ("rapproche encore les
+catégories") — réduit plus franchement à `pb-10/sm:pb-12/lg:pb-16`.
+
+**Vérifications** : `tsc`/`eslint` propres après désinstallation des
+dépendances 3D (confirmé que `GlassPanel.tsx` reste correct sans elles) ;
+build de production réussi, bundle partagé revenu à sa taille d'avant ;
+écran de chargement confirmé absent du DOM sur toutes les pages ;
+padding de section confirmé réduit (64px desktop, contre 96px avant) ;
+image de secours de Notre histoire confirmée toujours présente et
+fonctionnelle (juste son mécanisme de masquage a changé) ; régression
+complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

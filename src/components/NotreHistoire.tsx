@@ -145,27 +145,36 @@ import { motion, useReducedMotion } from "framer-motion";
  * plus bas).
  *
  * Round suivant, le client redemande explicitement de régler ce "pop" —
- * repris avec une architecture différente qui évite le défaut de la
- * tentative précédente : plus aucun SWAP (ajout puis retrait du DOM d'un
- * élément séparé, avec une fenêtre de temps où les deux pouvaient
- * coexister ou se chevaucher). Cette fois, l'image pré-détourée
- * (`public/images/materials-frame0.webp`, générée hors-ligne — extraction
- * ffmpeg de la frame 0 réelle de `materials-explode.mp4`, puis un script
- * Python qui reproduit EXACTEMENT l'algorithme de détourage ci-dessous :
- * moyenne des 4 coins comme couleur clé, `threshold=34`, `feather=30`,
- * comparaison de distance au carré) reste un enfant PERMANENT du DOM,
- * jamais retiré, positionné derrière le canvas (avant lui, donc peint
- * en-dessous par ordre naturel). Le canvas démarre entièrement
- * transparent (rien dessiné) et laisse voir cette image identique en
- * dessous ; dès que `drawFrame` s'exécute pour la première fois, il
- * peint la totalité du rectangle du canvas (`ctx.drawImage` couvre tout,
- * jamais un dessin partiel), donc l'image sous-jacente est
- * mécaniquement recouverte au pixel près — sans jamais avoir besoin de
- * la cacher ni de la retirer, donc sans fenêtre de temps où un
- * changement d'état pourrait produire un chevauchement ou un flash.
- * Comme les deux couches montrent littéralement la même frame (mêmes
- * pixels, même détourage), le risque qui avait fait échouer la première
- * tentative n'existe plus par construction, pas seulement par réglage.
+ * repris avec une architecture différente pour éviter le défaut de la
+ * tentative précédente (SWAP avec retrait du DOM sur un événement séparé,
+ * fenêtre de temps où les deux pouvaient coexister). Première version :
+ * une image pré-détourée hors-ligne (`public/images/materials-frame0.webp`
+ * — extraction ffmpeg de la frame 0 réelle de `materials-explode.mp4`,
+ * puis un script Python qui reproduit l'algorithme de détourage
+ * ci-dessous) postée en PERMANENCE derrière le canvas, jamais retirée,
+ * sur l'hypothèse que `drawImage` peint toujours l'intégralité du
+ * rectangle du canvas donc recouvre mécaniquement l'image en dessous dès
+ * le premier frame réel.
+ *
+ * Hypothèse fausse, retour client à l'appui (capture d'écran) : une fois
+ * la pose "dépliée" atteinte, le sujet occupe une bien plus grande
+ * largeur qu'à l'état "groupé" (frame 0) — mais le DÉTOURAGE, lui, rend
+ * transparents tous les pixels de fond, quelle que soit la pose. Sur les
+ * poses où le fond détouré laisse de larges zones transparentes sur les
+ * bords (variable selon l'étape de l'animation), l'image figée en
+ * dessous — TOUJOURS la pose groupée, elle ne change jamais — redevenait
+ * visible par transparence, superposée à la vraie vidéo : "on voit les
+ * éléments dépliés et dans le fond les éléments collés".
+ *
+ * Corrigé en ne comptant plus sur la seule superposition de pixels :
+ * l'image est maintenant explicitement masquée (`display: none` posé par
+ * ref, pas un état React qui ajouterait un rendu de latence) dans le
+ * même appel synchrone que le tout premier `drawImage` réel — avant même
+ * que le navigateur ait pu peindre quoi que ce soit entre les deux. Une
+ * fois masquée, elle ne peut plus jamais réapparaître, quelle que soit la
+ * pose suivante ou la largeur de ses zones transparentes : le problème
+ * n'est plus une question de couverture de pixels mais de présence dans
+ * le DOM.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -270,6 +279,8 @@ function MaterialsShowcase() {
   const regroupVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const placeholderRef = useRef<HTMLImageElement>(null);
+  const firstDrawDoneRef = useRef(false);
   const [unfolded, setUnfolded] = useState(false);
   // Ratio du cadre calé sur la vidéo réelle une fois ses métadonnées
   // chargées, plutôt qu'une valeur devinée : deviner mal laisse
@@ -282,6 +293,21 @@ function MaterialsShowcase() {
   const drawFrame = useCallback((video: HTMLVideoElement) => {
     const canvas = canvasRef.current;
     if (!canvas || video.videoWidth === 0) return;
+
+    // Retiré du DOM (pas juste masqué) dès le tout premier frame réel
+    // dessiné, quelle que soit sa pose — voir commentaire git en tête de
+    // fichier pour la raison : rester en dessous en permanence supposait
+    // que `drawImage` couvre TOUJOURS tout le rectangle en pixels
+    // opaques, ce qui est vrai pour le rectangle lui-même mais pas pour
+    // le contenu après détourage (une pose largement dépliée laisse de
+    // larges zones transparentes sur les bords, qui révélaient l'image
+    // figée en dessous). Fait en synchrone, dans le même appel que le
+    // premier `drawImage`, pour qu'aucune frame ne s'affiche avec les
+    // deux superposés.
+    if (!firstDrawDoneRef.current) {
+      firstDrawDoneRef.current = true;
+      if (placeholderRef.current) placeholderRef.current.style.display = "none";
+    }
 
     // Le canvas est dessiné à la taille d'affichage réelle (× ratio
     // d'écran, plafonné à 2), jamais à la résolution native de la vidéo :
@@ -623,10 +649,12 @@ function MaterialsShowcase() {
           aria-hidden
           className="absolute inset-0 h-full w-full object-contain opacity-0"
         />
-        {/* Frame 0 pré-détourée hors-ligne, posée en permanence derrière le
-            canvas (voir commentaire git en tête de fichier) — comble le
-            "pop" au chargement à froid sans jamais être retirée du DOM. */}
+        {/* Frame 0 pré-détourée hors-ligne, comble le "pop" au chargement
+            à froid — voir commentaire git en tête de fichier. Masquée
+            (pas retirée du JSX, juste `display: none` posé via ref) dès
+            que `drawFrame` dessine son tout premier frame réel. */}
         <img
+          ref={placeholderRef}
           src="/images/materials-frame0.webp"
           alt=""
           aria-hidden
