@@ -435,11 +435,18 @@ export default function Hero() {
             (contre 12% avant) pour couvrir le glissement vers la droite
             (jusqu'à 20% de la largeur du conteneur, cf. tick()) avec de la
             marge. Toujours entière : jamais un reveal progressif, seulement
-            un fondu + une montée + un glissement (cf. tick()). */}
+            un fondu + une montée + un glissement (cf. tick()).
+            Hauteur réduite (`h-32 sm:h-48` → `h-20 sm:h-32`) : jugée trop
+            imposante, laissant une grande bande de fond uni (même teinte
+            que la page suivante, donc "invisible" mais bien présente)
+            avant que "Concept" ne commence vraiment. Comme le viewBox SVG
+            garde ses proportions internes (`preserveAspectRatio="none"`
+            étire le même tracé sur la nouvelle hauteur), la vague devient
+            aussi plus fine du même coup — pas besoin de retoucher le path. */}
         <div
           ref={waveRef}
           aria-hidden
-          className="wave-reveal pointer-events-none absolute bottom-0 z-[6] h-32 sm:h-48"
+          className="wave-reveal pointer-events-none absolute bottom-0 z-[6] h-20 sm:h-32"
           style={{
             left: "-24%",
             right: "-24%",

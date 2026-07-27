@@ -25,28 +25,39 @@ const ETAPES = [
 
 export default function Procede() {
   return (
-    <section id="procede" className="mx-auto max-w-6xl px-6 py-28">
-      <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
-      <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
-        De la signature aux clés, sans surprise.
-      </h2>
+    // bg-ciel : demande client pour alterner les fonds section par
+    // section (Concept crème → Notre histoire mint → Nos gammes crème →
+    // Notre procédé mint...). Le `<section>` n'ayant lui-même pas de
+    // fond avant ce changement, l'ancien code appliquait `max-w-6xl`
+    // directement dessus — un simple ajout de `bg-ciel` sur ce même
+    // élément aurait donné un bloc de couleur étroit, pas un fond plein
+    // écran comme les autres sections teintées (`NotreHistoire.tsx`,
+    // `GammesPreview.tsx`). D'où le conteneur interne séparé : le fond
+    // est sur `<section>` (pleine largeur), `max-w-6xl` sur le `<div>`.
+    <section id="procede" className="bg-ciel px-6 py-28">
+      <div className="mx-auto max-w-6xl">
+        <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
+        <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
+          De la signature aux clés, sans surprise.
+        </h2>
 
-      <ol className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
-        {ETAPES.map((etape, index) => (
-          <li key={etape.title} className="flex flex-col gap-3">
-            <span className="text-sm font-semibold text-laiton">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <h3 className="text-base font-semibold text-encre">
-              {etape.title}
-            </h3>
-            {etape.meta && (
-              <p className="eyebrow text-[10px] text-foret">{etape.meta}</p>
-            )}
-            <p className="text-sm text-encre-doux">{etape.body}</p>
-          </li>
-        ))}
-      </ol>
+        <ol className="mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          {ETAPES.map((etape, index) => (
+            <li key={etape.title} className="flex flex-col gap-3">
+              <span className="text-sm font-semibold text-laiton">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <h3 className="text-base font-semibold text-encre">
+                {etape.title}
+              </h3>
+              {etape.meta && (
+                <p className="eyebrow text-[10px] text-foret">{etape.meta}</p>
+              )}
+              <p className="text-sm text-encre-doux">{etape.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }

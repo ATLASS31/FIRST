@@ -23,7 +23,12 @@ function SparkleIcon() {
 
 export default function GammesPreview() {
   return (
-    <section id="gammes" className="relative overflow-hidden bg-ciel px-6 py-28">
+    // bg-brume (pas bg-ciel) : demande client pour alterner les fonds
+    // section par section — "Notre histoire" (juste avant) est déjà en
+    // bg-ciel, donc "Nos gammes" doit reprendre la teinte de "Concept"
+    // (bg-brume) pour que la page alterne, plutôt que d'avoir deux
+    // sections mint consécutives.
+    <section id="gammes" className="relative overflow-hidden bg-brume px-6 py-28">
       <div className="relative mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Nos gammes</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">

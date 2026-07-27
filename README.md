@@ -4188,6 +4188,56 @@ desktop) ; séquence clavier du slider confirmée sur des paliers de 10
 positions (30/40/50/60/70/80/90) ; régression complète sur les 10 routes
 sans nouvelle erreur.
 
+## Vague resserrée, vrai bug de centrage trouvé, fonds de section alternés
+
+Client confirme sur capture d'écran desktop : le fix du fond (round
+précédent) fonctionne. Deux nouveaux sujets : un grand vide en haut de
+"Concept" à resserrer ("affine la vague, descends-la plus"), et une
+demande de cohérence de palette — "Nos gammes" et "Notre histoire" ont
+la même couleur, il faut alterner les fonds section par section.
+
+**Vrai bug de centrage trouvé par mesure, pas par intuition** — plutôt
+que deviner un padding à réduire, mesure via Playwright (bounding rects)
+au point exact où le hero se libère et "Concept" apparaît. Résultat :
+`pt-12 sm:pt-16` n'était qu'une petite partie du vide — la vraie cause,
+mesurée à ~83px d'écart, était `items-center` sur la grille : il centre
+verticalement la colonne de texte (~430px de haut) dans la hauteur de
+ligne définie par la carte vidéo carrée, bien plus haute (~600px). Passé
+à `items-start` : les deux colonnes démarrent maintenant au même niveau,
+vérifié programmatiquement (`cardRect.top === textColRect.top`). Padding
+du haut réduit en plus (`pt-6 sm:pt-8`, contre `pt-12 sm:pt-16`).
+Limite honnête signalée : le vide propre à la composition de CHAQUE
+vidéo (l'objet est cadré bas dans son image carrée, un choix de rendu du
+client) reste hors de portée CSS — recadrer/zoomer la vidéo pour
+compenser risquerait de couper l'objet différemment à chaque étape de la
+transition, donc volontairement pas touché.
+
+**Vague affinée** : hauteur réduite (`h-32 sm:h-48` → `h-20 sm:h-32`,
+Hero.tsx) — la bande de fond uni qu'elle laissait avant "Concept" était
+jugée trop imposante. Le SVG interne garde ses proportions
+(`preserveAspectRatio="none"` étire le même tracé), donc la vague
+devient aussi plus fine du même mouvement, sans retoucher le path.
+
+**Fonds de section alternés** : `GammesPreview.tsx` passe de `bg-ciel`
+(mint, dupliquait "Notre histoire" juste au-dessus) à `bg-brume` (crème,
+comme "Concept"). `Procede.tsx` passe de transparent (crème hérité du
+body) à `bg-ciel` (mint, comme "Notre histoire") — mais son `<section>`
+portait `max-w-6xl` directement dessus (pas de conteneur interne séparé
+comme les autres sections teintées), donc un simple ajout de `bg-ciel`
+aurait donné un bloc de couleur étroit au milieu de la page plutôt qu'un
+fond plein écran. Corrigé en séparant fond (sur `<section>`, pleine
+largeur) et largeur de contenu (`max-w-6xl` sur un `<div>` interne),
+même structure que `NotreHistoire.tsx`/`GammesPreview.tsx`. Résultat :
+Concept (crème) → Notre histoire (mint) → Nos gammes (crème) → Notre
+procédé (mint) — alternance vérifiée programmatiquement (couleurs RGB
+calculées identiques entre paires crème/mint).
+
+**Vérifications** : `tsc`/`eslint` propres sur les 4 fichiers touchés ;
+build de production réussi ; alignement carte/texte confirmé identique
+par mesure ; couleurs de fond des 4 sections confirmées par
+`getComputedStyle` ; régression complète sur les 10 routes sans nouvelle
+erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

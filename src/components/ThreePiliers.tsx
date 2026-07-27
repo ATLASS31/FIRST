@@ -92,6 +92,22 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * la vidéo en dernier avant la section suivante. Réduit et rendu
  * responsive (`pb-16 sm:pb-20 lg:pb-24`) — plus resserré sur mobile où
  * le vide se voyait le plus, un peu resserré aussi sur desktop.
+ *
+ * Grand vide en HAUT de la section, signalé sur capture d'écran desktop :
+ * mesuré précisément via Playwright (bounding rects) plutôt que deviné —
+ * `pt-12 sm:pt-16` n'était qu'une petite partie du problème, réduit à
+ * `pt-6 sm:pt-8`. La vraie cause, plus significative : la grille
+ * (`items-center`) centrait verticalement la colonne de texte (plus
+ * courte, ~430px) dans la hauteur de la ligne définie par la carte vidéo
+ * carrée (plus haute, ~600px) — un écart mesuré de ~83px entre le haut
+ * de la ligne et le haut du texte, entièrement dû à ce centrage, pas à
+ * une marge. Passé à `items-start` : les deux colonnes démarrent
+ * maintenant au même niveau, en haut de la ligne. Reste hors de portée
+ * CSS : le vide propre à la composition de CHAQUE vidéo (l'objet est
+ * souvent cadré bas dans son image carrée, avec de la marge au-dessus,
+ * un choix de rendu du client) — non modifiable sans recadrer/zoomer la
+ * vidéo elle-même (risqué, changerait le cadrage à chaque étape de la
+ * transition), donc volontairement pas touché ici.
  */
 
 const TRANSITIONS = [
@@ -386,7 +402,7 @@ export default function ThreePiliers() {
   const step = STEPS[activeStep];
 
   return (
-    <section id="concept" className="relative overflow-hidden pb-16 pt-12 sm:pb-20 sm:pt-16 lg:pb-24">
+    <section id="concept" className="relative overflow-hidden pb-16 pt-6 sm:pb-20 sm:pt-8 lg:pb-24">
       {/* Ombres de feuilles retirées : 3 repositionnements successifs
           (collées au cadre, coins du cadre avec marge, coins de la
           section) n'ont jamais donné un résultat jugé correct par le
@@ -394,7 +410,7 @@ export default function ThreePiliers() {
           commentaire git en tête de fichier pour l'historique complet —
           pas réintroduites depuis. */}
       <div className="relative mx-auto max-w-6xl px-6">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
+        <div className="grid items-start gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
             {/* Plus de cadre ni de fond propre : la vidéo, déjà rendue sur
                 un fond assorti au site (voir note en tête de fichier), se
