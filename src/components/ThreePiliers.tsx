@@ -30,17 +30,27 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * d'affichage réagrandie, visible à l'œil une fois la vidéo agrandie sur
  * PC. Le client a tranché : plus de détourage du tout. Les 3 vidéos ont
  * été retournées une troisième fois, cette fois directement sur un fond
- * qui matche la teinte de la page (mesuré ~rgb(251, 250, 243) sur les 3
- * nouveaux rendus, à comparer à `--brume` #f7f5f0 = rgb(247, 245, 240) —
- * à 2% près, l'écart se perd dans le rendu réel) et avec une ombre
- * portée déjà présente dans le rendu — la vidéo s'affiche donc telle
- * quelle (`drawImage` direct, sans lecture de pixels), sans perte de
- * netteté possible puisqu'il n'y a plus de traitement entre la vidéo et
- * l'écran. Le conteneur n'a lui-même plus aucun fond/cadre propre —
- * l'objet se pose directement sur le fond de la page. Sur desktop, la
- * colonne vidéo est volontairement plus large que la colonne texte
- * (`lg:grid-cols-[1.35fr_1fr]`) — demande client ("grandis bien la vidéo
- * sur PC").
+ * qui matche la teinte de la page — la vidéo s'affiche donc telle quelle
+ * (`drawImage` direct, sans lecture de pixels), sans perte de netteté
+ * possible puisqu'il n'y a plus de traitement entre la vidéo et l'écran.
+ * Sur desktop, la colonne vidéo est volontairement plus large que la
+ * colonne texte (`lg:grid-cols-[1.35fr_1fr]`) — demande client ("grandis
+ * bien la vidéo sur PC").
+ *
+ * Le fond n'est en fait PAS identique au pixel près : mesure précise
+ * (échantillonnage de plusieurs points par frame extraite, sur les 3
+ * vidéos) donne ~rgb(253, 252, 245), contre `--brume` #f7f5f0 =
+ * rgb(247, 245, 240) pour le reste de la page — un écart de ~2% par
+ * canal, jugé "invisible" au round précédent mais qui en réalité
+ * dessinait un liseré rectangulaire visible autour de la vidéo une fois
+ * en usage réel (retour client : "la couleur du fond n'est pas pareille
+ * que celui de l'image"). Plutôt que retoucher `--brume` globalement
+ * (utilisé partout sur le site) ou retenter un détourage pixel par pixel
+ * (déjà abandonné pour la pixelisation), un halo radial très doux est
+ * superposé au bord du cadre vidéo (`radial-gradient` transparent au
+ * centre → `--brume` sur l'anneau extérieur) : il absorbe le léger écart
+ * de teinte pile là où il se voit, sans jamais mordre sur le sujet au
+ * centre puisque le dégradé ne démarre qu'à ~72% du rayon.
  *
  * Ombres de feuilles : 2 photos détourées via Higgsfield
  * (`remove_background`, import serveur-à-serveur via `media_import_url`
@@ -54,11 +64,25 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * corrigé sur nouveau croquis client : les feuilles sont désormais
  * positionnées aux coins extrêmes de la SECTION entière (pas du cadre),
  * une en haut à gauche près de la nav, une en bas à droite au-delà de la
- * frise, largement dégagées de l'objet et du texte. Restent hébergées
- * sur le CDN Higgsfield (`d8j0ntlcm91z4.cloudfront.net`, autorisé dans
- * `next.config.ts`) plutôt que copiées dans `public/` — accessibles aux
- * vrais visiteurs, pas prévisualisables depuis ce bac à sable (blocage
- * réseau).
+ * frise, largement dégagées de l'objet et du texte. Toujours jugées mal
+ * placées au round suivant : ancrées sur le conteneur de CONTENU
+ * (`max-w-6xl`, qui s'arrête pile à la fin de la grille) plutôt que sur
+ * la SECTION elle-même (qui inclut le padding bas `pb-28`), la feuille
+ * bas-droite retombait pile sur la frise/flèche au lieu de se poser
+ * au-delà. Corrigé en déplaçant les deux images enfants directs de
+ * `<section>` (avant le conteneur de contenu dans le DOM), positionnées
+ * par rapport à la boîte de section complète (`top-0`/`bottom-0` +
+ * `translate`) — la bas-droite tombe maintenant dans la zone de padding,
+ * clairement après la frise. Réduites en taille et opacité (moins
+ * intrusives) et le flou est renforcé. `aspect-square` + `object-contain`
+ * réservent une empreinte prévisible même si l'image ne charge pas
+ * (utile pour la vérification géométrique dans ce bac à sable, voir plus
+ * bas), sans jamais déformer l'image réelle quel que soit son ratio
+ * d'origine. Restent hébergées sur le CDN Higgsfield
+ * (`d8j0ntlcm91z4.cloudfront.net`, autorisé dans `next.config.ts`) plutôt
+ * que copiées dans `public/` — accessibles aux vrais visiteurs, pas
+ * prévisualisables depuis ce bac à sable (blocage réseau, revérifié à ce
+ * round : toujours refusé).
  *
  * La boucle ne démarre qu'une fois la section réellement visible
  * (`IntersectionObserver`, une seule fois) — pas la peine de faire tourner
@@ -366,41 +390,45 @@ export default function ThreePiliers() {
 
   return (
     <section id="concept" className="relative overflow-hidden pb-28 pt-12 sm:pt-16">
+      {/* Ombres de feuilles, demandées par le client sur son croquis
+          annoté. Les 2 photos fournies ont été détourées via Higgsfield
+          (`remove_background`) — le fond blanc d'origine est retiré, ne
+          reste que la silhouette alpha de la branche. Le noir + le flou
+          ne sont PAS pré-appliqués sur l'image : un simple filtre CSS
+          (`brightness(0)` peint tout pixel opaque en noir pur sans
+          toucher à l'alpha, `blur` adoucit le contour) suffit et évite un
+          aller-retour de traitement pixel. Enfants directs de `<section>`
+          (pas du conteneur `max-w-6xl` interne, qui s'arrête à la fin de
+          la grille et ne couvre pas le padding bas `pb-28`) : ancrées sur
+          la boîte de section complète (`top-0`/`left-0` et
+          `bottom-0`/`right-0`), de sorte que la feuille bas-droite tombe
+          dans la zone de padding, clairement après la frise, au lieu de
+          retomber dessus. Volontairement PAS de `translate` pour les
+          faire déborder hors de la section : celle-ci garde
+          `overflow-hidden` (rien d'autre ne dépend de ce clip, mais le
+          retirer risquerait un scrollbar horizontal sur tout le site,
+          aucun garde-fou global `overflow-x` n'existe) donc tout ce qui
+          dépasserait serait rogné à vif — un bord dur au milieu d'une
+          forme floue, pire que l'ancien souci de position. Les images
+          restent entièrement à l'intérieur de la boîte de section, collées
+          pile aux coins. Voir le commentaire git en tête de fichier pour
+          l'historique des repositionnements précédents. `aspect-square` +
+          `object-contain` réservent une empreinte prévisible sans jamais
+          déformer l'image réelle. Desktop uniquement : encombrerait la
+          mise en page mobile, plus étroite. */}
+      <img
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 hidden aspect-square w-48 object-contain opacity-20 [filter:brightness(0)_blur(6px)] lg:block"
+      />
+      <img
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 right-0 hidden aspect-square w-48 rotate-180 object-contain opacity-20 [filter:brightness(0)_blur(6px)] lg:block"
+      />
       <div className="relative mx-auto max-w-6xl px-6">
-        {/* Ombres de feuilles, demandées par le client sur son croquis
-            annoté. Les 2 photos fournies ont été détourées via Higgsfield
-            (`remove_background`) — le fond blanc d'origine est retiré, ne
-            reste que la silhouette alpha de la branche. Le noir + le flou
-            ne sont PAS pré-appliqués sur l'image : un simple filtre CSS
-            (`brightness(0)` peint tout pixel opaque en noir pur sans
-            toucher à l'alpha, `blur` adoucit le contour) suffit et évite
-            un aller-retour de traitement pixel. Positionnées aux coins
-            extrêmes de toute la SECTION (pas du cadre vidéo) : un premier
-            essai collé aux bords du cadre débordait dessus (l'image
-            contient une bonne marge autour de la branche avant que la
-            silhouette ne commence), et un second essai encore trop près
-            a de nouveau été jugé mal placé sur un nouveau croquis client
-            — corrigé en ancrant les deux images sur ce conteneur de
-            section entier plutôt que sur le cadre, une en haut à gauche,
-            une en bas à droite, largement dégagées de l'objet et du
-            texte. Ces images sont hébergées sur le CDN Higgsfield (pas de
-            copie locale : le réseau de ce bac à sable bloque ce domaine
-            en sortie, voir le commentaire git pour le détail) —
-            accessible aux vrais visiteurs du site, mais pas
-            prévisualisable localement ici. Desktop uniquement :
-            encombrerait la mise en page mobile, plus étroite. */}
-        <img
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210159_c4bc867f-9171-4efc-8655-d5ec33b20e25.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -left-8 -top-12 hidden w-64 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
-        />
-        <img
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_3AOufDgdu5BZqUoyRdkQOitlUqQ/hf_20260726_210148_692a1007-205e-4637-8e22-74519d40c58f.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -bottom-12 hidden w-64 rotate-180 opacity-25 [filter:brightness(0)_blur(5px)] lg:block"
-        />
         <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
           <div className="relative order-2 mx-auto aspect-square w-full max-w-md lg:order-1 lg:max-w-none">
             {/* Plus de cadre ni de fond propre : la vidéo, déjà rendue sur
@@ -441,6 +469,20 @@ export default function ThreePiliers() {
                 ref={canvasRef}
                 aria-hidden
                 className="absolute inset-0 h-full w-full object-contain"
+              />
+              {/* Halo qui absorbe le très léger écart de teinte entre le
+                  fond de la vidéo (~rgb(253, 252, 245)) et celui de la
+                  page (`--brume`, rgb(247, 245, 240)) — voir note en tête
+                  de fichier. Transparent jusqu'à 72% du rayon pour ne
+                  jamais mordre sur le sujet au centre, opaque seulement
+                  sur l'anneau extérieur, là où le liseré se voyait. */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at center, transparent 72%, var(--brume) 100%)",
+                }}
               />
             </div>
           </div>

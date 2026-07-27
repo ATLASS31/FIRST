@@ -4045,6 +4045,62 @@ sandbox (`d8j0ntlcm91z4.cloudfront.net` refusé), confirmé via
 locale, le domaine est déjà whitelisté dans `next.config.ts` donc les
 visiteurs réels chargent les images normalement.
 
+## 3 piliers : halo pour absorber l'écart de fond, feuilles ancrées sans découpe
+
+Deux retours sur le round précédent, avec capture d'écran à l'appui : le
+fond de la vidéo ne matche toujours pas exactement celui de la page (un
+liseré rectangulaire visible autour du cadre), et les feuilles sont
+"toujours pas au bon endroit". Le client propose deux pistes possibles —
+soit aligner le fond de page sur celui des vidéos avec un léger flou aux
+4 coins, soit retenter un détourage — en laissant le choix ("essaye...
+peut-être que ça pourrait marcher, bref go").
+
+**Écart de fond confirmé et mesuré précisément** : le round précédent
+avait échantillonné un seul pixel par coin de frame, ce qui a sous-estimé
+l'écart. Reprise avec plusieurs points par frame sur les 3 nouvelles
+vidéos donne ~rgb(253, 252, 245) — `--brume` reste #f7f5f0 =
+rgb(247, 245, 240), soit un écart bien réel (~2% par canal), suffisant
+pour dessiner un bord rectangulaire visible sur un aplat aussi grand.
+Plutôt que retoucher `--brume` (utilisé partout sur le site, risque de
+régression ailleurs non revue par le client ce round) ou réintroduire un
+détourage pixel par pixel (déjà abandonné pour la pixelisation), un halo
+radial est superposé au cadre vidéo : transparent jusqu'à 72% du rayon,
+`--brume` sur l'anneau extérieur — absorbe l'écart pile là où il se
+voyait, sans jamais mordre sur le sujet au centre. Vérifié programmatiquement
+que le halo résout bien à `rgb(247, 245, 240)`, identique à `--brume`.
+
+**Feuilles : bug de découpe trouvé, pas juste un problème de goût** — en
+creusant pourquoi le repositionnement du round précédent ne satisfaisait
+toujours pas, mesure géométrique via Playwright (bounding rects du
+conteneur vidéo, du bouton flèche, de la section) : les feuilles étaient
+poussées hors de la boîte de `<section>` via `translate` pour "déborder"
+dans les coins, mais `<section>` garde `overflow-hidden` — jusqu'à la
+moitié de chaque feuille était donc invisiblement rognée, laissant un
+bord dur au milieu d'une forme censée être floue. Corrigé en retirant les
+`translate` : les feuilles restent ancrées pile aux coins de la section
+(`top-0`/`left-0`, `bottom-0`/`right-0`) mais entièrement à l'intérieur
+de sa boîte, donc jamais découpées. `overflow-hidden` sur la section est
+conservé (rien d'autre n'en dépend, mais le retirer risquerait un
+scrollbar horizontal sur tout le site — aucun garde-fou `overflow-x`
+global n'existe).
+
+**Empreinte prévisible malgré le blocage réseau** : les 2 images
+reçoivent `aspect-square` + `object-contain`, ce qui réserve une boîte de
+taille connue même quand l'image ne charge pas (toujours bloquée par la
+politique réseau du bac à sable, revérifié à ce round), sans jamais
+déformer l'image réelle une fois chargée chez un vrai visiteur — permet
+de vérifier la géométrie (chevauchement avec la carte vidéo et le bouton
+flèche) par mesure plutôt qu'à l'œil.
+
+**Vérifications** : `tsc`/`eslint` propres (2 warnings `<img>` déjà
+acceptés) ; build de production réussi ; géométrie vérifiée par Playwright
+à 3 largeurs desktop (1280/1440/1920) — plus aucun rognage par la section,
+aucun chevauchement avec le bouton flèche à aucune largeur, léger
+effleurement du coin de la carte vidéo à 1280px seulement (zone d'ombre
+minime, pas de recouvrement du sujet) ; halo confirmé résoudre à la même
+couleur que `--brume` ; feuilles confirmées masquées sur mobile ;
+régression complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
