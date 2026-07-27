@@ -3942,6 +3942,55 @@ des 2 images confirmés programmatiquement dans le DOM ; mécanique de
 boucle re-testée ; régression complète sur les 10 routes sans nouvelle
 erreur.
 
+## 3 piliers : nouvelles vidéos HQ, retour au détourage sans cadre, feuilles repositionnées
+
+Le client valide le style des ombres de feuilles (round précédent) mais
+demande 3 changements : repositionner les feuilles, refournir les vidéos
+en bonne qualité déjà en fond vert, et retirer le cadre pour un rendu
+"premium sans fond" façon photo produit (référence visuelle fournie).
+
+**Nouvelles vidéos** : 3 nouveaux fichiers, hashs inédits (aucun lien avec
+les renders précédents) — le client confirme les avoir refaits en bonne
+qualité. Pas d'indice dans le nom de fichier cette fois pour l'ordre
+bois→horloge→horloge→maison→maison→bois : identifié en extrayant la
+première et la dernière frame de chacun (script ffmpeg) et en comparant
+visuellement l'objet de départ/arrivée. Fond vert confirmé cohérent avec
+le round précédent (mesuré ~rgb(10-15, 235-250, 10-27) sur les 3
+nouvelles vidéos, séparation toujours large avec le sujet) — mêmes seuils
+de détourage (`KEY_LOW`/`KEY_HIGH`) réutilisés sans ajustement.
+
+**Retour au détourage fond vert** : le code de détourage complet
+(dominance du vert, suppression de spill, canvas de travail réduit pour
+la fluidité, ombre synthétique élargie de 12% pour rester visible sur
+toute forme) — développé, validé puis reverté deux rounds plus tôt — est
+restauré tel quel depuis l'historique git (`git show
+aba6c25:src/components/ThreePiliers.tsx`), pas réécrit de zéro. Revalidé
+sur les 3 NOUVELLES vidéos via la méthodologie de lecture vidéo réelle
+habituelle (transcodage VP9, ce bac à sable ne décode pas le H.264 des
+fichiers finaux) : objet net sans fragmentation sur les 3 formes, 0 pixel
+de liseré vert résiduel mesuré, ombre visible aux deux extrémités du clip
+maison→bois.
+
+**Cadre et relief 3D retirés** : le cadre crème et la face arrière
+décalée (technique "carte empilée" du round précédent) disparaissent —
+le sujet détouré se pose directement sur le fond de la page,
+`overflow-hidden` n'étant plus nécessaire non plus (plus de forme à
+cadrer). Coïncide avec la photo de référence fournie par le client
+(aucun cadre visible, juste l'objet et son ombre naturelle).
+
+**Feuilles repositionnées** : premier placement (coins en diagonale,
+débordant du cadre) jugé mal placé. Recollées aux bords gauche/droite du
+cadre (`-left-24`/`-right-24`), avec un décalage vertical demandé
+explicitement par le client : celle de gauche plus haute (`top-[20%]`),
+celle de droite plus basse (`top-1/2`).
+
+**Vérifications** : `tsc`/`eslint` propres (2 warnings `<img>` déjà
+acceptés au round précédent) ; build de production réussi ; conteneur
+confirmé sans fond/cadre programmatiquement ; positions et attributs des
+2 images de feuilles confirmés dans le DOM ; boucle re-testée (Matière →
+Temps → Espace) ; régression complète sur les 10 routes sans nouvelle
+erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
