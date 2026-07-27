@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import type { ElementType, ComponentPropsWithoutRef, ReactNode } from "react";
 
 type GlassPanelProps<T extends ElementType> = {
@@ -26,14 +27,19 @@ export default function GlassPanel<T extends ElementType = "div">({
   const toneClass =
     tone === "dark" ? "glass-dark" : tone === "graphite" ? "glass-graphite" : "glass";
 
-  return (
-    <Component
-      className={`relative overflow-hidden ${rounded} ${toneClass} ${
+  // `createElement` plutôt que la syntaxe JSX : avec un composant
+  // polymorphe générique (`as`), JSX exige que `rest` corresponde
+  // exactement aux props de `T` — impossible à prouver statiquement
+  // puisque `T` n'est résolu qu'à l'appel. `createElement` accepte cette
+  // incertitude sans forcer un `as any` sur les props elles-mêmes.
+  return createElement(
+    Component as ElementType,
+    {
+      className: `relative overflow-hidden ${rounded} ${toneClass} ${
         sheen ? "glass-sheen" : ""
-      } ${className}`}
-      {...rest}
-    >
-      {children}
-    </Component>
+      } ${className}`,
+      ...rest,
+    },
+    children
   );
 }

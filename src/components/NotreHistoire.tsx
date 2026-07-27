@@ -138,10 +138,34 @@ import { motion, useReducedMotion } from "framer-motion";
  * suivant a signalé des images dupliquées et des zones effacées sur
  * certains matériaux (l'image figée et le canvas ne représentaient jamais
  * exactement le même instant, donc le passage de l'un à l'autre créait un
- * chevauchement visible). Revert complet : cette brève absence de vidéo
- * au chargement à froid est un moindre mal comparé à ce chevauchement —
- * "à la limite rajoute juste un peu de vitesse aux animations c'est
- * tout". `PLAYBACK_RATE` augmenté en conséquence (voir plus bas).
+ * chevauchement visible). Revert complet à l'époque : cette brève absence
+ * de vidéo au chargement à froid était un moindre mal comparé à ce
+ * chevauchement — "à la limite rajoute juste un peu de vitesse aux
+ * animations c'est tout". `PLAYBACK_RATE` augmenté en conséquence (voir
+ * plus bas).
+ *
+ * Round suivant, le client redemande explicitement de régler ce "pop" —
+ * repris avec une architecture différente qui évite le défaut de la
+ * tentative précédente : plus aucun SWAP (ajout puis retrait du DOM d'un
+ * élément séparé, avec une fenêtre de temps où les deux pouvaient
+ * coexister ou se chevaucher). Cette fois, l'image pré-détourée
+ * (`public/images/materials-frame0.webp`, générée hors-ligne — extraction
+ * ffmpeg de la frame 0 réelle de `materials-explode.mp4`, puis un script
+ * Python qui reproduit EXACTEMENT l'algorithme de détourage ci-dessous :
+ * moyenne des 4 coins comme couleur clé, `threshold=34`, `feather=30`,
+ * comparaison de distance au carré) reste un enfant PERMANENT du DOM,
+ * jamais retiré, positionné derrière le canvas (avant lui, donc peint
+ * en-dessous par ordre naturel). Le canvas démarre entièrement
+ * transparent (rien dessiné) et laisse voir cette image identique en
+ * dessous ; dès que `drawFrame` s'exécute pour la première fois, il
+ * peint la totalité du rectangle du canvas (`ctx.drawImage` couvre tout,
+ * jamais un dessin partiel), donc l'image sous-jacente est
+ * mécaniquement recouverte au pixel près — sans jamais avoir besoin de
+ * la cacher ni de la retirer, donc sans fenêtre de temps où un
+ * changement d'état pourrait produire un chevauchement ou un flash.
+ * Comme les deux couches montrent littéralement la même frame (mêmes
+ * pixels, même détourage), le risque qui avait fait échouer la première
+ * tentative n'existe plus par construction, pas seulement par réglage.
  */
 
 const EXPLODE_VIDEO_URL = "/videos/materials-explode.mp4";
@@ -598,6 +622,15 @@ function MaterialsShowcase() {
           preload="auto"
           aria-hidden
           className="absolute inset-0 h-full w-full object-contain opacity-0"
+        />
+        {/* Frame 0 pré-détourée hors-ligne, posée en permanence derrière le
+            canvas (voir commentaire git en tête de fichier) — comble le
+            "pop" au chargement à froid sans jamais être retirée du DOM. */}
+        <img
+          src="/images/materials-frame0.webp"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-contain"
         />
         <canvas
           ref={canvasRef}

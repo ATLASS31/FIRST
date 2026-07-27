@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import GlassFilter from "@/components/GlassFilter";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import LoadingScreen from "@/components/LoadingScreen";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-brume text-encre">
+        <LoadingScreen />
         <GlassFilter />
         <Nav />
         <main className="flex-1">{children}</main>

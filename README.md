@@ -4238,6 +4238,89 @@ par mesure ; couleurs de fond des 4 sections confirmées par
 `getComputedStyle` ; régression complète sur les 10 routes sans nouvelle
 erreur.
 
+## Écran de chargement 3D (blason logo) + fix définitif du "pop" de Notre histoire
+
+Deux demandes distinctes dans le même message : un écran de chargement
+premium utilisant un modèle 3D du blason Bellora fourni par le client
+(`.glb`), et une remise sur le tapis d'un vieux compromis accepté au
+round #109 — "trouve une solution pour que l'animation [Notre histoire]
+ne pop pas d'un coup".
+
+**Notre histoire : le pop enfin résolu, sans reproduire l'échec
+précédent** — au round #109, une image statique (frame 0 pré-détourée)
+avait été ajoutée pour combler le blanc au chargement à froid, PUIS
+retirée du DOM une fois la vraie vidéo prête ; ce swap créait des images
+dupliquées/effacées visibles (l'image figée et le canvas ne
+représentaient jamais exactement le même instant). Reverté à l'époque.
+Cette fois, architecture différente : l'image pré-détourée reste un
+enfant PERMANENT du DOM, jamais retirée, posée derrière le canvas.
+Générée hors-ligne (extraction ffmpeg de la frame 0 réelle de
+`materials-explode.mp4`, puis un script Python qui reproduit exactement
+l'algorithme de détourage du canvas — moyenne des 4 coins comme couleur
+clé, `threshold=34`, `feather=30`) et exportée en WebP (52 Ko).  Comme
+`drawFrame` peint toujours l'intégralité du rectangle du canvas dès son
+premier appel, l'image sous-jacente est mécaniquement recouverte au
+pixel près, sans jamais avoir besoin d'être cachée ni retirée — donc
+sans fenêtre de temps où un changement d'état pourrait produire un
+chevauchement. Bénéfice inattendu : c'est la première fois de tout le
+projet que je peux VOIR ce composant s'afficher dans ce bac à sable
+(l'image WebP n'est pas concernée par le blocage H.264 qui empêche toute
+prévisualisation vidéo ici) — confirmé visuellement correct.
+
+**Écran de chargement 3D** : nouvelles dépendances `three`,
+`@react-three/fiber`, `@react-three/drei` (~187 Ko gzippés à eux trois,
+chargés une fois puis mis en cache — coût inhérent à un vrai rendu 3D,
+assumé). Le fichier `.glb` fourni (un seul mesh, matériau PBR
+métallique doré `metalness=1`/`roughness=0.15`/clearcoat — déjà assorti
+à `--laiton` sans rien retoucher) tourne sur lui-même dans
+`LoadingScreen.tsx`, monté dans `layout.tsx` (donc sur toutes les
+pages, pas seulement l'accueil). Pas d'environnement HDR téléchargé
+(aurait été le choix par défaut de `@react-three/drei`, mais irait
+chercher un fichier sur un CDN externe à chaque chargement, fragile) :
+`<Environment>` + plusieurs `<Lightformer>` construit un mini-studio
+100% procédural en local, nécessaire ici car un matériau aussi
+métallique/clearcoat paraît plat ou noir sans réflexions
+d'environnement — de simples lumières directionnelles ne suffisent pas.
+Intensités des lightformers largement relevées après un premier essai
+trop sombre (vérifié visuellement dans ce bac à sable, WebGL avec
+rendu logiciel SwiftShader — contrairement à la vidéo, le rendu 3D
+fonctionne ici et j'ai pu voir et corriger le résultat directement).
+
+`<Bounds fit>` recadre la caméra automatiquement sur le vrai volume du
+modèle (le fichier ne précise ni échelle ni centrage). Fermeture :
+temps minimum d'affichage pour ne jamais laisser un flash sur un
+chargement rapide, puis attente de l'événement `load` avant le fondu de
+sortie ; le `<Canvas>` est complètement démonté une fois le fondu
+terminé pour libérer le contexte WebGL, pas juste caché en opacité 0.
+`prefers-reduced-motion` : la rotation s'arrête, l'écran reste affiché
+(c'est le mouvement décoratif qui cède, pas la fonction). Détection
+WebGL avec repli CSS (cercle laiton qui pulse) si indisponible.
+
+**Bug latent découvert et corrigé en cours de route** : l'ajout de
+`@react-three/fiber` (qui augmente globalement l'espace de noms JSX) a
+fait échouer la compilation sur un composant totalement différent,
+`GlassPanel.tsx` — un générique polymorphe (`as` prop) dont le typage
+ne passait plus avec la version de `@types/react` actuellement
+résolue (erreur absente avant l'ajout de la dépendance, confirmé en
+comparant avec/sans). Corrigé en remplaçant le retour JSX par
+`React.createElement`, dont le typage est plus permissif pour un
+composant générique dont le type concret n'est connu qu'à l'appel —
+comportement identique, juste une méthode de construction de l'élément
+moins stricte côté types.
+
+**Vérifications** : `tsc`/`eslint` propres sur tous les fichiers
+touchés ; build de production réussi ; rendu WebGL confirmé fonctionnel
+et visuellement correct dans ce bac à sable (logo doré bien lu, rotation
+en place) — chose rare, cette partie-là EST prévisualisable ici,
+contrairement à la vidéo ; écran de chargement confirmé présent sur une
+sous-page (`/contact`, pas seulement l'accueil) ; confirmé qu'il se
+referme aussi bien en `prefers-reduced-motion` que sur mobile ; l'erreur
+React #418 observée sous `reduced-motion` est confirmée pré-existante
+(task #94, Hero.tsx) et non liée à ce round — reproduite à l'identique
+avec `LoadingScreen` temporairement retiré de l'arbre ; image
+pré-détourée de Notre histoire confirmée chargée (`naturalWidth: 1920`) ;
+régression complète sur les 10 routes sans nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
