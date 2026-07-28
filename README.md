@@ -4433,6 +4433,43 @@ légèrement de l'écran en aperçu) ; `prefers-reduced-motion` confirmé
 (bouton flèche absent) ; régression complète sur les 10 routes sans
 nouvelle erreur.
 
+### 28 juillet 2026 — Notre procédé : réordonnancement du contenu de carte
+
+Client (sur une maquette annotée, pendant que le carousel 3D était déjà
+validé) : "regarde le design[...] on vois en haut gauche numero en
+desosus titre carte pui en dessous l'image et encore en dessous petite
+ligne orange et en dessous descriptif". Réponse initiale : confirmation
+verbale de la lecture de la maquette sans toucher au code (le client
+avait explicitement demandé de ne rien faire dans ce message-là — "la ne
+fait rien").
+
+Le message suivant du client relance ("tu peux continuer boss") après
+avoir renvoyé les 5 illustrations, cette fois en affirmant les avoir
+envoyées en pièce jointe plutôt que collées dans le chat. Vérification
+du dossier d'upload : **aucun fichier plus récent** que le `.glb` du
+logo (27 juillet, 14h27) — les 5 images ne sont, une fois de plus, pas
+arrivées comme fichiers exploitables (probablement de nouveau collées
+plutôt que réellement attachées). Décision : traiter la partie
+indépendante des fichiers (le réordonnancement, déjà validé
+verbalement) et signaler au client que les images ne sont toujours pas
+accessibles, plutôt que d'attendre ou de deviner des URLs.
+
+`ProcedeCarousel.tsx` : restructuration du bloc de contenu par carte.
+Avant : illustration (55% de hauteur, en premier) puis
+numéro/titre/ligne/meta/description empilés dans un même bloc de texte.
+Après, dans l'ordre exact de la maquette : bloc numéro+titre en haut
+(`px-6 pt-6`), puis illustration (`h-[38%]`, insérée dans un conteneur
+`rounded-2xl` séparé pour garder les coins arrondis même si l'image
+elle-même est en `object-cover` plein cadre), puis ligne laiton, puis
+`meta` (durée — absente de la maquette du client, casée ici comme
+complément discret plutôt que de la supprimer), puis description.
+
+**Vérifications** : capture Playwright desktop (1280×900) et mobile
+(390×844) sur `#procede` — ordre du contenu conforme à la maquette sur
+les deux formats, carte toujours lisible avec le placeholder chiffré
+fantôme (les vraies illustrations restent en attente des fichiers).
+`tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

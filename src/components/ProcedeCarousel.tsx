@@ -5,19 +5,26 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 /**
  * Carousel 3D demandé par le client, référence visuelle à l'appui (deux
- * maquettes de carte + 3 rendus d'illustration isométrique, "au fur et à
+ * maquettes de carte + rendus d'illustration isométrique, "au fur et à
  * mesure des cartes la maison se construit") : une carte active au
  * centre, ses deux voisines réduites et floutées en aperçu de chaque
  * côté, rotation automatique toutes les 3s.
  *
+ * Ordre du contenu de carte (précisé par le client sur une maquette
+ * annotée) : numéro (haut gauche) → titre → illustration → petite
+ * ligne laiton → texte descriptif. `meta` (durée, ex. "4 à 8 semaines")
+ * n'apparaît pas sur la maquette du client — casée juste après la
+ * ligne, avant la description, comme complément discret.
+ *
  * Illustrations : le client envoie les images collées dans le chat, pas
  * en pièce jointe (même distinction déjà rencontrée plusieurs fois ce
  * projet — voir historique git) — aucun fichier exploitable sur disque
- * pour l'instant. Chaque étape a un champ `illustrationUrl` prêt à
- * recevoir une vraie image dès qu'elle arrive en pièce jointe ; en
- * attendant, un chiffre fantôme géant en filigrane tient lieu de
- * placeholder — délibérément sobre pour ne pas se faire passer pour un
- * rendu final.
+ * pour l'instant, y compris pour le dernier lot annoncé comme "envoyé en
+ * pièce jointe" (vérifié : rien de nouveau dans le dossier d'upload).
+ * Chaque étape a un champ `illustrationUrl` prêt à recevoir une vraie
+ * image dès qu'elle arrive en pièce jointe exploitable ; en attendant,
+ * un chiffre fantôme géant en filigrane tient lieu de placeholder —
+ * délibérément sobre pour ne pas se faire passer pour un rendu final.
  *
  * Mécanique : seules 3 cartes sont montées à la fois (active + 2
  * voisines, `Math.abs(offset) <= 1`) — au-delà, une carte n'existe pas
@@ -172,17 +179,21 @@ export default function ProcedeCarousel() {
                     !isActive ? "cursor-pointer" : ""
                   }`}
                 >
-                  <div className="h-[55%] w-full shrink-0">
-                    <CardIllustration url={etape.illustrationUrl} index={index} />
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2 px-6 py-5">
+                  <div className="flex flex-col gap-1 px-6 pt-6">
                     <span className="eyebrow text-xs text-laiton">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <h3 className="text-lg font-semibold leading-snug text-encre">
                       {etape.title}
                     </h3>
-                    <span aria-hidden className="mt-1 block h-px w-8 bg-laiton" />
+                  </div>
+                  <div className="mt-4 h-[38%] w-full shrink-0 px-6">
+                    <div className="h-full w-full overflow-hidden rounded-2xl">
+                      <CardIllustration url={etape.illustrationUrl} index={index} />
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 px-6 py-5">
+                    <span aria-hidden className="block h-px w-8 bg-laiton" />
                     {"meta" in etape && etape.meta && (
                       <p className="eyebrow text-[10px] text-foret">
                         {etape.meta}
