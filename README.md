@@ -4373,6 +4373,66 @@ image de secours de Notre histoire confirmée toujours présente et
 fonctionnelle (juste son mécanisme de masquage a changé) ; régression
 complète sur les 10 routes sans nouvelle erreur.
 
+## Notre procédé : carousel 3D (carte centrale + voisines floutées)
+
+Demande client avec référence visuelle à l'appui (2 maquettes de carte +
+3 rendus d'illustration isométrique) : remplacer la grille statique de 5
+cartes de "Notre procédé" par un carousel — une carte active nette au
+centre, ses deux voisines réduites et floutées en aperçu de chaque
+côté, rotation automatique toutes les 3 secondes. "Au fur et à mesure
+des cartes la maison se construit" : chaque étape a sa propre
+illustration montrant une progression de chantier.
+
+**Nouveau composant `ProcedeCarousel.tsx`** : seules 3 cartes sont
+montées à la fois (active + 2 voisines, calculées via un décalage le
+plus court avec bouclage — `shortestOffset`, pour que l'étape 5
+redevienne voisine de l'étape 1 en passant par la droite plutôt que de
+traverser tout le carousel). `AnimatePresence` gère l'entrée d'une
+carte qui devient voisine (glisse depuis plus loin, floue et réduite,
+initial calculé dans le même sens que sa position finale) et sa sortie
+quand elle cesse de l'être (continue dans le même sens plutôt que de
+disparaître sur place) — tant qu'une carte reste montée d'un tour à
+l'autre (active → voisine), c'est un simple repositionnement animé, pas
+un remontage, donc jamais de saut visuel.
+
+Contrôles : rotation automatique en `setTimeout` (reschedulé à chaque
+changement d'étape plutôt qu'un `setInterval` fixe, pour repartir à
+zéro proprement après un clic manuel), mise en pause au survol de la
+zone carousel, dots cliquables (identique en style à la frise de
+`ThreePiliers.tsx`) et bouton flèche circulaire (composant/icône repris
+tel quel de `ThreePiliers.tsx` pour la cohérence visuelle). Cliquer sur
+une carte voisine (floutée) saute directement dessus.
+`prefers-reduced-motion` : rotation automatique désactivée, flèche
+masquée (les dots suffisent pour naviguer manuellement), transitions de
+positionnement réduites à un fondu quasi instantané.
+
+**Illustrations : en attente des fichiers** — les 5 images (2 maquettes
+de carte complètes + 3 rendus isométriques bruts) sont arrivées collées
+dans le chat, pas en pièce jointe — même distinction déjà rencontrée
+plusieurs fois sur ce projet (feuilles de `ThreePiliers.tsx`, logo 3D du
+round précédent) : je peux voir leur contenu directement dans la
+conversation, mais aucun fichier n'atterrit sur le disque de ce bac à
+sable, donc rien d'exploitable comme asset du site pour l'instant.
+Chaque étape a un champ `illustrationUrl` prêt à recevoir une vraie
+image (actuellement `null` partout) ; en attendant, un chiffre fantôme
+géant en filigrane (`text-laiton/15`, très grand) tient lieu de
+placeholder dans la zone d'illustration — délibérément sobre pour ne
+jamais se faire passer pour un rendu final. Dès que le client envoie les
+5 fichiers en pièce jointe (pas collés), il suffira de les copier dans
+`public/` et de remplir les 5 `illustrationUrl`.
+
+**Vérifications** : `tsc`/`eslint` propres ; build de production
+réussi ; capturé par Playwright à plusieurs instants (l'un des rares
+éléments du site que ce bac à sable peut réellement afficher, sans
+dépendance vidéo/GLB) — carte centrale nette, voisines floutées/réduites
+confirmées visuellement, rotation automatique confirmée après ~3,2 s,
+navigation manuelle par clic sur un dot confirmée (saut direct à
+l'étape 5, voisins recalculés avec bouclage correct) ; mise en page
+mobile vérifiée (carte pleine largeur, voisines qui débordent
+légèrement de l'écran en aperçu) ; `prefers-reduced-motion` confirmé
+(bouton flèche absent) ; régression complète sur les 10 routes sans
+nouvelle erreur.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
