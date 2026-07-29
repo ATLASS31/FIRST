@@ -236,7 +236,7 @@ export default function ProcedeCarousel() {
           réel (ratio 1100×614, largeur dispo à chaque palier) + une
           marge de sécurité modeste pour ne jamais rogner l'image :
           sm:h-[640px]→h-[580px], lg:h-[820px]→h-[700px]. */}
-      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[580px] sm:w-full sm:max-w-5xl lg:-mt-40 lg:h-[680px] lg:max-w-6xl">
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:-mt-8 lg:h-[660px] lg:max-w-6xl">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
@@ -262,7 +262,7 @@ export default function ProcedeCarousel() {
       {/* 4. texte descriptif, très court — resserré contre la maquette
           (`mt-6/8` → `mt-2/3`), demande client explicite ("le texte
           plus les miniatures doivent remonter jusqu'à l'image"). */}
-      <div className="mx-auto mt-2 max-w-md text-center sm:mt-3 lg:-mt-6">
+      <div className="mx-auto mt-2 max-w-md text-center sm:-mt-4 lg:-mt-14">
         <AnimatePresence mode="wait">
           <motion.p
             key={active}
@@ -270,7 +270,7 @@ export default function ProcedeCarousel() {
             animate={{ opacity: 1 }}
             exit={prefersReducedMotion ? undefined : { opacity: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
-            className="text-sm leading-relaxed text-encre-doux"
+            className="text-sm leading-relaxed text-encre-doux lg:text-base"
           >
             {etape.body}
           </motion.p>
@@ -280,28 +280,39 @@ export default function ProcedeCarousel() {
       {/* 5. navigation des 5 étapes — miniatures, pas des cartes.
           Profondeur de champ : active plus grande/nette/ombre légère,
           les autres plus petites/floutées/désaturées ("comme une
-          profondeur de champ photographique"). Remontées contre le
-          texte au-dessus (`mt-12/16` → `mt-4/6`) pour coller à la
-          maquette de référence du client. Petite ombre synthétique
+          profondeur de champ photographique"). Petite ombre synthétique
           sous chaque miniature (même logique que la grande scène, en
           plus discret) — demande client explicite d'un round
           précédent, illustrée en dessinant une ligne noire sous une
           des miniatures sur sa capture annotée. */}
-      {/* 5e passe client : "sur téléphone [...] les miniatures sont
-          trop petites, grandis x3" — la taille mobile dédiée
-          (h-16, 64px) introduite pour tenir dans les 390px d'écran
-          sans déborder (bug corrigé 2 passes plus tôt) est abandonnée :
-          le mobile utilise maintenant la MÊME taille que la tablette
-          (h-28, 112px, +75%), et c'est la rangée elle-même qui devient
-          scrollable horizontalement sur mobile (`overflow-x-auto` +
-          `snap-x`, désactivés dès `sm:` où les 5 miniatures tiennent
-          à nouveau sans scroll) — on agrandit sans réintroduire le
-          bug de débordement, on le contourne. */}
-      <div className="-mx-6 mt-4 flex items-start gap-2 overflow-x-auto px-6 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-6 sm:justify-center sm:gap-0 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none">
+      {/* 6e passe client : "on est sur pc, tu peux te permettre de les
+          mettre bien plus grandes, comme le texte — c'est pour une
+          clientèle âgée, il faut que ce soit lisible". Desktop
+          (`lg:`) : h-36 (144px) → h-44 (176px, +22%), plafonné pour
+          rester sûr même tout en bas de la plage `lg:` (≥1024px de
+          large, conteneur ~976px dans le pire cas) — au-delà, 5
+          miniatures + séparateurs auraient dépassé le conteneur.
+          Libellés et numéros passés de `text-[9px]` (illisible pour
+          une clientèle âgée) à `text-xs` (12px) sur `lg:`. */}
+      {/* 6e passe client, mobile : "t'avais raison, ça sort de
+          l'écran, corrige pour avoir la taille maximale sans que ça
+          sorte" — la rangée scrollable du round précédent (miniatures
+          à taille fixe 112px, débordement volontaire absorbé par un
+          scroll horizontal) est abandonnée : le client veut du non
+          scrollable, la taille maximale qui rentre pile. Solution
+          robuste à toutes les largeurs d'écran plutôt qu'une valeur en
+          dur devinée : `grid grid-cols-5` en plein bleed (`-mx-6`,
+          même technique que la maquette) — chaque miniature occupe
+          exactement 1/5 de la largeur réelle de l'écran (`aspect-square`
+          au lieu d'une hauteur fixe), donc toujours la taille maximale
+          possible et JAMAIS de débordement, quel que soit l'appareil.
+          Redevient une rangée centrée à taille fixe dès `sm:` (où 5
+          miniatures à taille fixe tiennent confortablement). */}
+      <div className="-mx-6 mt-4 grid grid-cols-5 items-start px-2 sm:mx-0 sm:mt-6 sm:flex sm:justify-center sm:gap-0 sm:px-0">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
           return (
-            <div key={e.title} className="flex shrink-0 snap-center items-start">
+            <div key={e.title} className="flex items-start justify-center sm:shrink-0">
               {i > 0 && (
                 <span
                   aria-hidden
@@ -313,7 +324,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-28 min-w-0 flex-col items-center gap-2 px-1 text-center lg:w-36"
+                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center sm:w-28 lg:w-44"
               >
                 <motion.div
                   animate={{
@@ -323,7 +334,7 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative h-28 w-28 lg:h-36 lg:w-36"
+                  className="relative aspect-square w-full sm:h-28 sm:w-28 lg:h-44 lg:w-44"
                 >
                   <div
                     aria-hidden
@@ -340,14 +351,14 @@ export default function ProcedeCarousel() {
                   </div>
                 </motion.div>
                 <span
-                  className={`eyebrow text-[9px] transition-colors duration-300 ${
+                  className={`eyebrow text-[9px] transition-colors duration-300 lg:text-xs ${
                     isActive ? "text-laiton" : "text-encre-douce/40"
                   }`}
                 >
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className={`block w-full text-[9px] font-medium uppercase leading-tight tracking-wide transition-colors duration-300 ${
+                  className={`block w-full text-[9px] font-medium uppercase leading-tight tracking-wide transition-colors duration-300 lg:text-xs ${
                     isActive ? "text-encre" : "text-encre-douce/40"
                   }`}
                 >

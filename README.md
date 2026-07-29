@@ -5026,6 +5026,57 @@ refermé, aucune image tronquée sur l'étape active), tablette (820px,
 horizontal testé programmatiquement jusqu'à la 5e miniature, row bien
 plus grande et lisible) ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : fix chevauchement grue + vide résiduel + agrandissement PC + mobile sans scroll (6e passe)
+
+Nouveau retour, quatre points : (1) desktop, il reste un peu de vide
+entre la maquette et le texte/miniatures ; (2) sur PC on peut se
+permettre des miniatures ET un texte bien plus grands, lisibilité pour
+une clientèle âgée ; (3) le rapprochement du haut du round précédent
+est maintenant "trop collé, ça passe devant le texte complètement" ;
+(4) sur mobile la rangée scrollable du round précédent "sort de
+l'écran", il faut la taille maximale SANS déborder (plus de scroll).
+
+**Le chevauchement du haut, cause exacte** : `lg:-mt-40` avait été
+calibré à l'œil sur l'étape 1 (des arbres, avec une bonne marge de
+ciel vide en haut de leur canevas transparent). Vérification
+Playwright sur les 5 étapes (pas juste la 1re, erreur du round
+précédent) : les étapes 2 et 3 (la grue de chantier) utilisent
+beaucoup plus de hauteur de leur canevas — leur flèche passait
+carrément devant le titre et le bandeau de nav. Recalibré sur le pire
+cas, pas le meilleur : `lg:-mt-40` → `lg:-mt-8` (`sm:-mt-8` inchangé,
+déjà sûr). Revérifié sur les 5 étapes, plus aucun chevauchement nulle
+part.
+
+**Le vide résiduel** : la hauteur de la maquette (une marge de sécurité
+volontairement confortable au round précédent) et le texte descriptif
+resserrés encore un cran : `sm:h-[580px]→h-[560px]`,
+`lg:h-[680px]→h-[660px]` ; texte descriptif `lg:-mt-6→lg:-mt-14`,
+`sm:mt-3→sm:-mt-4`.
+
+**Miniatures + texte agrandis sur PC** : `lg:h-36/w-36` (144px) →
+`lg:h-44/w-44` (176px, +22%), plafonné pour ne jamais déborder même
+tout en bas de la plage `lg:` (≥1024px, conteneur ~976px dans le pire
+cas — au-delà, 5 miniatures + séparateurs auraient dépassé). Libellés
+et numéros `text-[9px]` (illisible) → `lg:text-xs` (12px) ; texte
+descriptif `text-sm` → `lg:text-base`.
+
+**Mobile, scroll abandonné pour un grid auto-adaptatif** : la rangée
+scrollable du round précédent (miniatures à 112px fixes, débordement
+volontairement absorbé par un scroll horizontal) est remplacée par
+`grid grid-cols-5` en plein bleed (même technique `-mx-6` que la
+maquette) — chaque miniature occupe exactement 1/5 de la largeur
+réelle de l'écran (`aspect-square` au lieu d'une hauteur fixe en
+pixels), donc toujours la taille maximale possible et structurellement
+jamais de débordement, quel que soit l'appareil (contrairement à une
+valeur en dur devinée). Redevient une rangée centrée à taille fixe dès
+`sm:`.
+
+**Vérifications** : Playwright sur les 5 étapes en 1904px (plus aucun
+chevauchement texte/maquette, y compris la grue), tablette 820px et
+mobile à 3 largeurs (375/390/430px, `scrollWidth - clientWidth === 0`
+sur les 3 — zéro débordement horizontal mesuré, pas seulement observé) ;
+`tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
