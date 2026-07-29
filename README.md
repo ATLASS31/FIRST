@@ -4884,6 +4884,48 @@ cercle") confirmant la maquette bien plus grande et le fond mint
 identique à Notre histoire ; capture mobile confirmant l'absence de
 vide vertical superflu autour de l'image resserrée.
 
+### 29 juillet 2026 — Notre procédé : miniatures de navigation agrandies + ombre portée
+
+Retour client sur une 2e capture annotée, cette fois de la navigation
+basse : une maquette de référence (image jointe) montre des miniatures
+bien plus grandes et resserrées les unes contre les autres ("ça dois
+etre aussi grand et bien collé"), plus une ombre portée sous chaque
+mini-maison — illustrée en dessinant une ligne noire à main levée sous
+l'une des miniatures sur la capture du site actuel.
+
+**`ProcedeCarousel.tsx`**, bloc navigation (point 5) :
+- Miniatures agrandies : `h-12/14 w-12/14` (48-56px) → `h-24/32
+  w-24/32` (96-128px) sur desktop, avec un palier intermédiaire propre
+  au mobile (voir bug ci-dessous).
+- Espacement resserré : dividers `mx-2/4` → `mx-1/2`, pour l'effet
+  "bien collé" plutôt qu'espacé.
+- Ombre synthétique ajoutée sous CHAQUE miniature (active et
+  inactives) — même technique que la grande scène (ellipse floue,
+  `bg-encre/15 blur-sm`), juste plus petite et plus discrète. Avant
+  cette passe, seule la grande scène avait une ombre ; les miniatures
+  n'en avaient aucune.
+
+**Bug introduit puis corrigé dans la même passe** : agrandir
+uniformément à `h-24 w-24` (96px) sur TOUTES les tailles d'écran
+faisait déborder la rangée sur mobile (5 × 96px + marges > 390px de
+large) — repéré immédiatement par capture Playwright mobile plutôt que
+poussé tel quel. Corrigé avec un palier mobile dédié plus modeste
+(`h-14 w-14`, 56px — déjà un net progrès sur les 48px d'origine) et
+l'agrandissement complet réservé à `sm:`/`lg:`. Un 2e bug est apparu au
+passage : les libellés de navigation (ex. "FABRICATION EN ATELIER")
+débordaient de leur colonne et chevauchaient le libellé voisin sur
+mobile — cause : un `<span>` texte dans un conteneur flex en colonne
+n'est pas contraint en largeur par défaut (`min-width: auto` sur les
+enfants flex, ignore la largeur du parent). Corrigé avec `min-w-0` sur
+le bouton parent et `block w-full` sur le `<span>` du libellé, qui le
+forcent enfin à retourner à la ligne DANS sa propre colonne.
+
+**Vérifications** : capture Playwright desktop (1904px), tablette
+(820px) et mobile (390px) à chaque étape de la correction — la version
+finale confirme miniatures agrandies et resserrées sur les 3 tailles,
+ombre visible sous chaque miniature, aucun débordement horizontal ni
+chevauchement de texte sur mobile ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

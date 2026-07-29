@@ -254,7 +254,13 @@ export default function ProcedeCarousel() {
       {/* 5. navigation des 5 étapes — miniatures, pas des cartes.
           Profondeur de champ : active plus grande/nette/ombre légère,
           les autres plus petites/floutées/désaturées ("comme une
-          profondeur de champ photographique"). */}
+          profondeur de champ photographique"). Agrandies nettement
+          (h-12/14 → h-24/32) et resserrées (dividers mx-2/4 → mx-1/2)
+          pour coller à la maquette de référence du client ("aussi
+          grand et bien collé"). Petite ombre synthétique sous chaque
+          miniature (même logique que la grande scène, en plus discret)
+          — demande client explicite, illustrée en dessinant une ligne
+          noire sous une des miniatures sur sa capture annotée. */}
       <div className="mt-12 flex items-start justify-center sm:mt-16">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
@@ -263,7 +269,7 @@ export default function ProcedeCarousel() {
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="mx-2 mt-6 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:mx-4 sm:block"
+                  className="mx-1 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:mx-2 sm:block"
                 />
               )}
               <button
@@ -271,7 +277,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-16 flex-col items-center gap-2 px-1 text-center sm:w-20"
+                className="flex w-14 min-w-0 flex-col items-center gap-1.5 px-0.5 text-center sm:w-24 sm:gap-2 sm:px-1 lg:w-32"
               >
                 <motion.div
                   animate={{
@@ -281,11 +287,21 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className={`h-12 w-12 sm:h-14 sm:w-14 ${
-                    isActive ? "drop-shadow-[0_6px_14px_rgba(26,22,20,0.18)]" : ""
-                  }`}
+                  className="relative h-14 w-14 sm:h-24 sm:w-24 lg:h-32 lg:w-32"
                 >
-                  <Illustration url={e.illustrationUrl} index={i} />
+                  <div
+                    aria-hidden
+                    className="absolute inset-x-[22%] bottom-[10%] h-[6%] rounded-[50%] bg-encre/15 blur-sm"
+                  />
+                  <div
+                    className={
+                      isActive
+                        ? "relative h-full w-full drop-shadow-[0_6px_14px_rgba(26,22,20,0.18)]"
+                        : "relative h-full w-full"
+                    }
+                  >
+                    <Illustration url={e.illustrationUrl} index={i} />
+                  </div>
                 </motion.div>
                 <span
                   className={`eyebrow text-[9px] transition-colors duration-300 ${
@@ -295,7 +311,7 @@ export default function ProcedeCarousel() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className={`text-[9px] font-medium uppercase leading-tight tracking-wide transition-colors duration-300 ${
+                  className={`block w-full text-[9px] font-medium uppercase leading-tight tracking-wide transition-colors duration-300 ${
                     isActive ? "text-encre" : "text-encre-douce/40"
                   }`}
                 >
