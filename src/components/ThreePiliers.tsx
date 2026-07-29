@@ -452,6 +452,33 @@ export default function ThreePiliers() {
                 aria-hidden
                 className="absolute inset-0 h-full w-full object-contain"
               />
+              {/* Ombre portée du tronc (étape "Matière" uniquement) :
+                  demande client ("rajoute une ombre au tronc c'est le
+                  seul qui a pas d'ombre") — les 2 autres objets (horloge,
+                  maison) ont déjà leur ombre baked-in dans leur vidéo, le
+                  bois n'en a pas. Comme le fond de la vidéo est déjà
+                  quasi identique à `--brume` (voir halo ci-dessous), une
+                  simple ellipse floue superposée à cet endroit se lit
+                  comme une vraie ombre plutôt que comme un élément
+                  ajouté. Repère de position à l'aveugle (ce bac à sable
+                  ne peut pas décoder de vidéo H.264, donc impossible de
+                  voir où le tronc tombe réellement à l'écran) — à
+                  ajuster avec le client une fois visible en vrai. Affiché
+                  seulement pendant l'étape "Matière" (`activeStep === 0`)
+                  : les 2 autres vidéos ont déjà leur propre ombre, une
+                  2e ombre superposée dessus aurait doublé l'effet. */}
+              <AnimatePresence>
+                {activeStep === 0 && (
+                  <motion.div
+                    aria-hidden
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="pointer-events-none absolute bottom-[12%] left-1/2 h-[5%] w-[36%] -translate-x-1/2 rounded-[50%] bg-encre/20 blur-md"
+                  />
+                )}
+              </AnimatePresence>
               {/* Halo qui absorbe le très léger écart de teinte entre le
                   fond de la vidéo (~rgb(253, 252, 245)) et celui de la
                   page (`--brume`, rgb(247, 245, 240)) — voir note en tête

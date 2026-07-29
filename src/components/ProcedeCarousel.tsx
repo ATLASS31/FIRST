@@ -38,6 +38,30 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * jamais `illustrationUrl` est `null` — conservé comme filet de
  * sécurité, plus utilisé actuellement.
  *
+ * Détourage : demande client ("supprime l'arrière-plan des photos pour
+ * qu'elles s'incrustent bien"). Le remplaceur de fond IA d'Higgsfield
+ * (`remove_background`) nécessite un upload vers `upload.higgsfield.ai`
+ * depuis ce sandbox — hôte bloqué par la politique réseau (403 confirmé,
+ * même famille de restriction que les pièces jointes GitHub). Détourage
+ * fait localement à la place : les rendus ont un fond crème quasi
+ * parfaitement uniforme (échantillonné aux 4 coins), mais une simple
+ * distance de couleur globale mord dans le toit (teinte très proche du
+ * fond) — recours à un flood fill (propagation depuis les bords de
+ * l'image, uniquement à travers des pixels "couleur fond", en Python/
+ * numpy) : ne retire QUE la région de fond réellement connectée au
+ * bord, donc le toit clair (jamais connecté au bord, encerclé par la
+ * végétation) reste intact même s'il est presque de la même couleur.
+ * Léger flou (quelques passes de box-blur sur le canal alpha) pour
+ * adoucir le contour plutôt qu'un détourage à l'emporte-pièce. Résultat
+ * en WebP avec canal alpha (même noms de fichiers `procede-0X.webp`,
+ * contenu remplacé).
+ *
+ * Cartes agrandies (desktop et mobile) : `image object-cover` →
+ * `object-contain`, plus la peine de recadrer maintenant que le fond
+ * est transparent — l'espace "vide" autour du sujet ne montre plus une
+ * couleur de secours mais laisse voir le fond crème de la carte,
+ * invisible donc pas de recadrage nécessaire pour cacher un bord.
+ *
  * Mécanique : seules 3 cartes sont montées à la fois (active + 2
  * voisines, `Math.abs(offset) <= 1`) — au-delà, une carte n'existe pas
  * encore dans le DOM. `AnimatePresence` gère alors son entrée (glisse
@@ -99,8 +123,13 @@ function CardIllustration({
   index: number;
 }) {
   if (url) {
+    // object-contain (pas object-cover) : les illustrations sont
+    // détourées (fond retiré), donc plus besoin — et plus jamais
+    // souhaitable — de les recadrer en plein cadre. Le "vide" autour du
+    // sujet est transparent, pas une couleur de secours, donc invisible
+    // sur le fond crème de la carte.
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="h-full w-full object-cover" />;
+    return <img src={url} alt="" className="h-full w-full object-contain" />;
   }
   return (
     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brume-2 to-brume">
@@ -147,14 +176,14 @@ export default function ProcedeCarousel() {
       onMouseLeave={() => setPaused(false)}
     >
       <div
-        className="relative mx-auto h-[460px] max-w-sm sm:h-[500px]"
+        className="relative mx-auto h-[540px] max-w-md sm:h-[620px]"
         style={{ perspective: "1400px" }}
       >
         <AnimatePresence initial={false}>
           {visible.map(({ etape, index, offset }) => {
             const isActive = offset === 0;
             const target = {
-              x: offset * 210,
+              x: offset * 250,
               scale: isActive ? 1 : 0.82,
               opacity: isActive ? 1 : 0.45,
               rotateY: offset * -12,
@@ -164,7 +193,7 @@ export default function ProcedeCarousel() {
             // DOM) démarre plus loin dans le même sens que sa cible,
             // pour glisser vers sa place plutôt que de "popper".
             const enterFrom = {
-              x: offset * 380,
+              x: offset * 460,
               scale: 0.6,
               opacity: 0,
               rotateY: offset * -12,
@@ -176,7 +205,7 @@ export default function ProcedeCarousel() {
                 key={etape.title}
                 className="absolute inset-0 m-auto"
                 style={{
-                  width: "min(100%, 300px)",
+                  width: "min(94%, 360px)",
                   zIndex: isActive ? 3 : 2,
                   pointerEvents: isActive ? "auto" : "none",
                 }}
@@ -191,7 +220,7 @@ export default function ProcedeCarousel() {
                     !isActive ? "cursor-pointer" : ""
                   }`}
                 >
-                  <div className="flex flex-col gap-1 px-6 pt-6">
+                  <div className="flex flex-col gap-1 px-7 pt-7">
                     <span className="eyebrow text-xs text-laiton">
                       {String(index + 1).padStart(2, "0")}
                     </span>
@@ -199,12 +228,17 @@ export default function ProcedeCarousel() {
                       {etape.title}
                     </h3>
                   </div>
-                  <div className="mt-4 h-[38%] w-full shrink-0 px-6">
-                    <div className="h-full w-full overflow-hidden rounded-2xl">
-                      <CardIllustration url={etape.illustrationUrl} index={index} />
-                    </div>
+                  {/* h-[46%] (au lieu de 38%) + object-contain sur
+                      l'image : les illustrations sont maintenant
+                      détourées (voir CardIllustration), donc une image
+                      plus grande ne risque plus de se faire recadrer
+                      moche — elle respire simplement plus dans la
+                      carte, demande client ("les cartes soient plus
+                      grandes... elle ne soit pas coupée"). */}
+                  <div className="mt-4 h-[46%] w-full shrink-0 px-5">
+                    <CardIllustration url={etape.illustrationUrl} index={index} />
                   </div>
-                  <div className="flex flex-1 flex-col gap-2 px-6 py-5">
+                  <div className="flex flex-1 flex-col gap-2 px-7 py-5">
                     <span aria-hidden className="block h-px w-8 bg-laiton" />
                     {"meta" in etape && etape.meta && (
                       <p className="eyebrow text-[10px] text-foret">

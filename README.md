@@ -4520,6 +4520,76 @@ image sur la bonne carte dans le bon ordre (fondation vide → grutage →
 chantier → finitions → livraison) ; capture mobile confirmant le rendu
 plein cadre de l'image dans le conteneur arrondi ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : cartes agrandies + détourage local (Higgsfield bloqué) ; Concept : ombre du tronc
+
+Trois demandes client sur les mêmes captures : cartes du carousel plus
+grandes (desktop et mobile), détourage des illustrations pour qu'elles
+"s'incrustent bien" sans être recadrées ni réduites, et une ombre
+portée manquante sur le tronc de bois de la section "Concept"
+(`ThreePiliers.tsx`, étape "Matière").
+
+**Détourage — tentative Higgsfield puis solution locale.** Essayé
+d'abord `mcp__higgsfield__remove_background` (segmentation IA, la bonne
+technique pour un détourage propre). Le flux d'upload demande de PUT
+les octets vers `upload.higgsfield.ai` depuis ce sandbox — hôte bloqué
+par le proxy réseau (403 confirmé, `CONNECT tunnel failed`), même
+famille de restriction que `github.com/user-attachments` rencontrée
+plus tôt. Pas de contournement possible (voir `/root/.ccr/README.md` :
+un 403 se signale, ne se retente pas).
+
+Détourage fait localement à la place, en Python/numpy (pas de
+`ffmpeg`/`rembg`/`opencv` disponibles dans ce sandbox — seuls PIL et
+numpy le sont). Première tentative : distance de couleur simple au
+fond (échantillonné aux 4 coins, quasi parfaitement uniforme,
+rgb(249,241,232)) → mauvais résultat, le toit clair des maisons (teinte
+très proche du fond) se faisait cribler de trous roses/transparents
+partout où sa couleur passait sous le seuil, alors qu'il ne fait pas
+partie du fond. Corrigé avec un **flood fill** : au lieu de tester
+chaque pixel indépendamment, on ne retire que la région "couleur fond"
+réellement **connectée au bord de l'image** (propagation itérative
+vectorisée numpy, ~150-300 itérations selon l'image) — le toit, encerclé
+par la végétation et jamais connecté au bord, reste intact même à
+couleur quasi identique au ciel retiré. Quelques passes de flou sur le
+canal alpha pour adoucir le contour. Résultat vérifié visuellement par
+compositing sur un fond rouge vif (rend n'importe quelle transparence
+immédiatement visible) pour les 5 images avant de considérer le
+détourage bon — toit, cabine blanche du camion-grue, ombre portée sous
+la dalle : tous préservés correctement. Fichiers réencodés en WebP avec
+canal alpha (mêmes noms `procede-0X.webp`, contenu remplacé, PNG
+intermédiaires supprimés).
+
+**Cartes agrandies** (`ProcedeCarousel.tsx`) : scène `h-[460px]
+max-w-sm sm:h-[500px]` → `h-[540px] max-w-md sm:h-[620px]` ; largeur de
+carte `min(100%, 300px)` → `min(94%, 360px)` ; décalages horizontaux
+neighbor/enter proportionnellement augmentés (210→250, 380→460) pour
+garder le même ratio de recouvrement avec des cartes plus larges.
+`CardIllustration` : `object-cover` → `object-contain` — maintenant que
+le fond est transparent, plus besoin de recadrer pour cacher un bord de
+photo ; l'espace "vide" autour du sujet laisse simplement voir le fond
+crème de la carte. Zone d'illustration : `h-[38%]` → `h-[46%]`.
+
+**Ombre du tronc** (`ThreePiliers.tsx`) : les 2 autres transitions
+(horloge, maison) ont leur ombre déjà cuite dans la vidéo source, celle
+du bois n'en a pas — retour client explicite ("c'est le seul qui a pas
+d'ombre"). Solution : une ellipse floue (`bg-encre/20 blur-md`)
+superposée en bas du cadre vidéo, visible uniquement pendant l'étape
+"Matière" (`activeStep === 0`, via `AnimatePresence`) pour ne pas
+doubler l'ombre des 2 autres vidéos qui en ont déjà une. **Position non
+vérifiable visuellement** : ce sandbox ne peut pas décoder de vidéo
+H.264 (documenté ailleurs dans ce fichier), donc impossible de voir où
+le tronc tombe réellement dans le cadre pour caler l'ellipse au pixel
+près — position posée au jugé à partir de la capture d'écran envoyée
+par le client (tronc à peu près centré, base proche du bas du cadre),
+à ajuster avec retour client une fois visible en vrai.
+
+**Vérifications** : `tsc` propre ; capture Playwright desktop et mobile
+du carousel (carte plus grande, illustration détourée non recadrée,
+fond de carte et fond de l'image visuellement continus) sur plusieurs
+étapes (01 et 03) ; section Concept capturée mais vidéo non rendue
+(sandbox sans décodeur H.264, limitation connue) — mécanique de
+l'ombre (montage conditionnel sur `activeStep`) vérifiée par lecture de
+code, pas visuellement.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
