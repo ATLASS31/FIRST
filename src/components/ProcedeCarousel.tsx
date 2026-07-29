@@ -196,23 +196,31 @@ export default function ProcedeCarousel() {
 
       {/* 3. la maquette — élément principal, jamais enfermée dans une
           carte, ombre synthétique pour un rendu "objet exposé" plutôt
-          que collé à plat. Considérablement agrandie (demande client :
-          "aussi gros que le cercle que j'ai fait", quasiment toute la
-          largeur de la section) et rapprochée du bloc texte au-dessus
-          (`mt-8/12` → `mt-2` puis léger chevauchement négatif en
-          desktop) — le fond transparent des illustrations rend ce
-          rapprochement sans risque de superposition moche, argument
-          client explicite ("c'est du fond transparent donc il n'y aura
-          pas de superposition visible"). */}
-      {/* h-[220px] mobile délibérément serré (pas juste "petit par
-          défaut") : les 5 illustrations partagent exactement le même
-          ratio 1100×614 (≈1.79:1) — à la largeur mobile réelle
-          (~342px après padding), l'image ne fait donc que ~190px de
-          haut une fois affichée en `object-contain`. Une box plus
-          haute laisserait juste du vide sous/sur l'image plutôt que la
-          faire grossir (elle est déjà contrainte par la largeur, pas
-          la hauteur, dans ce contexte). */}
-      <div className="relative mx-auto mt-2 h-[220px] w-full max-w-3xl sm:mt-0 sm:h-[560px] sm:max-w-5xl lg:-mt-4 lg:h-[700px] lg:max-w-6xl">
+          que collé à plat. 4e passe client, capture annotée : "l'image
+          c'est pas l'élément principal de la catégorie" sur mobile +
+          trait noir tracé sur une capture desktop indiquant que le
+          haut de la maquette (la cime des arbres) doit remonter
+          nettement plus près du bloc titre. Réponse : box mobile en
+          plein bleed (`-mx-6`, annule le `px-6` de la section pour
+          toucher les deux bords de l'écran — sur mobile la largeur est
+          le facteur limitant vu le ratio des images, donc bleed = seul
+          vrai levier de taille) + inset interne réduit (moins de marge
+          morte autour de l'image dans sa box) + rapprochement encore
+          plus marqué du bloc texte au-dessus (`lg:-mt-4` → `lg:-mt-10`)
+          pour coller au trait dessiné par le client. Fond transparent
+          des illustrations = ce rapprochement ne crée aucune
+          superposition moche (argument client déjà validé au round
+          précédent). */}
+      {/* h-[300px] mobile (était 220px) : même avec le bleed plein
+          écran, les 5 illustrations partagent toutes le ratio
+          1100×614 (≈1.79:1), donc l'image reste contrainte par la
+          largeur de l'écran, pas par la hauteur de la box — la box
+          plus haute ajoute de la respiration verticale volontaire
+          (cohérent avec la maquette de référence, qui laisse aussi de
+          l'air autour de l'illustration) plutôt que de faire encore
+          grossir l'image elle-même au-delà de ce que la largeur
+          d'écran permet. */}
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[640px] sm:w-full sm:max-w-5xl lg:-mt-40 lg:h-[820px] lg:max-w-6xl">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
@@ -222,7 +230,7 @@ export default function ProcedeCarousel() {
             i === active ? (
               <motion.div
                 key={e.title}
-                className="absolute inset-[6%] sm:inset-[8%]"
+                className="absolute inset-[2%] sm:inset-[6%]"
                 initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
@@ -235,8 +243,10 @@ export default function ProcedeCarousel() {
         </AnimatePresence>
       </div>
 
-      {/* 4. texte descriptif, très court */}
-      <div className="mx-auto mt-6 max-w-md text-center sm:mt-8">
+      {/* 4. texte descriptif, très court — resserré contre la maquette
+          (`mt-6/8` → `mt-2/3`), demande client explicite ("le texte
+          plus les miniatures doivent remonter jusqu'à l'image"). */}
+      <div className="mx-auto mt-2 max-w-md text-center sm:mt-3">
         <AnimatePresence mode="wait">
           <motion.p
             key={active}
@@ -254,14 +264,16 @@ export default function ProcedeCarousel() {
       {/* 5. navigation des 5 étapes — miniatures, pas des cartes.
           Profondeur de champ : active plus grande/nette/ombre légère,
           les autres plus petites/floutées/désaturées ("comme une
-          profondeur de champ photographique"). Agrandies nettement
-          (h-12/14 → h-24/32) et resserrées (dividers mx-2/4 → mx-1/2)
-          pour coller à la maquette de référence du client ("aussi
-          grand et bien collé"). Petite ombre synthétique sous chaque
-          miniature (même logique que la grande scène, en plus discret)
-          — demande client explicite, illustrée en dessinant une ligne
-          noire sous une des miniatures sur sa capture annotée. */}
-      <div className="mt-12 flex items-start justify-center sm:mt-16">
+          profondeur de champ photographique"). Encore agrandies (h-14
+          → h-16 mobile, h-24 → h-28 tablette, h-32 → h-36 desktop) et
+          remontées contre le texte au-dessus (`mt-12/16` → `mt-4/6`)
+          pour coller à la maquette de référence du client (4e passe :
+          "regarde image 4 c'est la compo parfaite"). Petite ombre
+          synthétique sous chaque miniature (même logique que la grande
+          scène, en plus discret) — demande client explicite du round
+          précédent, illustrée en dessinant une ligne noire sous une
+          des miniatures sur sa capture annotée. */}
+      <div className="mt-4 flex items-start justify-center sm:mt-6">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
           return (
@@ -277,7 +289,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-14 min-w-0 flex-col items-center gap-1.5 px-0.5 text-center sm:w-24 sm:gap-2 sm:px-1 lg:w-32"
+                className="flex w-16 min-w-0 flex-col items-center gap-1.5 px-0.5 text-center sm:w-28 sm:gap-2 sm:px-1 lg:w-36"
               >
                 <motion.div
                   animate={{
@@ -287,7 +299,7 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative h-14 w-14 sm:h-24 sm:w-24 lg:h-32 lg:w-32"
+                  className="relative h-16 w-16 sm:h-28 sm:w-28 lg:h-36 lg:w-36"
                 >
                   <div
                     aria-hidden

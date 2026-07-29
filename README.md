@@ -4926,6 +4926,63 @@ finale confirme miniatures agrandies et resserrées sur les 3 tailles,
 ombre visible sous chaque miniature, aucun débordement horizontal ni
 chevauchement de texte sur mobile ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : maquette dominante + composition entièrement resserrée (4e passe)
+
+Nouvelle capture annotée du client sur ce même carousel, deux griefs
+distincts : (1) capture mobile — "l'image c'est pas l'élément
+principal de la catégorie", la maquette paraissait riquiqui au milieu
+de tout l'espace vide de la section ; (2) capture desktop — un trait
+noir tracé à la main indiquant que le haut de la maquette (la cime des
+arbres) doit remonter bien plus près du bloc titre, plus un second
+trait sous le texte descriptif indiquant que le texte + les miniatures
+doivent eux aussi remonter contre la maquette. Une 4e image (maquette
+"BELLORA HOMES" très aboutie, visiblement produite par le client
+lui-même) sert de référence de composition cible.
+
+**Mobile — pourquoi l'image restait petite malgré un bloc déjà assez
+haut** : les 5 illustrations partagent toutes le même ratio 1100×614
+(≈1,79:1), plus large que haut. Sur un écran mobile, la largeur
+disponible est le facteur limitant (pas la hauteur de la box) : à
+largeur égale, impossible de faire grossir l'image sans élargir sa
+largeur réelle. Or la box héritait du `px-6` de la section
+(`Procede.tsx`), donc ~24px de marge morte de chaque côté rien que pour
+respecter le padding du site. Fix : la box de la maquette bleed
+maintenant plein écran sur mobile (`-mx-6` + largeur `calc(100% + 3rem)`
+pour annuler exactement ce padding, revert propre à `sm:mx-auto` dès la
+tablette) et son inset interne (marge entre le bord de la box et
+l'image elle-même) réduit de 6 % à 2 % — les deux seuls vrais leviers
+de taille compte tenu de la contrainte de largeur. Box mobile aussi
+rehaussée (`h-[220px]` → `h-[300px]`) pour donner de la respiration
+verticale volontaire, cohérente avec la maquette de référence qui
+laisse elle aussi de l'air autour de l'illustration plutôt que de la
+coller sans marge.
+
+**Desktop — remontée agressive de la maquette contre le bloc titre** :
+le rapprochement du round précédent (`lg:-mt-4`) était encore loin du
+trait dessiné par le client. Poussé par paliers vérifiés à l'écran
+jusqu'à `lg:-mt-40` (tablette `sm:-mt-8`), avec la hauteur de box
+elle-même augmentée (`sm:h-[640px]` et `lg:h-[820px]`, étaient
+560/700px) pour que l'agrandissement ne soit pas qu'un rapprochement à
+taille égale.
+
+**Texte + navigation remontés contre la maquette** : le texte
+descriptif est passé de `mt-6/8` à `mt-2/3`, et la rangée de
+miniatures de `mt-12/16` à `mt-4/6` — les deux directement sous la
+maquette maintenant, comme sur la 4e image de référence.
+
+**Miniatures encore agrandies** : `h-14/24/32` → `h-16/28/36` (mobile
+64px, tablette 112px, desktop 144px), calculé pour rester dans les
+clous sur mobile (5 × 64px = 320px, tient largement dans les ~342px
+disponibles — le bug de débordement du round précédent portait sur du
+96px, largement plus gros).
+
+**Vérifications** : Playwright sur les 3 tailles (390px mobile, 820px
+tablette, 1904px desktop) après chaque palier de réglage — maquette
+bien plus grande et proche du bord d'écran sur mobile, cime des arbres
+nettement remontée contre le titre sur desktop/tablette, texte et
+miniatures resserrés contre la maquette, aucun débordement ni
+chevauchement sur aucune des 3 tailles ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
