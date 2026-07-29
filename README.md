@@ -5077,6 +5077,39 @@ mobile à 3 largeurs (375/390/430px, `scrollWidth - clientWidth === 0`
 sur les 3 — zéro débordement horizontal mesuré, pas seulement observé) ;
 `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : recalibrage haut/bas + PC encore agrandi (7e passe)
+
+Retour sur le round précédent, capture desktop annotée de deux
+nouveaux traits noirs (position cible du texte du haut et du bas par
+rapport à la maquette) : "pas trop [collé], mais là il y a trop
+d'espace, ça peut se chevaucher [un peu] j'ai dit, mais pas trop".
+Plus : agrandir encore les miniatures PC et resserrer leur libellé.
+
+**Recalibrage du haut** : `lg:-mt-8` du round précédent (reculé après
+le chevauchement sur la grue) rouvrait un trop grand vide. Revérifié
+sur les 5 étapes à plusieurs paliers intermédiaires (pas juste la
+valeur extrême comme l'erreur du 6e round) : `lg:-mt-24` est le point
+où la grue (étapes 2 et 3, le pire cas) vient juste effleurer le trait
+sous le sous-titre sans jamais recouvrir le texte — confirmé par
+capture zoomée sur la zone de contact. Conservé pour ce même réglage
+côté texte descriptif (`lg:-mt-14`, déjà resserré au round précédent,
+inchangé — le vide du bas était déjà proche de la cible).
+
+**Miniatures PC encore agrandies** : `lg:h-44/w-44` (176px) →
+`lg:h-48/w-48` (192px), séparateurs resserrés (`mx-2` → `lg:mx-1`)
+pour dégager la marge nécessaire. Espace miniature↔libellé resserré
+(`gap-2` → `lg:gap-1.5`, "colle mieux le texte des miniatures aux
+miniatures").
+
+**Vérifications** : chevauchement revérifié sur les 5 étapes (pas
+seulement l'étape 1) avec capture zoomée sur la grue confirmant zéro
+recouvrement du texte. Débordement horizontal mesuré (`scrollWidth -
+clientWidth`) à 5 largeurs desktop dont le cas limite exact de la
+plage `lg:` (1024, 1152, 1280, 1440, 1904px) : 0 partout — la marge de
+sécurité choisie pour la taille des miniatures tient même au pire cas,
+pas seulement au viewport de test habituel. Tablette et mobile (3
+largeurs) revérifiés sans régression ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

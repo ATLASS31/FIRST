@@ -236,7 +236,7 @@ export default function ProcedeCarousel() {
           réel (ratio 1100×614, largeur dispo à chaque palier) + une
           marge de sécurité modeste pour ne jamais rogner l'image :
           sm:h-[640px]→h-[580px], lg:h-[820px]→h-[700px]. */}
-      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:-mt-8 lg:h-[660px] lg:max-w-6xl">
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:-mt-24 lg:h-[660px] lg:max-w-6xl">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
@@ -287,13 +287,15 @@ export default function ProcedeCarousel() {
           des miniatures sur sa capture annotée. */}
       {/* 6e passe client : "on est sur pc, tu peux te permettre de les
           mettre bien plus grandes, comme le texte — c'est pour une
-          clientèle âgée, il faut que ce soit lisible". Desktop
-          (`lg:`) : h-36 (144px) → h-44 (176px, +22%), plafonné pour
-          rester sûr même tout en bas de la plage `lg:` (≥1024px de
-          large, conteneur ~976px dans le pire cas) — au-delà, 5
-          miniatures + séparateurs auraient dépassé le conteneur.
-          Libellés et numéros passés de `text-[9px]` (illisible pour
-          une clientèle âgée) à `text-xs` (12px) sur `lg:`. */}
+          clientèle âgée, il faut que ce soit lisible". Libellés et
+          numéros passés de `text-[9px]` (illisible pour une clientèle
+          âgée) à `text-xs` (12px) sur `lg:`. */}
+      {/* 7e passe client : "grandis encore et colle mieux le texte des
+          miniatures aux miniatures" — h-44 (176px) → h-48 (192px),
+          séparateurs resserrés (`mx-2`→`mx-1`) pour dégager la marge
+          nécessaire et rester sûr tout en bas de la plage `lg:`
+          (≥1024px, conteneur ~976px dans le pire cas). Espace
+          miniature↔libellé resserré (`gap-2` → `lg:gap-1.5`). */}
       {/* 6e passe client, mobile : "t'avais raison, ça sort de
           l'écran, corrige pour avoir la taille maximale sans que ça
           sorte" — la rangée scrollable du round précédent (miniatures
@@ -316,7 +318,7 @@ export default function ProcedeCarousel() {
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="mx-2 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:block"
+                  className="mx-2 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:block lg:mx-1"
                 />
               )}
               <button
@@ -324,7 +326,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center sm:w-28 lg:w-44"
+                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center sm:w-28 lg:w-48 lg:gap-1.5"
               >
                 <motion.div
                   animate={{
@@ -334,7 +336,7 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative aspect-square w-full sm:h-28 sm:w-28 lg:h-44 lg:w-44"
+                  className="relative aspect-square w-full sm:h-28 sm:w-28 lg:h-48 lg:w-48"
                 >
                   <div
                     aria-hidden
