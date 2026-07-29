@@ -9,14 +9,20 @@ export default function Procede() {
     // sections crème d'affilée, Gammes puis Procédé) — accepté
     // sciemment : la demande du client porte spécifiquement sur CETTE
     // section (contraste carte/fond, "les cartes se détachent
-    // davantage"), and un hex précis prime sur la convention générale
-    // d'alternance posée dans un round antérieur. Le dégradé radial
-    // très doux (4% d'écart de luminosité max) est le "texture
-    // extrêmement subtile" demandée — juste assez pour casser la
-    // platitude d'un aplat, jamais assez pour se voir comme un
-    // "dégradé" à l'œil nu. Les cartes elles-mêmes passent de bg-brume
-    // à bg-white (voir `ProcedeCarousel.tsx`) pour se détacher de ce
-    // fond qui a la même teinte que leur ancienne couleur.
+    // davantage"), un hex précis donné explicitement primant sur la
+    // convention générale d'alternance posée dans un round antérieur.
+    // Le dégradé radial très doux (4% d'écart de luminosité max) est la
+    // "texture extrêmement subtile" demandée — juste assez pour casser
+    // la platitude d'un aplat, jamais assez pour se voir comme un
+    // "dégradé" à l'œil nu.
+    //
+    // Intro centrée (`text-center`, alors que toutes les autres
+    // sections du site ont un eyebrow+titre alignés à gauche) : demande
+    // client sur une refonte ultérieure du carousel lui-même
+    // ("exposition d'architecture", tout centré sur sa maquette de
+    // référence) — laisser l'intro alignée à gauche juste au-dessus
+    // aurait détonné avec la composition entièrement centrée qui suit
+    // (`ProcedeCarousel.tsx`).
     <section
       id="procede"
       className="px-6 py-28"
@@ -26,10 +32,12 @@ export default function Procede() {
       }}
     >
       <div className="mx-auto max-w-6xl">
-        <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
-        <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
-          De la signature aux clés, sans surprise.
-        </h2>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
+          <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
+            De la signature aux clés, sans surprise.
+          </h2>
+        </div>
 
         <div className="mt-16">
           <ProcedeCarousel />

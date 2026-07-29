@@ -4662,6 +4662,82 @@ distinct du blanc des cartes) ; fix de timing de l'ombre vérifié par
 lecture de code uniquement (toujours pas de rendu vidéo possible dans
 ce sandbox).
 
+### 29 juillet 2026 — Notre procédé : abandon total des cartes, refonte "exposition d'architecture"
+
+3e passe client sur cette section en une session, cette fois avec une
+maquette de référence très aboutie fournie en pièce jointe (rendu
+"BELLORA HOMES" visiblement conçu par le client lui-même comme cahier
+des charges visuel précis, pas juste une inspiration vague). Verdict
+sans appel sur la version cartes de la passe précédente : "le problème
+n'était pas les illustrations, mais le fait de les enfermer dans des
+cartes. Elles perdaient immédiatement leur côté premium et donnaient
+une impression de composant UI classique."
+
+Direction demandée, chemin de lecture explicite : 1. grand numéro
+d'étape → 2. grand titre → 3. maquette isométrique (élément PRINCIPAL,
+"doit presque flotter dans l'espace", jamais enfermée dans une carte)
+→ 4. petit texte descriptif → 5. navigation des cinq étapes (des
+miniatures, pas des cartes non plus). Référence assumée : Apple,
+Polestar, Porsche, Foster + Partners, Aesop, The Local Project, un site
+Awwwards d'architecture.
+
+**Refonte complète de `ProcedeCarousel.tsx`** — suppression totale de
+la mécanique "3 cartes empilées avec offset horizontal" (héritée du
+tout premier round) : il n'y a plus de carte du tout, plus de `bg-white`
+ni de `rounded-3xl` autour du contenu. Une seule grande scène centrale
+(`h-[300px]` mobile → `h-[460px]` desktop, `max-w-xl` → `max-w-3xl`) où
+l'illustration de l'étape active s'affiche en crossfade pur (les 2
+images se superposent brièvement via `AnimatePresence` sans
+`mode="wait"`, jamais de moment "vide") — ombre synthétique large et
+très floue dessous pour un rendu "objet exposé qui flotte" plutôt que
+posé à plat. Numéro/titre/label au-dessus utilisent eux un
+`AnimatePresence mode="wait"` classique (léger flicker textuel toléré,
+ce n'est pas l'élément dont le client a dit qu'il ne devait "jamais
+disparaître" — seule la maquette a cette contrainte explicite).
+
+**Navigation basse repensée** : 5 miniatures (mêmes illustrations, en
+petit ~48-56px), séparées par de fins traits verticaux comme sur la
+maquette de référence, chacune avec un numéro + un label court dédié
+(`navLabel`, distinct du titre complet de l'étape — ex. "Échange &
+conception", "Livraison & installation"). Même logique de profondeur de
+champ que celle appliquée aux cartes voisines dans la passe précédente,
+réappliquée ici aux miniatures : active `scale: 1`, nette, légère ombre
+(`drop-shadow`) ; les 4 autres `scale: 0.72`, filtre composite
+`blur(1.5px) saturate(0.35) brightness(0.85)`. Petit trait doré sous le
+label actif animé via `layoutId` Framer Motion (glisse d'une étape à
+l'autre au lieu de réapparaître à chaque fois) — correspond à la
+demande "la navigation du bas glisse doucement d'une étape à l'autre".
+
+**Choix d'interprétation sur "au scroll"** : le client écrit "au
+scroll, la grande maquette ne disparaît jamais, elle évolue simplement"
+— formulation qui pourrait suggérer un vrai scroll-scrub (position de
+scroll pilotant l'étape au pixel près). Le reste du paragraphe décrit
+cependant un comportement stable (pas de disparition, évolution douce,
+navigation qui glisse), pas explicitement un pin. Un scroll-scrub
+littéral a déjà été tenté et abandonné à plusieurs reprises AILLEURS
+SUR CE MÊME PROJET pour cause de fragilité (`NotreHistoire.tsx`,
+plusieurs rounds documentés plus haut dans ce fichier — "animation
+déclenchée fluide (pas scroll-scrub)"). Décision : garder le mécanisme
+existant, éprouvé et déjà fluide (rotation automatique 3s + navigation
+manuelle par clic sur une miniature) plutôt que réintroduire ce risque
+connu sur cette section aussi. Signalé explicitement au client — à
+corriger si un vrai pin scroll-driven était effectivement voulu.
+
+**`Procede.tsx`** : intro (eyebrow + titre) passée de alignée à gauche
+à centrée (`text-center`, seule section du site dans ce cas) — la
+laisser à gauche aurait détonné avec la composition entièrement centrée
+de la nouvelle scène juste en dessous.
+
+**Vérifications** : `tsc` propre ; capture Playwright desktop (scène
+complète + zoom sur la navigation basse confirmant dividers, flou/
+désaturation des inactives, netteté + ombre de l'active) et mobile
+(pas de retour à la ligne indésirable sur les 5 miniatures à 390px) ;
+navigation par clic vérifiée (étape 04 : trait doré déplacé,
+illustration crossfadée vers la maison finie, titre/numéro/texte à
+jour) ; aucune erreur console imputable à ce composant (les 403/502
+observés viennent d'assets Higgsfield distants sans rapport, déjà
+documentés plus haut dans ce fichier).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
