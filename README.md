@@ -4839,6 +4839,14 @@ capture Playwright du site réel confirmant le nouveau cadrage sur les
 étapes 02 et 03 ; `tsc` propre (aucun changement de code, uniquement
 remplacement d'assets).
 
+**Revert immédiat** : retour client juste après ("reviens comme avant
+c'était mieux") — le recadrage serré n'a pas plu, malgré le test "300px"
+concluant de mon côté. `procede-02.webp`/`procede-03.webp` restaurés à
+l'état du commit précédent (`88ec3c5`, plan large non recadré) via
+`git checkout 88ec3c5 -- <fichiers>`. Les 2 fichiers de crop restent
+disponibles dans l'historique git si le client change à nouveau d'avis,
+pas besoin de refaire le travail de recadrage depuis zéro.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
