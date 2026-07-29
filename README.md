@@ -5110,6 +5110,46 @@ sécurité choisie pour la taille des miniatures tient même au pire cas,
 pas seulement au viewport de test habituel. Tablette et mobile (3
 largeurs) revérifiés sans régression ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : le bas encore plus haut + miniatures fluides partout (8e passe)
+
+Retour client : "le haut c'est parfait maintenant" (aucune retouche du
+haut ce round — seule confirmation que le recalibrage du round
+précédent tenait). Trois demandes : (1) remonter encore le texte du
+bas, jusqu'à "juste en bas de l'angle en béton" ; (2) "grandis x2 les
+miniatures" ; (3) le texte sous chaque miniature "n'est pas assez
+collé".
+
+**Bas de la maquette** : `lg:-mt-14` du round précédent poussé par
+paliers jusqu'à `-mt-36` — chevauchait alors le camion de l'étape 2
+(vérifié à l'écran, pas juste supposé) : comme pour le chevauchement
+du haut sur la grue, toutes les illustrations n'ont pas la même
+extension verticale dans leur canevas transparent, le réglage doit
+tenir sur le pire cas, pas sur l'étape la plus favorable. Repli sur
+`lg:-mt-20`, revérifié sur les 5 étapes cette fois (pas juste celle qui
+avait posé problème) : zéro chevauchement, texte immédiatement sous le
+socle en béton.
+
+**Miniatures — changement d'architecture plutôt qu'un 4e chiffre
+deviné** : après trois passes de suite à remonter une taille fixe en
+dur (144px → 176px → 192px, une demande "grandis encore" à chaque
+retour), passage à `grid grid-cols-5` sur TOUTES les tailles d'écran
+(jusque-là réservé au mobile) avec chaque miniature en `aspect-square
+w-full` — la taille n'est plus une valeur à remonter à la main à
+chaque retour client, elle est structurellement toujours le maximum
+que la largeur du conteneur permet. Le séparateur vertical entre
+miniatures passe d'un élément de flexbox à un trait positionné en
+absolu sur le bord de chaque colonne, pour ne pas casser le compte de
+`grid-cols-5` (un 6e élément par étape aurait décalé la grille).
+Espace miniature↔libellé resserré une 2e fois (`lg:gap-1.5` →
+`lg:gap-1`).
+
+**Vérifications** : les 5 étapes revérifiées à 1456px (résolution de
+la capture client) — zéro chevauchement texte/maquette en haut comme
+en bas. Débordement horizontal mesuré à 7 largeurs desktop, du cas
+limite `lg:` jusqu'à un écran 2560px : 0 partout, la taille fluide des
+miniatures ne casse rien même en très large. Tablette et mobile
+revérifiés sans régression ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

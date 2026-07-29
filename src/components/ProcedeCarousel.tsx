@@ -262,7 +262,15 @@ export default function ProcedeCarousel() {
       {/* 4. texte descriptif, très court — resserré contre la maquette
           (`mt-6/8` → `mt-2/3`), demande client explicite ("le texte
           plus les miniatures doivent remonter jusqu'à l'image"). */}
-      <div className="mx-auto mt-2 max-w-md text-center sm:-mt-4 lg:-mt-14">
+      {/* 8e passe client : "monte encore plus le bas, que ce soit juste
+          en bas de l'angle en béton" — `lg:-mt-14` → testé par paliers
+          jusqu'à `-mt-36` (chevauchait le camion de l'étape 2, le pire
+          cas — toutes les illustrations ne s'arrêtent pas à la même
+          hauteur dans leur canevas transparent, même logique que le
+          recalibrage du haut au round précédent) → repli sur
+          `lg:-mt-20`, revérifié sur les 5 étapes cette fois : aucun
+          chevauchement nulle part, texte tout de suite sous le socle. */}
+      <div className="mx-auto mt-2 max-w-md text-center sm:-mt-4 lg:-mt-20">
         <AnimatePresence mode="wait">
           <motion.p
             key={active}
@@ -290,12 +298,22 @@ export default function ProcedeCarousel() {
           clientèle âgée, il faut que ce soit lisible". Libellés et
           numéros passés de `text-[9px]` (illisible pour une clientèle
           âgée) à `text-xs` (12px) sur `lg:`. */}
-      {/* 7e passe client : "grandis encore et colle mieux le texte des
-          miniatures aux miniatures" — h-44 (176px) → h-48 (192px),
-          séparateurs resserrés (`mx-2`→`mx-1`) pour dégager la marge
-          nécessaire et rester sûr tout en bas de la plage `lg:`
-          (≥1024px, conteneur ~976px dans le pire cas). Espace
-          miniature↔libellé resserré (`gap-2` → `lg:gap-1.5`). */}
+      {/* 8e passe client : "grandis x2 les miniatures" — après 3 passes
+          de suite à agrandir une taille fixe en dur (144→176→192px),
+          changement d'architecture plutôt qu'un 4e chiffre deviné :
+          `grid grid-cols-5` désormais à TOUTES les tailles d'écran
+          (plus seulement mobile), chaque miniature en `aspect-square
+          w-full` — la taille n'est plus une valeur fixe à remonter à
+          chaque retour client, elle est TOUJOURS le maximum que la
+          largeur du conteneur permet, à n'importe quelle taille
+          d'écran (même logique que le fix mobile du round précédent,
+          étendue partout). Le séparateur vertical passe d'un élément
+          de flexbox (qui consommait sa propre largeur) à un trait
+          positionné en absolu sur le bord de chaque colonne — sinon un
+          6e élément par étape aurait cassé le compte de `grid-cols-5`.
+          Espace miniature↔libellé encore resserré (`lg:gap-1.5` →
+          `lg:gap-1`), 2e passe sur ce réglage ("le texte miniature
+          n'est pas assez collé"). */}
       {/* 6e passe client, mobile : "t'avais raison, ça sort de
           l'écran, corrige pour avoir la taille maximale sans que ça
           sorte" — la rangée scrollable du round précédent (miniatures
@@ -308,17 +326,17 @@ export default function ProcedeCarousel() {
           exactement 1/5 de la largeur réelle de l'écran (`aspect-square`
           au lieu d'une hauteur fixe), donc toujours la taille maximale
           possible et JAMAIS de débordement, quel que soit l'appareil.
-          Redevient une rangée centrée à taille fixe dès `sm:` (où 5
-          miniatures à taille fixe tiennent confortablement). */}
-      <div className="-mx-6 mt-4 grid grid-cols-5 items-start px-2 sm:mx-0 sm:mt-6 sm:flex sm:justify-center sm:gap-0 sm:px-0">
+          Cette même logique s'applique maintenant à `sm:`/`lg:`
+          (voir plus haut) — plus de rangée à taille fixe du tout. */}
+      <div className="-mx-6 mt-4 grid grid-cols-5 items-start gap-x-1 px-2 sm:mx-0 sm:mt-6 sm:gap-x-3 sm:px-0 lg:gap-x-4">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
           return (
-            <div key={e.title} className="flex items-start justify-center sm:shrink-0">
+            <div key={e.title} className="relative flex justify-center">
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="mx-2 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:block lg:mx-1"
+                  className="absolute left-0 top-8 hidden h-8 w-px -translate-x-1/2 bg-encre-douce/15 sm:block lg:top-14"
                 />
               )}
               <button
@@ -326,7 +344,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center sm:w-28 lg:w-48 lg:gap-1.5"
+                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center lg:gap-1"
               >
                 <motion.div
                   animate={{
@@ -336,7 +354,7 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative aspect-square w-full sm:h-28 sm:w-28 lg:h-48 lg:w-48"
+                  className="relative aspect-square w-full"
                 >
                   <div
                     aria-hidden
