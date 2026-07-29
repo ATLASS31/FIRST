@@ -20,7 +20,17 @@ export default function Procede() {
     // d'étape pour pouvoir le placer en colonne de gauche, ligne 1 — un
     // living dans un composant séparé ne peut pas participer au
     // `grid-template` d'un autre. Déplacé dans `ProcedeCarousel`.
-    <section id="procede" className="bg-ciel px-6 py-28">
+    // 11e passe client : "grossis-moi cette image beaucoup plus, on
+    // s'en fout de la superposition" — la maquette agrandie via
+    // `lg:scale-150` (voir `ProcedeCarousel.tsx`) déborde volontairement
+    // sur le texte et la navigation voisins, mais son bord droit
+    // dépassait aussi le viewport, créant une barre de scroll
+    // horizontale sur TOUTE LA PAGE (pas juste un chevauchement local
+    // dans la section — un vrai bug, pas ce que "on s'en fout de la
+    // superposition" voulait dire). `overflow-x-clip` borne le débordement
+    // à cette section : le chevauchement reste permis à l'intérieur,
+    // plus de scroll horizontal global.
+    <section id="procede" className="overflow-x-clip bg-ciel px-6 py-28">
       <div className="mx-auto max-w-6xl">
         <ProcedeCarousel />
       </div>

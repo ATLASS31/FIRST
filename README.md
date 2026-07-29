@@ -5246,6 +5246,49 @@ l'étape, synchronisé avec la navigation du bas). Tablette et mobile
 recapturés : flux identique pixel pour pixel à avant, aucune
 régression. `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : maquette encore agrandie, titre uniformisé, ligne retirée + suppression de "Savoir-faire" (11e passe)
+
+Retour sur la refonte 2 colonnes du round précédent, trois demandes
+plus une hors sujet.
+
+**Maquette encore agrandie, chevauchement assumé** : "grossis-moi
+cette image beaucoup plus, on s'en fout de la superposition, je te
+dirai de rétrécir au cas où." `lg:scale-150` sur la box de la
+maquette — un `transform` plutôt qu'élargir sa taille de grille : la
+mise à l'échelle visuelle n'affecte pas l'espace réservé par les
+autres éléments, exactement ce qu'il faut pour une image
+volontairement plus grande que sa colonne, autorisée à chevaucher le
+texte voisin. Effet de bord détecté à la vérification (pas supposé) :
+le bord droit de l'image dépassait aussi le viewport, créant une
+**vraie barre de scroll horizontale sur toute la page** — un bug, pas
+le chevauchement local voulu. Corrigé avec `overflow-x-clip` sur la
+`<section>` : le débordement reste possible À L'INTÉRIEUR de la
+section (sur le texte, la navigation), mais s'arrête à sa bordure —
+plus de scroll horizontal global.
+
+**Titre de section à la taille des autres titres du site** : `lg:
+text-4xl` plafonnait "De la signature aux clés..." en dessous de
+`sm:text-5xl` à partir de `lg:` — seule exception sur tout le site,
+où chaque titre de section (`NotreHistoire`, `GammesPreview`,
+`ThreePiliers`...) utilise `text-4xl sm:text-5xl` sans override `lg:`.
+Retiré, cohérent avec le reste maintenant.
+
+**Filet doré à droite de l'eyebrow "Notre procédé"** ("elle sert à
+rien") : retiré, eyebrow revenu à un simple texte comme partout
+ailleurs sur le site.
+
+**Suppression totale de la catégorie "Savoir-faire"** : composant
+`SavoirFaire.tsx` supprimé du dépôt, import et rendu retirés de
+`page.tsx`. Aucune autre référence trouvée dans le code (pas de lien
+d'ancre `#savoir-faire` dans la nav, pas d'autre import) — suppression
+propre, rien à nettoyer ailleurs.
+
+**Vérifications** : 0 débordement horizontal retesté après le
+`scale-150` (16px avant le fix `overflow-x-clip`, 0 après, à 1456px).
+Contenu "Bâti pour durer" confirmé absent du DOM après la suppression
+de `SavoirFaire`. Tablette et mobile recapturés sans régression ;
+`tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

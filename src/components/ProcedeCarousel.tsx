@@ -186,14 +186,18 @@ export default function ProcedeCarousel() {
       {/* Eyebrow + titre de section — vivait dans `Procede.tsx`, déplacé
           ici pour pouvoir être un enfant direct de cette même grille
           (ligne 1, colonne 1) ; contenu et style identiques à avant sur
-          mobile/tablette (centré), aligné à gauche avec un filet doré à
-          droite du eyebrow sur `lg:` (référence client). */}
+          mobile/tablette (centré), aligné à gauche sur `lg:`. */}
+      {/* 11e passe client : "le filet à droite de Notre procédé sert à
+          rien" — retiré. "le titre de catégorie... met-le de la même
+          taille que tous les titres" — `lg:text-4xl` plafonnait le
+          titre en dessous de `sm:text-5xl` à partir de `lg:` ; retiré,
+          il grandit maintenant jusqu'à `text-5xl` comme partout
+          ailleurs sur le site (`NotreHistoire`, `GammesPreview`,
+          `ThreePiliers`... même classe `text-4xl sm:text-5xl` sans
+          exception). */}
       <div className="mx-auto max-w-2xl text-center lg:col-start-1 lg:row-start-1 lg:mx-0 lg:max-w-none lg:text-left">
-        <p className="eyebrow flex items-center justify-center gap-4 text-xs text-encre-douce lg:justify-start">
-          <span>Notre procédé</span>
-          <span aria-hidden className="hidden h-px flex-1 bg-encre-douce/25 lg:block" />
-        </p>
-        <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl lg:text-4xl">
+        <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
+        <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
           De la signature aux clés, sans surprise.
         </h2>
       </div>
@@ -326,7 +330,15 @@ export default function ProcedeCarousel() {
           dedans (`lg:self-center`) — les hacks `-mt-*` du flux vertical
           empilé (rapprocher la maquette du texte au-dessus) n'ont plus
           de sens en grille et sont retirés sur `lg:` uniquement. */}
-      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mt-0 lg:h-auto lg:max-w-none lg:self-center lg:aspect-[1100/614] lg:w-full">
+      {/* 11e passe client : "grossis-moi cette image beaucoup plus, on
+          s'en fout de la superposition, je te dirai de rétrécir au cas
+          où" — `lg:scale-150` plutôt que d'élargir la colonne ou la
+          box elle-même : un `transform` agrandit le rendu visuel SANS
+          changer la taille prise en compte par la grille (les autres
+          éléments ne bougent pas), exactement ce qu'il faut pour une
+          image volontairement plus grande que sa place réservée,
+          autorisée à chevaucher le texte/la maquette voisine. */}
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mt-0 lg:h-auto lg:max-w-none lg:self-center lg:aspect-[1100/614] lg:w-full lg:scale-150">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
