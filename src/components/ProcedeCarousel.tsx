@@ -16,15 +16,27 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * n'apparaît pas sur la maquette du client — casée juste après la
  * ligne, avant la description, comme complément discret.
  *
- * Illustrations : le client envoie les images collées dans le chat, pas
- * en pièce jointe (même distinction déjà rencontrée plusieurs fois ce
- * projet — voir historique git) — aucun fichier exploitable sur disque
- * pour l'instant, y compris pour le dernier lot annoncé comme "envoyé en
- * pièce jointe" (vérifié : rien de nouveau dans le dossier d'upload).
- * Chaque étape a un champ `illustrationUrl` prêt à recevoir une vraie
- * image dès qu'elle arrive en pièce jointe exploitable ; en attendant,
- * un chiffre fantôme géant en filigrane tient lieu de placeholder —
- * délibérément sobre pour ne pas se faire passer pour un rendu final.
+ * Illustrations : après plusieurs tentatives infructueuses (images
+ * collées dans le chat = invisibles sur disque pour moi ; pièce jointe
+ * d'issue GitHub = bloquée par la politique réseau du sandbox, les
+ * assets `user-attachments` ne sont pas accessibles), la solution qui a
+ * fonctionné est un commit direct dans le repo (`Add file → Upload
+ * files` sur la branche de travail) — un vrai fichier versionné, donc
+ * récupérable par `git pull`. Les 5 rendus isométriques du client
+ * (`public/images/house-1..5.png`, ~2 Mo chacun) ont été redimensionnés
+ * à 900px de large et convertis en WebP (~60-80 Ko chacun) dans
+ * `public/images/procede/`. Le client n'a pas donné de mapping
+ * image→étape explicite, seulement "au fur et à mesure des cartes la
+ * maison se construit" : les 5 images forment une progression de
+ * complétude évidente (fondation vide → modules grutés → structure
+ * montée avec camion sur site → finitions par l'équipe → maison livrée
+ * avec poignée de main), utilisée telle quelle pour l'ordre 01→05,
+ * indépendamment des titres exacts de chaque étape (aucune image ne
+ * montre littéralement un "atelier" puisque toutes sont prises sur le
+ * même terrain).
+ * `CardIllustration` retombe sur le chiffre fantôme en filigrane si
+ * jamais `illustrationUrl` est `null` — conservé comme filet de
+ * sécurité, plus utilisé actuellement.
  *
  * Mécanique : seules 3 cartes sont montées à la fois (active + 2
  * voisines, `Math.abs(offset) <= 1`) — au-delà, une carte n'existe pas
@@ -40,29 +52,29 @@ const ETAPES = [
   {
     title: "Échange et conception sur mesure",
     body: "Premier rendez-vous. On écoute votre projet, on regarde votre terrain, on dessine la maison qui vous ressemble.",
-    illustrationUrl: null,
+    illustrationUrl: "/images/procede/procede-01.webp",
   },
   {
     title: "Fabrication à la main en atelier",
     meta: "4 à 8 semaines",
     body: "Vos modules naissent en atelier français. Ossature bois Douglas, isolation RE2020, finitions par nos artisans.",
-    illustrationUrl: null,
+    illustrationUrl: "/images/procede/procede-02.webp",
   },
   {
     title: "Transport jusqu'à votre terrain",
     body: "Camions plateaux, escorte si nécessaire. Vos modules arrivent prêts à être posés.",
-    illustrationUrl: null,
+    illustrationUrl: "/images/procede/procede-03.webp",
   },
   {
     title: "Pose et finitions par notre équipe française",
     meta: "1 à 2 semaines",
     body: "Grutage, assemblage, raccordements. Notre équipe orchestre l'opération sur place.",
-    illustrationUrl: null,
+    illustrationUrl: "/images/procede/procede-04.webp",
   },
   {
     title: "Vous emménagez. Clé en main.",
     body: "Vous tournez la clé. Tout est prêt, tout est branché, tout est garanti 20 ans.",
-    illustrationUrl: null,
+    illustrationUrl: "/images/procede/procede-05.webp",
   },
 ] as const;
 

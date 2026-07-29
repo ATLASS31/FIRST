@@ -4470,6 +4470,56 @@ les deux formats, carte toujours lisible avec le placeholder chiffré
 fantôme (les vraies illustrations restent en attente des fichiers).
 `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : intégration des vraies illustrations (3 tentatives de transfert de fichiers)
+
+Trois canaux essayés dans l'ordre pour faire parvenir les 5 rendus
+isométriques du client, deux échecs instructifs avant la bonne méthode :
+
+1. **Collé dans le chat** (comme systématiquement avant sur ce projet) :
+   visible pour moi en tant qu'entrée multimodale, mais aucun fichier sur
+   disque — déjà rencontré plusieurs fois ce projet.
+2. **Pièce jointe d'issue GitHub** (`github.com/user-attachments/assets/...`) :
+   le client a bien créé l'issue #2 avec les 5 images en pièce jointe,
+   mais le réseau sortant de ce sandbox bloque explicitement ce type
+   d'URL (403 systématique, confirmé par test direct) — pas un problème
+   de timing, une restriction permanente. Expliqué au client que même
+   `git pull` ne peut structurellement pas voir des pièces jointes
+   d'issue : elles ne font jamais partie de l'historique git.
+3. **Upload direct dans le dépôt** (`Add file → Upload files` sur la
+   branche de travail) : ça, ça marche — un vrai commit
+   ("Add files via upload", `833e92e`) contenant
+   `public/images/house-1..5.png` (~2 Mo chacun), récupéré par un simple
+   `git pull`.
+
+**Mapping image → étape** : aucune correspondance explicite donnée par
+le client, seulement "au fur et à mesure des cartes la maison se
+construit". Les 5 images forment une progression de complétude sans
+ambiguïté : dalle vide et paysagée (house-5) → premier module descendu
+à la grue (house-4) → structure assemblée, camion-grue encore sur site
+(house-3) → équipe en finitions (éclairage, mobilier) sur la maison
+achevée (house-2) → maison livrée, jardin fini, poignée de main devant
+la porte (house-1). Numéros de fichiers à l'envers par rapport à
+l'ordre narratif — mappés en conséquence : `procede-01.webp` =
+house-5.png (Échange et conception) … `procede-05.webp` = house-1.png
+(Clé en main). Aucune image ne montre littéralement un atelier
+(étape 02) puisque les 5 rendus sont pris sur le même terrain — accepté
+comme le meilleur choix possible plutôt que d'inventer une 6e image.
+
+Traitement : redimensionnement 900px de large (Pillow/Python, aucun
+outil `sharp`/`imagemagick` disponible dans ce sandbox) + conversion
+WebP qualité 82, ~2 Mo → ~60-83 Ko par image. Fichiers PNG bruts
+supprimés après conversion (gardés hors du dépôt, seul le WebP optimisé
+est commité). `ETAPES[].illustrationUrl` rempli pour les 5 étapes ;
+`CardIllustration` retombe toujours sur le chiffre fantôme si jamais
+`illustrationUrl` redevient `null` (filet de sécurité conservé, plus
+utilisé actuellement).
+
+**Vérifications** : capture Playwright de chaque étape (clic sur la
+flèche "Étape suivante" ×4) en desktop, confirmant visuellement chaque
+image sur la bonne carte dans le bon ordre (fondation vide → grutage →
+chantier → finitions → livraison) ; capture mobile confirmant le rendu
+plein cadre de l'image dans le conteneur arrondi ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
