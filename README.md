@@ -4590,6 +4590,78 @@ fond de carte et fond de l'image visuellement continus) sur plusieurs
 l'ombre (montage conditionnel sur `activeStep`) vérifiée par lecture de
 code, pas visuellement.
 
+### 29 juillet 2026 — Notre procédé : refonte de la hiérarchie visuelle (retour 7 points) ; Concept : fix timing de l'ombre
+
+Deux retours client sur la passe précédente.
+
+**Ombre du tronc trop tôt/trop tard** (`ThreePiliers.tsx`) : la
+condition d'affichage précédente (`activeStep === 0`) restait vraie
+pendant TOUTE la transition bois→horloge qui suit la pause sur "bois"
+— `activeStep` ne repasse à 1 qu'à la toute fin de cette transition,
+pas à son début. L'ombre restait donc affichée pendant que l'objet
+était déjà en train de se transformer en horloge ("disparaît trop
+tard"). Fix : nouvel état React `isHolding`, vrai uniquement pendant la
+pause statique réelle (mis à `false` dès l'appel de `playTransition`,
+remis à `true` seulement une fois la transition suivante terminée) —
+condition d'affichage devient `activeStep === 0 && isHolding`. Position
+de l'ellipse toujours posée au jugé (vidéo non décodable dans ce
+sandbox), seul le TIMING est corrigé ici, pas la position.
+
+**Refonte carousel, retour détaillé en 7 points** ("on tient la bonne
+direction artistique mais il y a un problème de hiérarchie visuelle...
+impression de vide", référence Apple/Polestar/Porsche/Awwwards) :
+
+1. **Illustration dominante** : padding latéral réduit (px-5→px-3),
+   proportion de hauteur 46%→50% — mais l'essentiel du gain vient du
+   point 2 (carte compactée : la même proportion représente
+   mécaniquement plus de pixels réels sur une carte plus courte). Ajout
+   d'une ombre synthétique floue sous l'illustration
+   (`CardIllustration`) pour un rendu "objet posé en studio" plutôt
+   qu'"image plate collée".
+2. **Cartes compactées** : `h-[540px] sm:h-[620px]` → `h-[420px]
+   sm:h-[480px]`.
+3. **Espacements resserrés** : `pt-7`→`pt-5`, `gap-1`→`gap-0.5`,
+   `mt-4`→`mt-1.5`, padding de description `py-5`→`pb-5 pt-1`.
+4. **Label premium remplace le divider** : la ligne laiton (`<span
+   className="h-px w-8 bg-laiton" />`) disparaît, remplacée par un chip
+   `eyebrow` minimaliste par étape — auparavant seules 2 étapes sur 5
+   avaient un `meta` (durée) affiché à la place du divider, les 3
+   autres n'avaient qu'un divider nu. Chaque étape a maintenant un
+   `label` éditorial : "Sur-mesure", "4 à 8 semaines", "Transport
+   sécurisé", "1 à 2 semaines", "Garanti 20 ans" — champ `meta` retiré
+   du type de données (remplacé par `label`, toujours renseigné).
+5. **Profondeur de champ renforcée** : le flou seul (`blur(3px)`)
+   devient un filtre composite `blur + saturate + brightness`
+   (`blur(5px) saturate(0.6) brightness(0.8)` sur les voisines) — les 2
+   états (actif/inactif) utilisent le même triplet de fonctions dans le
+   même ordre, ce qui permet à Framer Motion d'interpoler chaque
+   paramètre individuellement plutôt que de sauter d'une valeur à
+   l'autre. Carte active légèrement agrandie (`scale: 1.05`, contre 1
+   avant) pour dominer plutôt que seulement contraster.
+6. **Fond de section** (`Procede.tsx`) : `bg-ciel` (mint) → dégradé
+   radial très doux ancré sur `--brume` (#F7F5F0, la valeur exacte
+   demandée par le client). Casse l'alternance mint/crème mise en place
+   plus tôt ce projet (la section juste au-dessus, `GammesPreview`, est
+   déjà en `bg-brume` — donc maintenant 2 sections crème d'affilée) :
+   accepté sciemment, un hex précis donné explicitement par le client
+   prime sur une convention généraliste posée dans un round antérieur.
+   Cartes passées de `bg-brume` à `bg-white` pour se détacher de ce
+   nouveau fond (qui a la même teinte que leur ancienne couleur de
+   carte).
+7. Inspiration Apple/Polestar/Porsche/Awwwards : traitée comme la somme
+   des 6 points ci-dessus plutôt qu'un ajout séparé — pas d'élément
+   supplémentaire ajouté spécifiquement pour "l'ambiance", le pari est
+   que la hiérarchie + la respiration + le traitement image-produit y
+   suffisent.
+
+**Vérifications** : `tsc` propre ; capture Playwright desktop (étapes
+01 et 02) et mobile confirmant la nouvelle hiérarchie (illustration
+dominante, carte compacte, label premium, voisines nettement plus
+floutées/désaturées/sombres que l'active, fond de section visuellement
+distinct du blanc des cartes) ; fix de timing de l'ombre vérifié par
+lecture de code uniquement (toujours pas de rendu vidéo possible dans
+ce sandbox).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

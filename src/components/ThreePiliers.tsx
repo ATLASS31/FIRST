@@ -196,6 +196,14 @@ export default function ThreePiliers() {
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
   const [activeStep, setActiveStep] = useState<0 | 1 | 2>(0);
+  // Vrai seulement pendant la pause statique sur une étape (jamais
+  // pendant qu'une transition joue) — sert uniquement à savoir quand
+  // afficher l'ombre du tronc (voir plus bas) : elle doit apparaître au
+  // moment exact où l'objet s'immobilise sur "bois", pas dès que
+  // `activeStep` repasse à 0 (qui inclut toute la transition suivante,
+  // pendant laquelle l'objet quitte déjà la pose bois — retour client :
+  // "l'ombre disparaît un peu trop tard et apparaît un peu trop tôt").
+  const [isHolding, setIsHolding] = useState(true);
   // Miroir synchrone de `activeStep` : la boucle vit dans un `useEffect`
   // dont les closures ne voient jamais l'état React à jour. Le bouton
   // "avancer" (déclenché par un clic, donc en dehors du cycle de rendu)
@@ -291,6 +299,7 @@ export default function ThreePiliers() {
 
     const playTransition = (fromStep: 0 | 1 | 2) => {
       transitioning = true;
+      setIsHolding(false);
       const video = videos[fromStep];
       const toStep = (((fromStep + 1) % 3) as 0 | 1 | 2);
 
@@ -302,6 +311,7 @@ export default function ThreePiliers() {
           stopRaf();
           video.pause();
           transitioning = false;
+          setIsHolding(true);
           goToStep(toStep);
           scheduleHold(toStep);
         }, TRANSITION_TIMEOUT_MS);
@@ -324,6 +334,7 @@ export default function ThreePiliers() {
             }
             video.pause();
             transitioning = false;
+            setIsHolding(true);
             goToStep(toStep);
             scheduleHold(toStep);
             return;
@@ -463,12 +474,19 @@ export default function ThreePiliers() {
                   ajouté. Repère de position à l'aveugle (ce bac à sable
                   ne peut pas décoder de vidéo H.264, donc impossible de
                   voir où le tronc tombe réellement à l'écran) — à
-                  ajuster avec le client une fois visible en vrai. Affiché
-                  seulement pendant l'étape "Matière" (`activeStep === 0`)
-                  : les 2 autres vidéos ont déjà leur propre ombre, une
-                  2e ombre superposée dessus aurait doublé l'effet. */}
+                  ajuster avec le client une fois visible en vrai.
+                  Condition `isHolding` (pas seulement `activeStep === 0`)
+                  : première version basée uniquement sur `activeStep`
+                  restait affichée pendant TOUTE la transition suivante
+                  (bois→horloge), puisque `activeStep` ne repasse à 1
+                  qu'à la toute fin de cette transition — d'où le retour
+                  client "disparaît trop tard". `isHolding` distingue la
+                  vraie pause statique (objet immobile sur bois) de la
+                  transition (objet déjà en train de se transformer) :
+                  l'ombre suit maintenant exactement la présence réelle
+                  du tronc à l'écran, plus jamais pendant qu'il bouge. */}
               <AnimatePresence>
-                {activeStep === 0 && (
+                {activeStep === 0 && isHolding && (
                   <motion.div
                     aria-hidden
                     initial={{ opacity: 0 }}

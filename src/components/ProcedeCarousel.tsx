@@ -11,56 +11,55 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * côté, rotation automatique toutes les 3s.
  *
  * Ordre du contenu de carte (précisé par le client sur une maquette
- * annotée) : numéro (haut gauche) → titre → illustration → petite
- * ligne laiton → texte descriptif. `meta` (durée, ex. "4 à 8 semaines")
- * n'apparaît pas sur la maquette du client — casée juste après la
- * ligne, avant la description, comme complément discret.
+ * annotée) : numéro (haut gauche) → titre → illustration → petit label
+ * premium → texte descriptif.
  *
  * Illustrations : après plusieurs tentatives infructueuses (images
  * collées dans le chat = invisibles sur disque pour moi ; pièce jointe
- * d'issue GitHub = bloquée par la politique réseau du sandbox, les
- * assets `user-attachments` ne sont pas accessibles), la solution qui a
- * fonctionné est un commit direct dans le repo (`Add file → Upload
- * files` sur la branche de travail) — un vrai fichier versionné, donc
- * récupérable par `git pull`. Les 5 rendus isométriques du client
- * (`public/images/house-1..5.png`, ~2 Mo chacun) ont été redimensionnés
- * à 900px de large et convertis en WebP (~60-80 Ko chacun) dans
- * `public/images/procede/`. Le client n'a pas donné de mapping
- * image→étape explicite, seulement "au fur et à mesure des cartes la
- * maison se construit" : les 5 images forment une progression de
- * complétude évidente (fondation vide → modules grutés → structure
- * montée avec camion sur site → finitions par l'équipe → maison livrée
- * avec poignée de main), utilisée telle quelle pour l'ordre 01→05,
- * indépendamment des titres exacts de chaque étape (aucune image ne
- * montre littéralement un "atelier" puisque toutes sont prises sur le
- * même terrain).
- * `CardIllustration` retombe sur le chiffre fantôme en filigrane si
- * jamais `illustrationUrl` est `null` — conservé comme filet de
- * sécurité, plus utilisé actuellement.
+ * d'issue GitHub = bloquée par la politique réseau du sandbox), la
+ * solution qui a fonctionné est un commit direct dans le repo (`Add
+ * file → Upload files`). Détourage fait localement (flood fill
+ * Python/numpy, l'API Higgsfield étant elle aussi bloquée réseau — voir
+ * historique git détaillé) : fond retiré, résultat en WebP avec canal
+ * alpha (`public/images/procede/procede-0X.webp`). `CardIllustration`
+ * retombe sur le chiffre fantôme en filigrane si jamais
+ * `illustrationUrl` est `null` — conservé comme filet de sécurité, plus
+ * utilisé actuellement.
  *
- * Détourage : demande client ("supprime l'arrière-plan des photos pour
- * qu'elles s'incrustent bien"). Le remplaceur de fond IA d'Higgsfield
- * (`remove_background`) nécessite un upload vers `upload.higgsfield.ai`
- * depuis ce sandbox — hôte bloqué par la politique réseau (403 confirmé,
- * même famille de restriction que les pièces jointes GitHub). Détourage
- * fait localement à la place : les rendus ont un fond crème quasi
- * parfaitement uniforme (échantillonné aux 4 coins), mais une simple
- * distance de couleur globale mord dans le toit (teinte très proche du
- * fond) — recours à un flood fill (propagation depuis les bords de
- * l'image, uniquement à travers des pixels "couleur fond", en Python/
- * numpy) : ne retire QUE la région de fond réellement connectée au
- * bord, donc le toit clair (jamais connecté au bord, encerclé par la
- * végétation) reste intact même s'il est presque de la même couleur.
- * Léger flou (quelques passes de box-blur sur le canal alpha) pour
- * adoucir le contour plutôt qu'un détourage à l'emporte-pièce. Résultat
- * en WebP avec canal alpha (même noms de fichiers `procede-0X.webp`,
- * contenu remplacé).
- *
- * Cartes agrandies (desktop et mobile) : `image object-cover` →
- * `object-contain`, plus la peine de recadrer maintenant que le fond
- * est transparent — l'espace "vide" autour du sujet ne montre plus une
- * couleur de secours mais laisse voir le fond crème de la carte,
- * invisible donc pas de recadrage nécessaire pour cacher un bord.
+ * Refonte hiérarchie visuelle (2e passe client, retour détaillé en 7
+ * points sur la version précédente — "impression de vide... les
+ * proportions ne sont pas bonnes", référence Apple/Polestar/Porsche/
+ * Awwwards) :
+ * - Illustration devenue l'élément dominant de la carte (~50% de sa
+ *   hauteur, contre 46% avant — la vraie différence vient surtout de la
+ *   carte globalement plus compacte, qui fait mécaniquement grossir
+ *   cette même proportion en pixels réels) — traitée comme un objet
+ *   exposé : légère ombre synthétique floue dessous plutôt que posée à
+ *   plat, padding latéral réduit pour la laisser respirer en grand.
+ * - Carte nettement plus compacte (`h-[540px] sm:h-[620px]` →
+ *   `h-[420px] sm:h-[480px]`) et tous les espacements internes resserrés
+ *   (gaps, paddings) — "il faut supprimer le vide inutile".
+ * - Divider remplacé par un label premium minimaliste par étape (chip
+ *   `eyebrow`, ex. "Sur-mesure", "4 à 8 semaines") — chaque étape en a
+ *   désormais un (avant : uniquement les 2 étapes avec une durée
+ *   avaient un `meta`, réparti au hasard des données ; maintenant un
+ *   `label` éditorial pour les 5, cohérent avec la demande "quelque
+ *   chose de très minimaliste avec une belle typographie").
+ * - Profondeur de champ renforcée entre carte active et voisines : pas
+ *   seulement le flou d'avant, mais un vrai filtre combiné
+ *   `blur + saturate + brightness` (voisines nettement plus
+ *   désaturées/sombres/floues, active légèrement AGRANDIE — scale 1.05
+ *   au lieu de 1 — pour dominer plutôt que seulement se distinguer par
+ *   contraste). Framer Motion interpole ce filtre composite proprement
+ *   car les 2 états (actif/inactif) utilisent exactement les mêmes 3
+ *   fonctions dans le même ordre.
+ * - Fond de section passé à `--brume` (#F7F5F0 exact demandé) avec un
+ *   dégradé radial très doux — voir commentaire dans `Procede.tsx`.
+ *   Cartes passées de `bg-brume` à `bg-white` pour se détacher de ce
+ *   nouveau fond (elles avaient la MÊME couleur que l'ancien fond
+ *   `bg-ciel`... non — elles avaient déjà `bg-brume`, qui devient donc
+ *   la couleur du FOND une fois la demande appliquée ; d'où le passage
+ *   des cartes à blanc pur pour ne pas se fondre dedans).
  *
  * Mécanique : seules 3 cartes sont montées à la fois (active + 2
  * voisines, `Math.abs(offset) <= 1`) — au-delà, une carte n'existe pas
@@ -75,28 +74,31 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 const ETAPES = [
   {
     title: "Échange et conception sur mesure",
+    label: "Sur-mesure",
     body: "Premier rendez-vous. On écoute votre projet, on regarde votre terrain, on dessine la maison qui vous ressemble.",
     illustrationUrl: "/images/procede/procede-01.webp",
   },
   {
     title: "Fabrication à la main en atelier",
-    meta: "4 à 8 semaines",
+    label: "4 à 8 semaines",
     body: "Vos modules naissent en atelier français. Ossature bois Douglas, isolation RE2020, finitions par nos artisans.",
     illustrationUrl: "/images/procede/procede-02.webp",
   },
   {
     title: "Transport jusqu'à votre terrain",
+    label: "Transport sécurisé",
     body: "Camions plateaux, escorte si nécessaire. Vos modules arrivent prêts à être posés.",
     illustrationUrl: "/images/procede/procede-03.webp",
   },
   {
     title: "Pose et finitions par notre équipe française",
-    meta: "1 à 2 semaines",
+    label: "1 à 2 semaines",
     body: "Grutage, assemblage, raccordements. Notre équipe orchestre l'opération sur place.",
     illustrationUrl: "/images/procede/procede-04.webp",
   },
   {
     title: "Vous emménagez. Clé en main.",
+    label: "Garanti 20 ans",
     body: "Vous tournez la clé. Tout est prêt, tout est branché, tout est garanti 20 ans.",
     illustrationUrl: "/images/procede/procede-05.webp",
   },
@@ -123,13 +125,25 @@ function CardIllustration({
   index: number;
 }) {
   if (url) {
-    // object-contain (pas object-cover) : les illustrations sont
-    // détourées (fond retiré), donc plus besoin — et plus jamais
-    // souhaitable — de les recadrer en plein cadre. Le "vide" autour du
-    // sujet est transparent, pas une couleur de secours, donc invisible
-    // sur le fond crème de la carte.
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="h-full w-full object-contain" />;
+    return (
+      <div className="relative h-full w-full">
+        {/* Ombre synthétique sous l'illustration : les rendus sont
+            détourés (fond transparent), donc sans profondeur propre une
+            fois posés sur la carte blanche — cette ellipse floue leur
+            donne un ancrage, comme un objet posé en studio plutôt
+            qu'une image plate collée sur la carte. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-[15%] bottom-1 h-[10%] rounded-[50%] bg-encre/10 blur-md"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt=""
+          className="relative h-full w-full object-contain"
+        />
+      </div>
+    );
   }
   return (
     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brume-2 to-brume">
@@ -176,28 +190,38 @@ export default function ProcedeCarousel() {
       onMouseLeave={() => setPaused(false)}
     >
       <div
-        className="relative mx-auto h-[540px] max-w-md sm:h-[620px]"
+        className="relative mx-auto h-[420px] max-w-md sm:h-[480px]"
         style={{ perspective: "1400px" }}
       >
         <AnimatePresence initial={false}>
           {visible.map(({ etape, index, offset }) => {
             const isActive = offset === 0;
+            // Profondeur de champ : la carte active domine (légèrement
+            // agrandie, nette, couleurs pleines) ; les voisines
+            // reculent (réduites, floutées, désaturées, assombries) —
+            // demande client explicite ("comme une profondeur de champ
+            // photographique"). Les 2 états utilisent le même triplet
+            // de fonctions filter dans le même ordre : Framer Motion
+            // interpole chaque paramètre individuellement plutôt que de
+            // sauter d'une valeur à l'autre.
             const target = {
               x: offset * 250,
-              scale: isActive ? 1 : 0.82,
-              opacity: isActive ? 1 : 0.45,
-              rotateY: offset * -12,
-              filter: isActive ? "blur(0px)" : "blur(3px)",
+              scale: isActive ? 1.05 : 0.76,
+              opacity: isActive ? 1 : 0.7,
+              rotateY: offset * -10,
+              filter: isActive
+                ? "blur(0px) saturate(1) brightness(1)"
+                : "blur(5px) saturate(0.6) brightness(0.8)",
             };
             // Une carte qui vient d'apparaître (ex-position ±2, hors
             // DOM) démarre plus loin dans le même sens que sa cible,
             // pour glisser vers sa place plutôt que de "popper".
             const enterFrom = {
               x: offset * 460,
-              scale: 0.6,
+              scale: 0.55,
               opacity: 0,
-              rotateY: offset * -12,
-              filter: "blur(6px)",
+              rotateY: offset * -10,
+              filter: "blur(8px) saturate(0.5) brightness(0.75)",
             };
 
             return (
@@ -216,35 +240,33 @@ export default function ProcedeCarousel() {
                 onClick={() => !isActive && goTo(index)}
               >
                 <div
-                  className={`flex h-full flex-col overflow-hidden rounded-3xl bg-brume shadow-[0_20px_50px_-16px_rgba(26,22,20,0.25)] ${
+                  className={`flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_-16px_rgba(26,22,20,0.25)] ${
                     !isActive ? "cursor-pointer" : ""
                   }`}
                 >
-                  <div className="flex flex-col gap-1 px-7 pt-7">
-                    <span className="eyebrow text-xs text-laiton">
+                  <div className="flex shrink-0 flex-col gap-0.5 px-6 pt-5">
+                    <span className="eyebrow text-[11px] text-laiton">
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <h3 className="text-lg font-semibold leading-snug text-encre">
+                    <h3 className="text-base font-semibold leading-snug text-encre sm:text-lg">
                       {etape.title}
                     </h3>
                   </div>
-                  {/* h-[46%] (au lieu de 38%) + object-contain sur
-                      l'image : les illustrations sont maintenant
-                      détourées (voir CardIllustration), donc une image
-                      plus grande ne risque plus de se faire recadrer
-                      moche — elle respire simplement plus dans la
-                      carte, demande client ("les cartes soient plus
-                      grandes... elle ne soit pas coupée"). */}
-                  <div className="mt-4 h-[46%] w-full shrink-0 px-5">
+                  {/* ~50% de la hauteur de la carte : l'illustration
+                      devient l'élément dominant plutôt qu'un simple
+                      accompagnement du texte — demande client
+                      ("l'illustration doit devenir l'élément
+                      principal"). Padding latéral réduit (px-3) pour la
+                      laisser occuper un maximum de largeur. */}
+                  <div className="mt-1.5 h-[50%] w-full shrink-0 px-3">
                     <CardIllustration url={etape.illustrationUrl} index={index} />
                   </div>
-                  <div className="flex flex-1 flex-col gap-2 px-7 py-5">
-                    <span aria-hidden className="block h-px w-8 bg-laiton" />
-                    {"meta" in etape && etape.meta && (
-                      <p className="eyebrow text-[10px] text-foret">
-                        {etape.meta}
-                      </p>
-                    )}
+                  <div className="flex shrink-0 flex-col px-6">
+                    <span className="eyebrow text-[10px] text-laiton/80">
+                      {etape.label}
+                    </span>
+                  </div>
+                  <div className="flex-1 px-6 pb-5 pt-1">
                     <p className="text-sm leading-relaxed text-encre-doux">
                       {etape.body}
                     </p>

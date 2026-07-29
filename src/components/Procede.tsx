@@ -2,21 +2,29 @@ import ProcedeCarousel from "./ProcedeCarousel";
 
 export default function Procede() {
   return (
-    // bg-ciel : demande client pour alterner les fonds section par
-    // section (Concept crème → Notre histoire mint → Nos gammes crème →
-    // Notre procédé mint...). Le `<section>` n'ayant lui-même pas de
-    // fond avant ce changement, l'ancien code appliquait `max-w-6xl`
-    // directement dessus — un simple ajout de `bg-ciel` sur ce même
-    // élément aurait donné un bloc de couleur étroit, pas un fond plein
-    // écran comme les autres sections teintées (`NotreHistoire.tsx`,
-    // `GammesPreview.tsx`). D'où le conteneur interne séparé : le fond
-    // est sur `<section>` (pleine largeur), `max-w-6xl` sur le `<div>`.
-    //
-    // Contenu : grille statique de 5 cartes remplacée par un carousel 3D
-    // (demande client, référence visuelle à l'appui) — voir
-    // `ProcedeCarousel.tsx` pour le détail (mécanique, données des
-    // étapes, illustrations en attente des fichiers du client).
-    <section id="procede" className="bg-ciel px-6 py-28">
+    // Fond : demande client explicite "#F7F5F0 avec un très léger
+    // dégradé" — cette teinte est exactement `--brume`, déjà utilisée
+    // par `GammesPreview.tsx` juste au-dessus dans la page. Casse donc
+    // l'alternance mint/crème mise en place plus tôt ce projet (deux
+    // sections crème d'affilée, Gammes puis Procédé) — accepté
+    // sciemment : la demande du client porte spécifiquement sur CETTE
+    // section (contraste carte/fond, "les cartes se détachent
+    // davantage"), and un hex précis prime sur la convention générale
+    // d'alternance posée dans un round antérieur. Le dégradé radial
+    // très doux (4% d'écart de luminosité max) est le "texture
+    // extrêmement subtile" demandée — juste assez pour casser la
+    // platitude d'un aplat, jamais assez pour se voir comme un
+    // "dégradé" à l'œil nu. Les cartes elles-mêmes passent de bg-brume
+    // à bg-white (voir `ProcedeCarousel.tsx`) pour se détacher de ce
+    // fond qui a la même teinte que leur ancienne couleur.
+    <section
+      id="procede"
+      className="px-6 py-28"
+      style={{
+        background:
+          "radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in srgb, var(--brume) 96%, white 4%), var(--brume) 70%)",
+      }}
+    >
       <div className="mx-auto max-w-6xl">
         <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
         <h2 className="mt-4 max-w-2xl text-4xl font-semibold text-encre sm:text-5xl">
