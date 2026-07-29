@@ -54,11 +54,36 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
  * étape à l'autre au lieu de réapparaître à chaque fois, cohérent avec
  * "la navigation du bas glisse doucement d'une étape à l'autre".
  *
- * Illustrations : détourées (fond retiré, flood fill Python/numpy —
- * historique complet dans les rounds git précédents), WebP alpha dans
- * `public/images/procede/`. `Illustration` retombe sur un chiffre
- * fantôme si `illustrationUrl` est `null` (filet de sécurité, plus
- * utilisé actuellement — toutes les étapes ont leur vraie image).
+ * Illustrations, 2e génération (client insatisfait du premier lot de
+ * rendus "vue de dessus large" — remplacés par un nouveau lot en plan
+ * plus serré, style "produit exposé en studio", avec personnages
+ * (poignée de main, ouvriers) qui racontent mieux chaque étape).
+ * Envoyées en commentaire de la PR #1 (`user-attachments`, bloqué côté
+ * réseau comme d'habitude) puis correctement uploadées via `Add file →
+ * Upload files` — mais sur la branche `main` par erreur (pas la branche
+ * de travail) : récupérées via `git show origin/main:<fichier>` plutôt
+ * que `git pull`, sans qu'il soit nécessaire de merger `main`.
+ *
+ * Détourage : même technique flood fill que le lot précédent, mais
+ * avec une complication nouvelle — le fond de ces rendus n'est PAS une
+ * couleur plate, c'est un dégradé (vignette studio, un coin jusqu'à
+ * ~57 de distance colorimétrique d'un autre). Un unique `bg_color`
+ * moyen (technique du lot précédent) laissait de larges zones de fond
+ * non détourées (visible en testant sur fond rouge). Corrigé en
+ * ajustant une surface quadratique lissée (régression aux moindres
+ * carrés sur les pixels d'une fine bande le long des 4 bords, modèle
+ * `a + bx + cy + dx² + ey² + fxy` par canal) plutôt qu'une couleur
+ * unique — le flood fill compare alors chaque pixel à SA valeur de
+ * fond attendue localement, pas à une moyenne globale. Un résidu
+ * minuscule de fond non retiré subsiste dans un interstice de feuillage
+ * sur une image (bloqué par les branches, jamais connecté au bord) —
+ * vérifié invisible une fois composé sur le vrai fond blanc des cartes
+ * (seulement visible en test adversarial sur fond rouge vif).
+ *
+ * WebP alpha dans `public/images/procede/` (mêmes noms de fichiers que
+ * le lot précédent, contenu remplacé). `Illustration` retombe sur un
+ * chiffre fantôme si `illustrationUrl` est `null` (filet de sécurité,
+ * plus utilisé actuellement — toutes les étapes ont leur vraie image).
  */
 
 const ETAPES = [

@@ -4738,6 +4738,54 @@ jour) ; aucune erreur console imputable à ce composant (les 403/502
 observés viennent d'assets Higgsfield distants sans rapport, déjà
 documentés plus haut dans ce fichier).
 
+### 29 juillet 2026 — Notre procédé : 2e génération d'illustrations + détourage à dégradé
+
+Client pas satisfait du premier lot d'illustrations (vues de dessus
+larges façon plan de masse) — nouveau lot envoyé, cette fois en plan
+plus serré façon "objet produit", avec des personnages qui racontent
+mieux chaque étape (poignée de main pour la remise des clés, ouvriers
+qui posent une porte pour les finitions, etc.).
+
+**Transfert des fichiers, round 3** : images d'abord envoyées en
+commentaire de la PR #1 (`github.com/user-attachments/...`) — bloqué
+par la même politique réseau que d'habitude (403 confirmé). Cette
+fois-ci le client a bien utilisé "Add file → Upload files" comme
+demandé, mais **sur la branche `main`** au lieu de la branche de
+travail `claude/add-ui-ux-pro-max-skill-ep18ap`. Pas besoin de merger
+`main` pour autant : `git show origin/main:<fichier> > local` suffit à
+extraire un fichier précis d'une autre branche sans toucher à celle sur
+laquelle on travaille.
+
+**Détourage, nouvelle complication** : contrairement au lot précédent
+(fond quasi parfaitement plat), ces rendus ont un fond en dégradé
+(vignette studio) — jusqu'à ~57 de distance colorimétrique entre deux
+coins de la même image. La technique du round précédent (une seule
+couleur de fond moyenne + flood fill) laissait de larges bandes de fond
+non détourées, révélées en testant sur un fond rouge vif. Corrigée en
+remplaçant la couleur de fond unique par une **surface quadratique
+ajustée par régression aux moindres carrés** (`numpy.linalg.lstsq`) sur
+les pixels d'une fine bande le long des 4 bords de l'image (l'objet est
+toujours entouré de marge, donc cette bande est purement du fond) —
+modèle `a + bx + cy + dx² + ey² + fxy` par canal, qui capture le
+dégradé du fond bien mieux qu'une simple interpolation bilinéaire
+depuis les 4 coins (essayée en intermédiaire, encore insuffisante). Le
+flood fill compare ensuite chaque pixel à sa valeur de fond ATTENDUE
+localement plutôt qu'à une moyenne globale. Un minuscule résidu de fond
+non détouré subsiste sur une image, dans un interstice de feuillage
+(zone de fond entourée de branches, jamais connectée au bord par un
+chemin de pixels "fond") — vérifié invisible une fois composé sur le
+vrai fond blanc des cartes (`--brume`), seulement visible dans le test
+adversarial sur fond rouge.
+
+Fichiers WebP réencodés (mêmes noms `procede-0X.webp`, contenu
+remplacé, 48-72 Ko chacun). Aucun changement de code nécessaire dans
+`ProcedeCarousel.tsx` au-delà du commentaire de tête — les chemins
+`illustrationUrl` pointaient déjà vers ces noms de fichiers.
+
+**Vérifications** : capture Playwright des étapes 01, 02 et 05 sur le
+site réel confirmant le nouveau rendu (détourage propre, ombre
+synthétique cohérente, aucun liseré visible) ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
