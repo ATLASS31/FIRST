@@ -4983,6 +4983,49 @@ nettement remontée contre le titre sur desktop/tablette, texte et
 miniatures resserrés contre la maquette, aucun débordement ni
 chevauchement sur aucune des 3 tailles ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : fermer le vide bas + miniatures mobiles x1,75 (5e passe)
+
+Nouveau retour du client sur ce même carousel, deux points distincts :
+(1) capture desktop annotée — un grand vide subsistait entre le bas de
+la maquette et le texte descriptif, alors que le haut (round précédent)
+était validé "parfaitement collé" ; (2) capture mobile — le haut est
+jugé "très bien" mais les miniatures restent "trop petites", demande
+explicite de les agrandir nettement ("x3 facile").
+
+**Le vide bas, cause exacte** : la box de la maquette (`sm:h-[640px]
+lg:h-[820px]` du round précédent) était bien plus haute que ce que
+l'image occupe réellement une fois centrée dedans — rappel : les 5
+illustrations sont contraintes par la LARGEUR disponible (ratio
+1100×614), pas par la hauteur de leur box, donc toute hauteur de box
+excédentaire ne fait qu'ajouter du vide en `object-contain`, réparti
+pour moitié en haut et pour moitié en bas. Le haut étant déjà bon,
+réduire la hauteur de la box resserre les deux moitiés de façon
+symétrique sans dégrader le haut. Nouvelles hauteurs calculées au plus
+près du rendu réel (largeur du conteneur à chaque palier ÷ 1,79, +
+marge de sécurité pour ne jamais rogner l'image) : `sm:h-[580px]`,
+`lg:h-[680px]` (étaient 640/820). Un `lg:-mt-6` supplémentaire sur le
+texte descriptif referme le reliquat. Vérifié à l'écran : aucune image
+rognée sur les 5 étapes, gap visuellement refermé sans toucher au haut.
+
+**Miniatures mobiles, x1,75 sans réintroduire le bug de débordement** :
+la taille mobile dédiée (`h-16`, 64px — introduite au round précédent
+justement pour éviter que 5 miniatures agrandies ne débordent des
+390px d'écran) est abandonnée. Le mobile utilise maintenant exactement
+la même taille que la tablette (`h-28`, 112px), et c'est la RANGÉE
+elle-même qui devient scrollable horizontalement sur mobile
+(`overflow-x-auto` + `snap-x snap-mandatory`, désactivés dès `sm:` où
+les 5 tiennent à nouveau sans scroll) — on agrandit sans réintroduire
+le débordement, on le contourne par un pattern de scroll horizontal
+standard en mobile. Les séparateurs verticaux entre miniatures, jusque
+là masqués sur mobile, sont réactivés (cohérent avec la taille tablette
+désormais partagée).
+
+**Vérifications** : Playwright desktop (1904px, gap bas visiblement
+refermé, aucune image tronquée sur l'étape active), tablette (820px,
+5 miniatures tiennent toujours sans scroll) et mobile (390px, scroll
+horizontal testé programmatiquement jusqu'à la 5e miniature, row bien
+plus grande et lisible) ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

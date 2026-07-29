@@ -220,7 +220,23 @@ export default function ProcedeCarousel() {
           l'air autour de l'illustration) plutôt que de faire encore
           grossir l'image elle-même au-delà de ce que la largeur
           d'écran permet. */}
-      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[640px] sm:w-full sm:max-w-5xl lg:-mt-40 lg:h-[820px] lg:max-w-6xl">
+      {/* 5e passe client : "en bas regarde le vide" — capture annotée
+          montrant un grand espace mort entre le bas de la maquette et
+          le texte descriptif. Cause : la box `sm:h-[640px] lg:h-[820px]`
+          du round précédent était bien plus haute que ce que l'image
+          (contrainte par la largeur, cf. ci-dessus) occupe réellement
+          une fois centrée dedans — le surplus se répartissait en
+          `object-contain` pour moitié en haut, pour moitié en bas de
+          la box. Le haut avait déjà été validé "parfaitement collé",
+          donc réduire la hauteur de la box (au lieu de bouger l'image
+          dans sa box) resserre les deux moitiés de façon symétrique :
+          le bas se resserre (ce qui était demandé) et le haut, déjà
+          bon, ne fait que gagner encore un peu en compacité plutôt que
+          de se dégrader. Hauteurs recalculées au plus près du rendu
+          réel (ratio 1100×614, largeur dispo à chaque palier) + une
+          marge de sécurité modeste pour ne jamais rogner l'image :
+          sm:h-[640px]→h-[580px], lg:h-[820px]→h-[700px]. */}
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[580px] sm:w-full sm:max-w-5xl lg:-mt-40 lg:h-[680px] lg:max-w-6xl">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
@@ -246,7 +262,7 @@ export default function ProcedeCarousel() {
       {/* 4. texte descriptif, très court — resserré contre la maquette
           (`mt-6/8` → `mt-2/3`), demande client explicite ("le texte
           plus les miniatures doivent remonter jusqu'à l'image"). */}
-      <div className="mx-auto mt-2 max-w-md text-center sm:mt-3">
+      <div className="mx-auto mt-2 max-w-md text-center sm:mt-3 lg:-mt-6">
         <AnimatePresence mode="wait">
           <motion.p
             key={active}
@@ -264,24 +280,32 @@ export default function ProcedeCarousel() {
       {/* 5. navigation des 5 étapes — miniatures, pas des cartes.
           Profondeur de champ : active plus grande/nette/ombre légère,
           les autres plus petites/floutées/désaturées ("comme une
-          profondeur de champ photographique"). Encore agrandies (h-14
-          → h-16 mobile, h-24 → h-28 tablette, h-32 → h-36 desktop) et
-          remontées contre le texte au-dessus (`mt-12/16` → `mt-4/6`)
-          pour coller à la maquette de référence du client (4e passe :
-          "regarde image 4 c'est la compo parfaite"). Petite ombre
-          synthétique sous chaque miniature (même logique que la grande
-          scène, en plus discret) — demande client explicite du round
+          profondeur de champ photographique"). Remontées contre le
+          texte au-dessus (`mt-12/16` → `mt-4/6`) pour coller à la
+          maquette de référence du client. Petite ombre synthétique
+          sous chaque miniature (même logique que la grande scène, en
+          plus discret) — demande client explicite d'un round
           précédent, illustrée en dessinant une ligne noire sous une
           des miniatures sur sa capture annotée. */}
-      <div className="mt-4 flex items-start justify-center sm:mt-6">
+      {/* 5e passe client : "sur téléphone [...] les miniatures sont
+          trop petites, grandis x3" — la taille mobile dédiée
+          (h-16, 64px) introduite pour tenir dans les 390px d'écran
+          sans déborder (bug corrigé 2 passes plus tôt) est abandonnée :
+          le mobile utilise maintenant la MÊME taille que la tablette
+          (h-28, 112px, +75%), et c'est la rangée elle-même qui devient
+          scrollable horizontalement sur mobile (`overflow-x-auto` +
+          `snap-x`, désactivés dès `sm:` où les 5 miniatures tiennent
+          à nouveau sans scroll) — on agrandit sans réintroduire le
+          bug de débordement, on le contourne. */}
+      <div className="-mx-6 mt-4 flex items-start gap-2 overflow-x-auto px-6 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-6 sm:justify-center sm:gap-0 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
           return (
-            <div key={e.title} className="flex items-start">
+            <div key={e.title} className="flex shrink-0 snap-center items-start">
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="mx-1 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:mx-2 sm:block"
+                  className="mx-2 mt-10 hidden h-8 w-px shrink-0 bg-encre-douce/15 sm:block"
                 />
               )}
               <button
@@ -289,7 +313,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-16 min-w-0 flex-col items-center gap-1.5 px-0.5 text-center sm:w-28 sm:gap-2 sm:px-1 lg:w-36"
+                className="flex w-28 min-w-0 flex-col items-center gap-2 px-1 text-center lg:w-36"
               >
                 <motion.div
                   animate={{
@@ -299,7 +323,7 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative h-16 w-16 sm:h-28 sm:w-28 lg:h-36 lg:w-36"
+                  className="relative h-28 w-28 lg:h-36 lg:w-36"
                 >
                   <div
                     aria-hidden
