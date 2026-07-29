@@ -4847,6 +4847,43 @@ l'état du commit précédent (`88ec3c5`, plan large non recadré) via
 disponibles dans l'historique git si le client change à nouveau d'avis,
 pas besoin de refaire le travail de recadrage depuis zéro.
 
+### 29 juillet 2026 — Notre procédé : agrandir la maquette, fond aligné sur Notre histoire
+
+Retour client sur une capture annotée (un immense cercle dessiné à la
+main autour de la zone texte+image) : "il faudrait juste grossir
+l'image aussi gros que le cercle... le texte peut aller sur l'image
+dans tous les cas c'est du fond transparent donc il n'y aura pas de
+superposition visible" — plus la couleur de fond de la section doit
+être la même que "Notre histoire".
+
+**`ProcedeCarousel.tsx`** : scène de la maquette nettement agrandie —
+`h-[300px] max-w-xl` (mobile) → `600px] max-w-3xl` → sur desktop large,
+`h-[460px] max-w-3xl` → `h-[700px] max-w-6xl` (plus de plafond
+artificiel, la maquette remplit maintenant toute la largeur de la
+section `max-w-6xl`). Espace entre le bloc texte et l'image resserré
+(`mt-8/mt-12` → `mt-2`, léger chevauchement négatif `-mt-4` en
+desktop) — argument client repris tel quel dans le commentaire de
+code : le fond transparent des illustrations rend ce rapprochement
+sans risque visuel. Hauteur mobile volontairement resserrée
+(`h-[220px]`, pas juste "petite par défaut") : les 5 illustrations
+partagent exactement le même ratio 1100×614 — à la largeur mobile
+réelle, l'image affichée ne fait que ~190px de haut en
+`object-contain`, une box plus haute ne ferait que laisser du vide
+autour, pas grossir l'image (déjà contrainte par la largeur, pas la
+hauteur, à cet endroit).
+
+**`Procede.tsx`** : fond remplacé par `bg-ciel` (classe identique à
+`NotreHistoire.tsx`), remplaçant le dégradé radial sur `--brume` d'un
+round précédent — au passage, rétablit l'alternance mint/crème/mint
+sur la page (Notre histoire → Gammes → Procédé) qu'un round antérieur
+avait cassée.
+
+**Vérifications** : `tsc` propre ; capture Playwright desktop
+(1904px, viewport large pour juger de l'effet "aussi gros que le
+cercle") confirmant la maquette bien plus grande et le fond mint
+identique à Notre histoire ; capture mobile confirmant l'absence de
+vide vertical superflu autour de l'image resserrée.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

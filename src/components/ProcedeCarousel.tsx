@@ -196,10 +196,23 @@ export default function ProcedeCarousel() {
 
       {/* 3. la maquette — élément principal, jamais enfermée dans une
           carte, ombre synthétique pour un rendu "objet exposé" plutôt
-          que collé à plat, énormément d'espace autour (demande
-          client). Crossfade pur (les 2 images se superposent, pas de
-          "wait") : la scène n'est jamais vide. */}
-      <div className="relative mx-auto mt-8 h-[300px] w-full max-w-xl sm:mt-12 sm:h-[400px] sm:max-w-2xl lg:h-[460px] lg:max-w-3xl">
+          que collé à plat. Considérablement agrandie (demande client :
+          "aussi gros que le cercle que j'ai fait", quasiment toute la
+          largeur de la section) et rapprochée du bloc texte au-dessus
+          (`mt-8/12` → `mt-2` puis léger chevauchement négatif en
+          desktop) — le fond transparent des illustrations rend ce
+          rapprochement sans risque de superposition moche, argument
+          client explicite ("c'est du fond transparent donc il n'y aura
+          pas de superposition visible"). */}
+      {/* h-[220px] mobile délibérément serré (pas juste "petit par
+          défaut") : les 5 illustrations partagent exactement le même
+          ratio 1100×614 (≈1.79:1) — à la largeur mobile réelle
+          (~342px après padding), l'image ne fait donc que ~190px de
+          haut une fois affichée en `object-contain`. Une box plus
+          haute laisserait juste du vide sous/sur l'image plutôt que la
+          faire grossir (elle est déjà contrainte par la largeur, pas
+          la hauteur, dans ce contexte). */}
+      <div className="relative mx-auto mt-2 h-[220px] w-full max-w-3xl sm:mt-0 sm:h-[560px] sm:max-w-5xl lg:-mt-4 lg:h-[700px] lg:max-w-6xl">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
