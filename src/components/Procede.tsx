@@ -12,24 +12,17 @@ export default function Procede() {
     // Rétablit au passage l'alternance mint/crème sur la page (Notre
     // histoire mint → Gammes crème → Procédé mint).
     //
-    // Intro centrée (`text-center`, alors que toutes les autres
-    // sections du site ont un eyebrow+titre alignés à gauche) : demande
-    // client sur la refonte du carousel lui-même ("exposition
-    // d'architecture", tout centré sur sa maquette de référence) —
-    // laisser l'intro alignée à gauche juste au-dessus aurait détonné
-    // avec la composition entièrement centrée qui suit.
+    // 10e passe client : l'eyebrow + titre "De la signature aux clés..."
+    // vivait ici, séparé de `ProcedeCarousel`, tant que toute la section
+    // restait un unique flux vertical centré. La refonte desktop en 2
+    // colonnes (voir `ProcedeCarousel.tsx`) exige que ce titre soit un
+    // enfant direct de LA MÊME grille CSS que la maquette/le texte
+    // d'étape pour pouvoir le placer en colonne de gauche, ligne 1 — un
+    // living dans un composant séparé ne peut pas participer au
+    // `grid-template` d'un autre. Déplacé dans `ProcedeCarousel`.
     <section id="procede" className="bg-ciel px-6 py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
-          <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
-            De la signature aux clés, sans surprise.
-          </h2>
-        </div>
-
-        <div className="mt-16">
-          <ProcedeCarousel />
-        </div>
+        <ProcedeCarousel />
       </div>
     </section>
   );

@@ -167,11 +167,44 @@ export default function ProcedeCarousel() {
   const etape = ETAPES[active];
 
   return (
-    <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    // 10e passe client, capture annotée d'une maquette 2 colonnes :
+    // "on consomme presque 40% de la hauteur de l'écran avant même de
+    // voir l'élément principal" — sur desktop, le flux vertical unique
+    // (titre → numéro/titre d'étape → maquette) empilait tout ce texte
+    // AU-DESSUS de la maquette. Restructuré en grille CSS 2 colonnes
+    // À PARTIR de `lg:` seulement (texte à gauche, maquette à droite,
+    // visible immédiatement, plus besoin de scroller le texte pour
+    // l'atteindre) ; mobile/tablette gardent le flux vertical centré
+    // existant tel quel (non concerné par la demande, "la mise en page
+    // PC"). Grille (pas flex) : seule façon de placer des enfants
+    // indépendamment sur 2 colonnes/3 lignes sans dupliquer le DOM.
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      className="lg:grid lg:grid-cols-[minmax(0,26rem)_1fr] lg:gap-x-16"
+    >
+      {/* Eyebrow + titre de section — vivait dans `Procede.tsx`, déplacé
+          ici pour pouvoir être un enfant direct de cette même grille
+          (ligne 1, colonne 1) ; contenu et style identiques à avant sur
+          mobile/tablette (centré), aligné à gauche avec un filet doré à
+          droite du eyebrow sur `lg:` (référence client). */}
+      <div className="mx-auto max-w-2xl text-center lg:col-start-1 lg:row-start-1 lg:mx-0 lg:max-w-none lg:text-left">
+        <p className="eyebrow flex items-center justify-center gap-4 text-xs text-encre-douce lg:justify-start">
+          <span>Notre procédé</span>
+          <span aria-hidden className="hidden h-px flex-1 bg-encre-douce/25 lg:block" />
+        </p>
+        <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl lg:text-4xl">
+          De la signature aux clés, sans surprise.
+        </h2>
+      </div>
+
       {/* 1. numéro + 2. titre + label — texte, peut brièvement
           s'effacer/réapparaître entre 2 étapes (contrairement à la
-          maquette, qui elle ne doit jamais disparaître). */}
-      <div className="mx-auto max-w-2xl text-center">
+          maquette, qui elle ne doit jamais disparaître). Masqué sur
+          `lg:` : remplacé par le bloc gauche ci-dessous (même contenu +
+          compteur "01 / 05" + description + flèche, tous ensemble dans
+          la colonne de texte de la nouvelle grille). */}
+      <div className="mx-auto max-w-2xl text-center lg:hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
@@ -192,6 +225,57 @@ export default function ProcedeCarousel() {
             <span aria-hidden className="mx-auto mt-3 block h-px w-10 bg-laiton/50" />
           </motion.div>
         </AnimatePresence>
+      </div>
+
+      {/* Bloc gauche desktop uniquement : numéro/total, titre, label,
+          description et flèche "étape suivante" regroupés dans la
+          colonne de texte (ligne 2), à côté de la maquette (colonne de
+          droite). La flèche reste hors de l'`AnimatePresence` — c'est
+          un contrôle de navigation stable, pas un contenu qui doit
+          s'effacer/réapparaître à chaque étape. */}
+      <div className="hidden lg:col-start-1 lg:row-start-2 lg:mt-10 lg:block">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -12 }}
+            transition={{ duration: prefersReducedMotion ? 0.15 : 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <p className="flex items-baseline gap-1 text-sm font-semibold text-laiton">
+              <span>{String(active + 1).padStart(2, "0")}</span>
+              <span className="text-encre-douce/40">/ {String(COUNT).padStart(2, "0")}</span>
+            </p>
+            <h3 className="mt-4 text-3xl font-semibold leading-tight text-encre">
+              {etape.title}
+            </h3>
+            <span className="eyebrow mt-3 block text-xs text-laiton">
+              {etape.label}
+            </span>
+            <p className="mt-5 max-w-sm text-base leading-relaxed text-encre-doux">
+              {etape.body}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+        <button
+          type="button"
+          onClick={() => goTo(active + 1)}
+          aria-label="Étape suivante"
+          className="mt-8 flex h-12 w-12 items-center justify-center rounded-full border border-encre-douce/25 text-encre transition-colors duration-300 hover:border-laiton hover:text-laiton"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className="h-4 w-4"
+          >
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </button>
       </div>
 
       {/* 3. la maquette — élément principal, jamais enfermée dans une
@@ -236,7 +320,13 @@ export default function ProcedeCarousel() {
           réel (ratio 1100×614, largeur dispo à chaque palier) + une
           marge de sécurité modeste pour ne jamais rogner l'image :
           sm:h-[640px]→h-[580px], lg:h-[820px]→h-[700px]. */}
-      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:-mt-24 lg:h-[660px] lg:max-w-6xl">
+      {/* 10e passe client : la maquette rejoint la colonne de droite de
+          la grille (`lg:col-start-2`), sur les 2 lignes du bloc gauche
+          (titre de section + texte d'étape), centrée verticalement
+          dedans (`lg:self-center`) — les hacks `-mt-*` du flux vertical
+          empilé (rapprocher la maquette du texte au-dessus) n'ont plus
+          de sens en grille et sont retirés sur `lg:` uniquement. */}
+      <div className="relative -mx-6 mt-2 h-[300px] w-[calc(100%+3rem)] sm:mx-auto sm:-mt-8 sm:h-[560px] sm:w-full sm:max-w-5xl lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mt-0 lg:h-auto lg:max-w-none lg:self-center lg:aspect-[1100/614] lg:w-full">
         <div
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
@@ -270,7 +360,12 @@ export default function ProcedeCarousel() {
           recalibrage du haut au round précédent) → repli sur
           `lg:-mt-20`, revérifié sur les 5 étapes cette fois : aucun
           chevauchement nulle part, texte tout de suite sous le socle. */}
-      <div className="mx-auto mt-2 max-w-md text-center sm:-mt-4 lg:-mt-20">
+      {/* 10e passe client : masqué sur `lg:` — la description a
+          rejoint le bloc gauche de la nouvelle grille 2 colonnes
+          ci-dessus (juste après le label, avant la flèche), les hacks
+          `-mt-*` de rapprochement n'ont donc plus lieu d'être à cette
+          largeur. Bloc conservé tel quel pour mobile/tablette. */}
+      <div className="mx-auto mt-2 max-w-md text-center sm:-mt-4 lg:hidden">
         <AnimatePresence mode="wait">
           <motion.p
             key={active}
@@ -341,7 +436,11 @@ export default function ProcedeCarousel() {
           possible et JAMAIS de débordement, quel que soit l'appareil.
           Cette même logique s'applique maintenant à `sm:`/`lg:`
           (voir plus haut) — plus de rangée à taille fixe du tout. */}
-      <div className="-mx-6 mt-4 grid grid-cols-5 items-start gap-x-1 px-2 sm:mx-0 sm:mt-6 sm:gap-x-3 sm:px-0 lg:gap-x-4">
+      {/* 10e passe client : sur `lg:`, la rangée quitte le flux vertical
+          pour devenir la 3e ligne de la grille, étalée sur les 2
+          colonnes (`lg:col-span-2`) — pleine largeur sous le texte ET
+          la maquette, comme sur la maquette de référence du client. */}
+      <div className="-mx-6 mt-4 grid grid-cols-5 items-start gap-x-1 px-2 sm:mx-0 sm:mt-6 sm:gap-x-3 sm:px-0 lg:col-span-2 lg:row-start-3 lg:mt-16 lg:gap-x-4">
         {ETAPES.map((e, i) => {
           const isActive = i === active;
           return (

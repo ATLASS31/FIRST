@@ -5188,6 +5188,64 @@ page rechargée sans erreur console nouvelle (les seules erreurs
 présentes sont le blocage réseau connu du CDN Higgsfield, déjà
 documenté, sans rapport avec ce changement).
 
+### 29 juillet 2026 — Notre procédé : refonte desktop en 2 colonnes (10e passe)
+
+Nouvelle capture client, une maquette de référence complète cette
+fois (pas une annotation sur le rendu existant) : "on consomme
+presque 40% de la hauteur de l'écran avant même de voir l'élément
+principal — on va refaire la mise en page PC comme celle que je
+t'envoie." Le flux vertical unique du carousel (eyebrow+titre de
+section → numéro/titre/label d'étape → maquette → description →
+navigation), hérité de la refonte "exposition d'architecture"
+d'un round bien antérieur, empilait tout le texte AU-DESSUS de la
+maquette sur desktop — exactement le problème signalé.
+
+**Restructuration en grille CSS 2 colonnes, `lg:` uniquement** :
+colonne de gauche (texte, largeur fixe `26rem`) / colonne de droite
+(maquette, largeur flexible `1fr`), navigation des 5 étapes en pleine
+largeur sous les deux. Mobile et tablette (`sm:` et en-deçà) gardent
+le flux vertical centré existant tel quel — la demande portait
+explicitement sur "la mise en page PC", et ce flux avait déjà été
+validé et affiné sur 9 passes précédentes.
+
+**Choix d'implémentation — pourquoi le texte et les blocs sont
+dupliqués (visibilité togglée par breakpoint) plutôt que réordonnés
+en CSS pur** : la maquette (crossfade `AnimatePresence`) et la
+navigation (trait doré `layoutId="procede-nav-underline"`) sont des
+éléments Framer Motion à instance UNIQUE — les dupliquer (même
+masqués en CSS) aurait fait coexister deux éléments partageant le
+même `layoutId` dans le DOM, un piège connu de Framer Motion qui peut
+désynchroniser l'animation du trait glissant. Ces deux blocs restent
+donc des instances UNIQUES, repositionnées via `grid-column`/
+`grid-row` selon le breakpoint (technique déjà utilisée pour la
+maquette elle-même). Le texte (numéro/titre/label/description, sans
+animation partagée par `layoutId`) est en revanche dupliqué avec
+`lg:hidden` / `hidden lg:block` — plus simple et sans risque à cet
+endroit, et ça évite de complexifier un unique bloc de texte pour
+qu'il serve 2 mises en page très différentes (centré empilé vs aligné
+à gauche avec compteur et bouton).
+
+**Éléments ajoutés (absents du flux vertical), sur `lg:` seulement** :
+compteur "01 / 05" au-dessus du titre d'étape (référence client) ;
+bouton flèche rond "étape suivante" (même tracé SVG que la flèche du
+CTA du hero, pour la cohérence visuelle du site) — contrôle de
+navigation stable, volontairement hors de l'`AnimatePresence` du texte
+qui l'entoure. Filet doré à droite de l'eyebrow "Notre procédé",
+comme sur la référence.
+
+**Le titre "De la signature aux clés..." déménage** de `Procede.tsx`
+vers `ProcedeCarousel.tsx` : un enfant de grille doit être un enfant
+DIRECT du conteneur `grid` pour que `grid-column`/`grid-row`
+s'appliquent — un composant séparé qui rend son propre wrapper ne
+peut pas participer au `grid-template` d'un autre composant.
+
+**Vérifications** : Playwright à 1024px (cas limite bas de la plage
+`lg:`), 1456px (résolution de la référence client) et 1904px — 0
+débordement horizontal partout. Bouton flèche testé (clic avance
+l'étape, synchronisé avec la navigation du bas). Tablette et mobile
+recapturés : flux identique pixel pour pixel à avant, aucune
+régression. `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
