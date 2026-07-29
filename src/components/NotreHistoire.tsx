@@ -187,7 +187,11 @@ const THRESHOLD_VH = 0.6;
 // Vitesse de lecture des deux vidéos : plus rapide que le temps réel pour
 // un effet "woosh" net (demande client, accélérée plusieurs fois), sans
 // devenir brutal comme le "snap" à 650ms abandonné plus tôt dans le projet.
-const PLAYBACK_RATE = 2.1;
+// 2.1 → 2.7 : nouveau retour client hors de la catégorie "Notre procédé"
+// ("augmente la vitesse de l'animation, elle prend trop de temps à se
+// finir") — encore un cran au-dessus, toujours en dessous du seuil
+// "brutal" identifié plus haut.
+const PLAYBACK_RATE = 2.7;
 
 const FEATURES = [
   { icon: "pin", value: "100%", label: "fabriqué en France" },

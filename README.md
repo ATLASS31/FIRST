@@ -5150,6 +5150,44 @@ limite `lg:` jusqu'à un écran 2560px : 0 partout, la taille fluide des
 miniatures ne casse rien même en très large. Tablette et mobile
 revérifiés sans régression ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : cause racine du vide miniatures + Notre histoire plus rapide (9e passe)
+
+Retour client, deux points sur "Notre procédé" plus un hors sujet.
+
+**"Le texte n'est pas assez collé aux miniatures, l'ombre est trop
+loin aussi"** — jusqu'ici traité à coups de petits ajustements de
+`gap`/position, cette fois la vraie cause : la box de chaque miniature
+était en `aspect-square` (carrée, choisie au round précédent pour
+maximiser la taille disponible), mais les illustrations elles-mêmes
+sont bien plus larges que hautes (ratio 1100×614, comme la grande
+maquette). En `object-contain` dans une box carrée, l'image ne remplit
+que la bande centrale — environ 22 % de vide en haut ET en bas de la
+box, calcul : `(1 − 614/1100) / 2`. L'ombre (positionnée en `%` de la
+box) et le libellé (juste après en flux normal) se retrouvaient donc
+loin du contenu VISIBLE quel que soit l'espacement CSS choisi — ce
+n'était pas un espacement à resserrer, c'était un vide structurel.
+Fix : la box épouse maintenant le vrai ratio de l'image
+(`aspect-square` → `aspect-[1100/614]`), sans toucher à sa largeur (la
+miniature ne rapetisse pas, elle perd juste son vide interne). Ombre
+et libellé collent enfin au socle visible — confirmé par un recadrage
+zoomé sur une miniature.
+
+**"Grossis un peu les textes en dessous du béton"** : texte descriptif
+`text-sm` (14px) → `text-base` (16px), `lg:text-base` → `lg:text-lg`
+(18px).
+
+**Hors catégorie — "Notre histoire" trop lente à se finir** : la
+vitesse de lecture des deux vidéos (`PLAYBACK_RATE`, déjà relevée
+plusieurs fois dans l'historique de ce composant) passe de 2,1 à 2,7 —
+encore un cran au-dessus, toujours sous le seuil "brutal" identifié
+lors d'un round antérieur (le "snap" à 650ms abandonné).
+
+**Vérifications** : miniatures vérifiées à 1456px (recadrage zoomé),
+tablette et mobile sans régression, `tsc` propre. `PLAYBACK_RATE` :
+page rechargée sans erreur console nouvelle (les seules erreurs
+présentes sont le blocage réseau connu du CDN Higgsfield, déjà
+documenté, sans rapport avec ce changement).
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans

@@ -278,7 +278,7 @@ export default function ProcedeCarousel() {
             animate={{ opacity: 1 }}
             exit={prefersReducedMotion ? undefined : { opacity: 0 }}
             transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
-            className="text-sm leading-relaxed text-encre-doux lg:text-base"
+            className="text-base leading-relaxed text-encre-doux lg:text-lg"
           >
             {etape.body}
           </motion.p>
@@ -302,18 +302,31 @@ export default function ProcedeCarousel() {
           de suite à agrandir une taille fixe en dur (144→176→192px),
           changement d'architecture plutôt qu'un 4e chiffre deviné :
           `grid grid-cols-5` désormais à TOUTES les tailles d'écran
-          (plus seulement mobile), chaque miniature en `aspect-square
-          w-full` — la taille n'est plus une valeur fixe à remonter à
-          chaque retour client, elle est TOUJOURS le maximum que la
-          largeur du conteneur permet, à n'importe quelle taille
-          d'écran (même logique que le fix mobile du round précédent,
-          étendue partout). Le séparateur vertical passe d'un élément
-          de flexbox (qui consommait sa propre largeur) à un trait
-          positionné en absolu sur le bord de chaque colonne — sinon un
-          6e élément par étape aurait cassé le compte de `grid-cols-5`.
-          Espace miniature↔libellé encore resserré (`lg:gap-1.5` →
-          `lg:gap-1`), 2e passe sur ce réglage ("le texte miniature
-          n'est pas assez collé"). */}
+          (plus seulement mobile) — la taille n'est plus une valeur
+          fixe à remonter à chaque retour client, elle est TOUJOURS le
+          maximum que la largeur du conteneur permet, à n'importe
+          quelle taille d'écran (même logique que le fix mobile du
+          round précédent, étendue partout). Le séparateur vertical
+          passe d'un élément de flexbox (qui consommait sa propre
+          largeur) à un trait positionné en absolu sur le bord de
+          chaque colonne — sinon un 6e élément par étape aurait cassé
+          le compte de `grid-cols-5`. */}
+      {/* 9e passe client : "le texte n'est pas assez collé aux
+          miniatures, l'ombre est trop loin aussi" — cause : la box de
+          chaque miniature était en `aspect-square` (carrée), mais les
+          illustrations elles-mêmes sont bien plus larges que hautes
+          (ratio 1100×614, comme la grande maquette) — en `object-
+          contain` dans une box carrée, l'image ne remplit que la
+          bande centrale, laissant ~22% de vide en haut ET en bas de
+          la box. L'ombre (positionnée en `%` de la box) et le
+          libellé (juste après la box en flux normal) se retrouvaient
+          donc loin du contenu VISIBLE, même avec un espacement CSS
+          minimal — le vide était structurel, pas un simple espacement
+          à resserrer. Fix : la box épouse maintenant le vrai ratio de
+          l'image (`aspect-square` → `aspect-[1100/614]`), plus aucun
+          vide — ombre et libellé collent enfin au contenu réel, sans
+          changer la largeur (donc sans rapetisser la miniature, cf.
+          8e passe "grandis x2"). */}
       {/* 6e passe client, mobile : "t'avais raison, ça sort de
           l'écran, corrige pour avoir la taille maximale sans que ça
           sorte" — la rangée scrollable du round précédent (miniatures
@@ -336,7 +349,7 @@ export default function ProcedeCarousel() {
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="absolute left-0 top-8 hidden h-8 w-px -translate-x-1/2 bg-encre-douce/15 sm:block lg:top-14"
+                  className="absolute left-0 top-6 hidden h-8 w-px -translate-x-1/2 bg-encre-douce/15 sm:block lg:top-10"
                 />
               )}
               <button
@@ -344,7 +357,7 @@ export default function ProcedeCarousel() {
                 onClick={() => goTo(i)}
                 aria-label={`Aller à l'étape ${i + 1} : ${e.title}`}
                 aria-current={isActive}
-                className="flex w-full min-w-0 flex-col items-center gap-2 px-1 text-center lg:gap-1"
+                className="flex w-full min-w-0 flex-col items-center gap-1 px-1 text-center"
               >
                 <motion.div
                   animate={{
@@ -354,11 +367,11 @@ export default function ProcedeCarousel() {
                       : "blur(1.5px) saturate(0.35) brightness(0.85)",
                   }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative aspect-square w-full"
+                  className="relative w-full aspect-[1100/614]"
                 >
                   <div
                     aria-hidden
-                    className="absolute inset-x-[22%] bottom-[10%] h-[6%] rounded-[50%] bg-encre/15 blur-sm"
+                    className="absolute inset-x-[22%] bottom-[2%] h-[8%] rounded-[50%] bg-encre/15 blur-sm"
                   />
                   <div
                     className={
