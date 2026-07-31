@@ -197,8 +197,22 @@ export default function ProcedeCarousel() {
           exception). */}
       <div className="mx-auto max-w-2xl text-center lg:col-start-1 lg:row-start-1 lg:mx-0 lg:max-w-none lg:text-left">
         <p className="eyebrow text-xs text-encre-douce">Notre procédé</p>
+        {/* 12e passe client : retour à la ligne forcé après "clés," —
+            le retour automatique du navigateur coupait plus tôt ("De
+            la signature / aux clés, sans / surprise.", 3 lignes). Un
+            `<br />` seul ne suffisait pas : la colonne de gauche
+            desktop ne fait que 26rem, donc "De la signature aux
+            clés," lui-même continuait à se re-couper en 2 lignes à
+            cette largeur. `lg:whitespace-nowrap` sur ce premier
+            segment force la ligne complète même si elle déborde de la
+            colonne — accepté explicitement par le client ("même si il
+            y a superposition avec l'image... le fond est
+            transparent"), et limité à `lg:` (pas de risque de
+            débordement de PAGE sur mobile/tablette, où le segment
+            reste libre de se re-couper si besoin). */}
         <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
-          De la signature aux clés, sans surprise.
+          <span className="block lg:whitespace-nowrap">De la signature aux clés,</span>
+          <span className="block">sans surprise.</span>
         </h2>
       </div>
 

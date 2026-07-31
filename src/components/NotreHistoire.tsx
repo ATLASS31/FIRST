@@ -717,8 +717,19 @@ export default function NotreHistoire() {
       <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_2fr] lg:items-center lg:gap-16">
         <div className="min-w-0">
           <p className="eyebrow text-xs text-encre-douce">Notre histoire</p>
+          {/* Retour à la ligne forcé après "bois," — même demande
+              client que sur "Notre procédé" : le retour automatique
+              coupait trop tôt ("Le modulaire / bois, sans /
+              compromis.", 3 lignes). La colonne de texte desktop
+              (`1fr` d'une grille `1fr_2fr`, ~400px) reste trop étroite
+              pour "Le modulaire bois," sur une seule ligne : comme
+              pour "Notre procédé", `lg:whitespace-nowrap` force la
+              ligne complète même si elle déborde sur la colonne des
+              matériaux — accepté explicitement par le client, limité
+              à `lg:` pour ne rien risquer sur mobile/tablette. */}
           <h2 className="mt-4 text-4xl font-semibold text-encre sm:text-5xl">
-            Le modulaire bois, sans compromis.
+            <span className="block lg:whitespace-nowrap">Le modulaire bois,</span>
+            <span className="block">sans compromis.</span>
           </h2>
           <p className="mt-6 text-base leading-relaxed text-encre-doux">
             Le modulaire bois traîne une réputation : préfabriqué bon marché,

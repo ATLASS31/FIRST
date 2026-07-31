@@ -5289,6 +5289,34 @@ Contenu "Bâti pour durer" confirmé absent du DOM après la suppression
 de `SavoirFaire`. Tablette et mobile recapturés sans régression ;
 `tsc` propre.
 
+### 29 juillet 2026 — Titres "Notre procédé" et "Notre histoire" : retour à la ligne forcé (12e passe)
+
+Deux captures desktop annotées : "De la signature aux clés, sans
+surprise." et "Le modulaire bois, sans compromis." se coupaient
+chacun sur 3 lignes au lieu de 2 (ex. "De la signature / aux clés,
+sans / surprise.") — le client voulait la coupure exactement après la
+virgule ("De la signature aux clés," / "sans surprise."), quitte à ce
+que ça chevauche l'illustration voisine ("le fond est transparent").
+
+**Un simple `<br />` ne suffisait pas** : sur les deux sections, la
+colonne de texte desktop est étroite (26rem sur `Procede`, ~400px sur
+`NotreHistoire` avec sa grille `1fr_2fr`) — même isolé après une
+coupure forcée, "De la signature aux clés," (ou "Le modulaire bois,")
+est encore trop long pour cette largeur et se recoupait tout seul.
+Fix : chaque ligne dans un `<span className="block">` séparé (au lieu
+d'un texte continu avec `<br />`), avec `lg:whitespace-nowrap`
+uniquement sur le premier segment — il ne se recoupe plus, quitte à
+déborder de sa colonne. Volontairement limité à `lg:` : sur
+mobile/tablette, où la question ne se posait pas dans les captures du
+client, le segment reste libre de se recouper normalement si la
+largeur l'exige, aucun risque de débordement de page.
+
+**Vérifications** : dans les faits, avec `nowrap`, le texte tient
+sans même chevaucher l'illustration voisine sur les deux sections (de
+la marge suffisait, le chevauchement anticipé par le client ne s'est
+pas produit) — confirmé par capture aux deux endroits. 0 débordement
+horizontal (desktop 1456px et mobile 375px) ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
