@@ -5317,6 +5317,37 @@ la marge suffisait, le chevauchement anticipé par le client ne s'est
 pas produit) — confirmé par capture aux deux endroits. 0 débordement
 horizontal (desktop 1456px et mobile 375px) ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : ombre "coupée" prolongée par une petite tache (13e passe)
+
+Capture annotée : sur la grande maquette desktop, l'ombre portée au
+sol — peinte dans le rendu lui-même, pas un effet CSS — s'arrête net
+à l'approche du coin gauche du socle en béton au lieu de s'estomper
+progressivement ("toutes les ombres sont coupées"). Vérifié sur les 5
+étapes via capture zoomée (`sharp .extract()` sur la zone précise) :
+confirmé, c'est un artefact du rendu source (probablement le détourage
+par flood fill documenté plus haut dans ce fichier, qui laisse parfois
+une arête nette là où le fond a été retiré près d'un bord), pas un
+bug de mise en page — donc rien à corriger dans le CSS d'agencement,
+et aucune retouche de l'image elle-même n'est possible depuis cet
+environnement.
+
+Client : "crée-en une petite comme ce que j'ai dessiné en noir, pas
+plus grand que ça, pour que ça ne ressemble pas à rien." Une 2e tache
+floutée, discrète, ajoutée exactement à l'endroit où l'ombre peinte
+s'arrête (repéré par recadrage/zoom successifs sur les coordonnées
+DOM réelles de la box, pas à l'œil) — même recette que l'ombre
+synthétique déjà existante sous la maquette (`bg-encre/10 blur-2xl`),
+en plus petit et plus discret (`bg-encre/15 blur-md`, ~10%×13% de la
+box). Prolonge visuellement l'arête nette en un fondu, sans tenter de
+reproduire toute l'ombre.
+
+**Vérifications** : position calibrée par coordonnées DOM exactes
+(`getBoundingClientRect` de la box, pas une estimation visuelle) puis
+2 itérations de recadrage zoomé pour confirmer le raccord avec l'arête
+réelle. Revérifié sur 4 étapes supplémentaires (toutes partagent la
+même box, donc la même position) — rendu cohérent partout. 0
+débordement horizontal à 1024/1456/1904px ; `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
