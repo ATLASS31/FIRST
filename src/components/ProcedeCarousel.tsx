@@ -357,20 +357,11 @@ export default function ProcedeCarousel() {
           aria-hidden
           className="absolute inset-x-[20%] bottom-[6%] h-[8%] rounded-[50%] bg-encre/10 blur-2xl"
         />
-        {/* 13e passe client, capture annotée : sur les 5 maquettes,
-            l'ombre portée au sol (peinte dans le rendu lui-même)
-            s'arrête net à l'approche du coin gauche du socle en béton
-            au lieu de s'estomper — "toutes les ombres sont coupées".
-            Client : "crée-en une petite comme ce que j'ai dessiné en
-            noir, pas plus grand que ça, pour que ça ne ressemble pas
-            à rien". Petite tache floutée additionnelle à cet endroit
-            précis (même recette que l'ombre principale ci-dessus,
-            volontairement plus petite/discrète) — prolonge visuellement
-            l'ombre coupée au lieu de la refaire entièrement. */}
-        <div
-          aria-hidden
-          className="absolute bottom-[26%] left-[3%] h-[10%] w-[13%] rounded-[50%] bg-encre/15 blur-md"
-        />
+        {/* 14e passe client : la tache ajoutée au round précédent pour
+            prolonger l'ombre coupée du socle "rend pas bien" — retirée.
+            L'arête nette de l'ombre peinte dans le rendu (probable
+            artefact du détourage flood fill, voir plus haut dans ce
+            fichier) reste visible telle quelle. */}
         <AnimatePresence>
           {ETAPES.map((e, i) =>
             i === active ? (

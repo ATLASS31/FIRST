@@ -5348,6 +5348,14 @@ réelle. Revérifié sur 4 étapes supplémentaires (toutes partagent la
 même box, donc la même position) — rendu cohérent partout. 0
 débordement horizontal à 1024/1456/1904px ; `tsc` propre.
 
+### 29 juillet 2026 — Notre procédé : retrait de la tache d'ombre (14e passe)
+
+Retour client sur la tache ajoutée au round précédent pour prolonger
+l'ombre coupée du socle : "rend pas bien". Retirée — l'arête nette de
+l'ombre peinte dans le rendu (probable artefact du détourage flood
+fill) reste visible telle quelle, sans tentative de correction
+cosmétique supplémentaire. `tsc` propre.
+
 ## À faire avant la mise en prod
 
 - **Vulnérabilités npm restantes (`postcss`/`sharp` bundlés dans
