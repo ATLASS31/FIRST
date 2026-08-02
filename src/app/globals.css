@@ -1,0 +1,516 @@
+@import "tailwindcss";
+
+:root {
+  --brume: #f7f5f0;
+  --ciel: #e8eee8;
+  --brume-2: #efede4;
+  --encre: #1a1614;
+  --encre-doux: #4a4640;
+  --encre-douce: #6b665e;
+  --foret: #2f3e2e;
+  --laiton: #ad8a55;
+}
+
+@theme inline {
+  --color-brume: var(--brume);
+  --color-ciel: var(--ciel);
+  --color-brume-2: var(--brume-2);
+  --color-encre: var(--encre);
+  --color-encre-doux: var(--encre-doux);
+  --color-encre-douce: var(--encre-douce);
+  --color-foret: var(--foret);
+  --color-laiton: var(--laiton);
+  --font-sans: var(--font-inter);
+}
+
+/* Bellora Homes ne se décline jamais en sombre : pas de bascule prefers-color-scheme. */
+html {
+  color-scheme: light only;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--brume);
+  color: var(--encre);
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Liquid Glass : blur seul par défaut (support universel), réfraction SVG en amélioration
+   progressive là où le navigateur sait résoudre une référence de filtre dans backdrop-filter.
+   La profondeur vient surtout du dégradé + du highlight + de l'ombre portée — pas du blur
+   seul, qui à plat sur un fond clair ne lit que comme un panneau gris-blanc terne. */
+.glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.28) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-left-color: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 20px 40px -12px rgba(26, 22, 20, 0.18),
+    0 2px 8px rgba(26, 22, 20, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.05);
+  backdrop-filter: blur(13px) saturate(180%);
+  -webkit-backdrop-filter: blur(13px) saturate(180%);
+}
+
+.glass-dark {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    rgba(26, 22, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.3);
+  border-left-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 24px 48px -12px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+/* Verre "objet premium" : pensé pour flotter sur une vraie photo (le
+   calculateur a un fond image plein cadre) — assez transparent pour que le
+   blur révèle vraiment la scène derrière, avec un halo doré chaud autour,
+   pas juste un panneau sombre posé dessus.
+
+   Le halo était un `box-shadow` non-inset (`0 0 140px`) — repéré lors du
+   passage en revue du 2026-07-17 bis comme silencieusement clippé : tout
+   panneau `GlassPanel` a `overflow: hidden` par défaut, qui coupe aussi
+   bien le contenu que les box-shadow non-inset à la frontière de
+   l'élément. Ce halo n'a donc probablement jamais été vu à sa pleine
+   intensité. Remplacé par le même procédé que le halo du bouton hero : un
+   `::after` séparé (le `::before` porte déjà le reflet de `.glass-sheen`
+   sur ce panneau), `z-index: -1`, `inset` négatif pour déborder
+   volontairement, `overflow: visible` sur l'élément pour le laisser
+   sortir. Le reflet mobile (`.glass-sheen::before`) n'en a pas besoin :
+   il reste calé exactement sur les bords (`inset: 0`), toujours clippé
+   nativement par son propre `border-radius`. */
+.glass-graphite {
+  position: relative;
+  overflow: visible;
+  background:
+    radial-gradient(
+      140% 120% at 15% 0%,
+      rgba(255, 255, 255, 0.16) 0%,
+      transparent 55%
+    ),
+    rgba(28, 24, 20, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 32px 64px -16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+}
+
+.glass-graphite::after {
+  content: "";
+  position: absolute;
+  inset: -28px;
+  background: radial-gradient(
+    circle,
+    rgba(203, 166, 93, 0.22),
+    transparent 70%
+  );
+  filter: blur(26px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+@supports (backdrop-filter: url(#glass-distortion)) {
+  .glass {
+    backdrop-filter: url(#glass-distortion) blur(7px) saturate(180%);
+  }
+  .glass-dark {
+    backdrop-filter: url(#glass-distortion) blur(8px) saturate(160%);
+  }
+  .glass-graphite {
+    backdrop-filter: url(#glass-distortion) blur(20px) saturate(170%);
+  }
+}
+
+/* CTA principal du hero. Historique des essais avant la version actuelle
+   (tous conservés ici pour ne pas les retenter) :
+   1) `filter: drop-shadow` pour le halo — recalcule une ombre à partir du
+      contenu réellement rendu à chaque frame ; combiné au reflet ambiant
+      animé (`.glass-sheen`), l'ombre "suivait" le reflet, vue comme une
+      tache floue qui se déplaçait ("une boule qui passe").
+   2) `box-shadow` (halo statique) + `.glass-sheen` — le reflet lui-même
+      débordait visuellement du bouton malgré un `overflow: hidden` +
+      `border-radius` corrects — bug de rendu confirmé en retirant la
+      classe en direct dans le DOM (la barre disparaît).
+   3) `.glass-dark` (fond sombre) + halo doré en `box-shadow` NON-inset —
+      jugé "pas liquid, cheap" sur le vrai fond vidéo clair (fond trop
+      sombre) ; et le halo non-inset peint par définition hors de la
+      boîte, jamais "cropé" dedans — lisait comme une lumière qui
+      "sort" du bouton de façon incohérente selon le fond vidéo dessous.
+   Version actuelle, calée sur une référence visuelle fournie par le
+   client (pilule claire, bordure fine uniforme sur tout le contour,
+   flèche à droite) : fond très translucide (plus proche de `.glass` que
+   de `.glass-dark`, mais plus clair encore), `border` réécrite en entier
+   pour être uniforme sur les 4 côtés — `.glass-dark` la déclare plus
+   claire en haut/à gauche qu'en bas/à droite, ce qui cassait l'anneau net
+   de la référence. Tout reste `inset`/contenu dans la boîte : plus aucun
+   effet ne peut "déborder" comme dans les tentatives précédentes.
+
+   Ce bloc est déclaré APRÈS le `@supports` ci-dessus, pas avant : un vrai
+   bug de cascade trouvé lors de l'audit du 2026-07-17 — `.hero-cta` était
+   défini avant le `@supports`, qui redéclare `backdrop-filter` sur
+   `.glass-dark` ; sur un navigateur qui supporte le filtre SVG, cette
+   redéclaration plus tardive dans le fichier gagnait la cascade et
+   écrasait silencieusement le `backdrop-filter` réglé ici (retour à
+   `blur(8px)` non désiré). Aucun outil de repro ici ne peut détecter un
+   `@supports` qui passe (le Chromium du bac à sable, comme la plupart des
+   navigateurs, échoue ce test) — un bug purement dans l'ordre du fichier,
+   pas dans un rendu observable en local.
+
+   Dernier calibrage, repris directement d'un exemple de code fourni par
+   le client (base rgba plate + blur 26px + halo séparé derrière le
+   bouton) : le fond redevient une teinte blanche plate et légère au lieu
+   d'un dégradé, le blur redescend à 26px (44px lisait too much comme un
+   flou photo plutôt qu'un verre), et le halo doré n'est plus un
+   `box-shadow` mais un vrai second calque DERRIÈRE le bouton (`::before`,
+   `z-index: -1`, `inset` négatif pour déborder de 18px tout autour) —
+   contrairement au halo en `box-shadow` non-inset essayé plus haut
+   (rejeté, "sort du bouton"), celui-ci est explicitement voulu comme un
+   halo qui dépasse, façon "le soleil traverse le verre". Ce pseudo-
+   élément est STATIQUE (jamais animé), donc aucune des conditions du bug
+   de débordement documenté au point 2) n'est réunie (ce bug touchait
+   spécifiquement un pseudo-élément animé en `transform`) ; `overflow:
+   visible` est nécessaire ici pour laisser ce halo déborder du cadre —
+   sans incidence sur le reste (le reflet animé ci-dessous est peint en
+   `background-image` sur l'élément lui-même, toujours clippé nativement
+   par son `border-radius`, jamais besoin d'`overflow: hidden` pour ça).
+
+   Le reflet passe d'une bande nette (un seul stop lumineux net) à un
+   dégradé à 5 arrêts beaucoup plus diffus — jugé "trop blanc" sinon.
+   Toujours porté par `background-position` animé (pas par un
+   pseudo-élément en `transform`, cf. bug documenté plus haut) : le survol
+   change `animation-name` (bascule vers un aller simple rapide) plutôt
+   que de transitionner `background-position` en parallèle de l'animation
+   lente — les deux ne peuvent pas piloter proprement la même propriété
+   CSS en même temps. */
+@keyframes hero-cta-sheen-idle {
+  0%,
+  12% {
+    background-position: -60% -60%;
+  }
+  60%,
+  100% {
+    background-position: 160% 160%;
+  }
+}
+
+@keyframes hero-cta-sheen-hover {
+  0% {
+    background-position: -140% 0%;
+  }
+  100% {
+    background-position: 140% 0%;
+  }
+}
+
+.hero-cta {
+  position: relative;
+  overflow: visible;
+  background-color: rgba(255, 255, 255, 0.14);
+  background-image: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
+  );
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  background-position: -60% -60%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  box-shadow:
+    0 10px 35px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 18px rgba(255, 255, 255, 0.06);
+  color: #faf8f3;
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+  animation: hero-cta-sheen-idle 9s ease-in-out infinite;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Le halo : un cercle chaud flouté qui dépasse le bouton de tous les
+   côtés (inset négatif), posé derrière (z-index négatif) — jamais dans
+   le flux clippé du bouton. */
+.hero-cta::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 220, 150, 0.18),
+    transparent 70%
+  );
+  filter: blur(20px);
+  z-index: -1;
+  pointer-events: none;
+  transition: background 0.4s ease;
+}
+
+.hero-cta:hover {
+  transform: scale(1.035);
+  animation: hero-cta-sheen-hover 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+
+.hero-cta:hover::before {
+  background: radial-gradient(
+    circle,
+    rgba(255, 220, 150, 0.28),
+    transparent 70%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-cta {
+    animation: none;
+    transition: none;
+    background-position: 0% 0%;
+  }
+  .hero-cta:hover {
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Pastille de catégorie sur les cartes gammes (Primaire/Premium/Prestige) :
+   posée sur une vraie photo colorée, le `.glass` de base (fond blanc très
+   translucide) lit comme un simple sticker blanc plat — "trop blanc",
+   sans aucun effet loupe. La réfraction SVG (`url(#glass-distortion)`
+   ci-dessus) n'est fiable que sur Chromium récent ; sur les autres
+   navigateurs le `@supports` échoue et il ne reste que le blur seul. Sans
+   pouvoir compter dessus partout, l'effet verre est reconstitué en CSS
+   pur : un backdrop-filter plus saturé/contrasté (fait "pop" la photo
+   derrière, l'impression de réfraction la plus proche qu'on puisse faire
+   sans le filtre SVG), un rim net et clair en haut + une ombre nette en
+   bas (courbure d'un verre bombé) et un reflet spéculaire radial
+   concentré plutôt qu'un aplat uniforme. Classe dédiée plutôt que modifier
+   `.glass` directement : `.glass` est partagé avec la nav, déjà validée,
+   pas de raison d'y toucher.
+
+   `saturate(220%)` s'est révélé être une erreur : sur un fond très
+   translucide, saturer autant amplifie la couleur de la PHOTO derrière
+   plutôt que celle du verre — chaque pastille prenait la teinte de sa
+   propre photo (bleu ciel, orange coucher de soleil, violet) et les
+   trois lisaient comme trois pastilles différentes plutôt qu'un même
+   système cohérent, et comme du plastique teinté plutôt que du verre.
+   Fond remonté à une opacité franchement blanche (au lieu du fond quasi
+   transparent de `.glass`) pour rester visuellement stable quelle que
+   soit la photo dessous ; saturate ramené à une valeur discrète, la
+   cohérence et le rim/reflet portent l'effet verre plutôt que la
+   saturation. */
+.gamme-badge {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.62) 100%
+  );
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    0 8px 20px -8px rgba(26, 22, 20, 0.3),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(26, 22, 20, 0.12);
+}
+
+.gamme-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 160% at 20% -20%,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.18) 32%,
+    transparent 58%
+  );
+  pointer-events: none;
+}
+
+/* Carte du chiffre actif dans le carrousel Notre histoire.
+   V1 (fond `.glass` standard) perdait son ombre d'élévation, clippée par
+   l'`overflow: hidden` par défaut de `GlassPanel` (même bug que
+   `.glass-graphite` plus haut) — corrigé par une classe dédiée.
+   V2 (opacité 0.92→0.68, fort) jugée "trop blanche, lit comme une carte
+   opaque, pas du verre" — le fond était encore assez couvrant pour
+   masquer tout ce qu'il y avait à réfracter derrière. Revu pour un
+   matériau réellement translucide et discret plutôt qu'un carré blanc :
+   opacité de fond très réduite (0.22→0.06, le flou + saturate font le
+   travail plutôt que la couleur), un grain SVG très léger (texture de
+   verre dépoli, `feTurbulence` en data URI — évite tout aplat numérique
+   trop lisse), un rim lumineux fin en haut (`inset` net et discret,
+   jamais un gros highlight) plutôt qu'une grosse tache spéculaire, et une
+   ombre d'élévation réduite en intensité (le premier jet, très marqué,
+   lisait plus "carte flottante posée dessus" que "verre qui capte la
+   lumière"). Restraint voulue : chaque valeur est basse, l'effet doit
+   presque passer inaperçu plutôt que se faire remarquer. */
+/* Refonte totale de la section "Notre histoire" (deuxième repartie de zéro
+   sur ce chantier). La première refonte remplaçait le paysage low-poly par
+   des volumes architecturaux abstraits — jugés au retour client "posés là
+   sans réelle intention", "un rendu assez froid", ne dégageant "ni
+   architecture, ni luxe, ni élégance" ; la carte restait perçue comme "un
+   rectangle blanc avec des ombres et des dégradés, mais pas un matériau
+   exceptionnel" malgré quatre itérations. Consigne explicite : arrêter
+   d'itérer sur cette direction et repartir d'une page blanche, en ne
+   gardant que l'idée de la lumière qui se décale selon l'étape active.
+   Toute forme géométrique figurative disparaît : il ne reste qu'une
+   source de lumière et une seule carte, sur lesquels le brief demande
+   explicitement de pousser l'exécution ("pousse énormément le travail sur
+   la lumière", "améliore encore la qualité du Liquid Glass, qui reste le
+   point le plus faible de la section"). */
+
+/* Reflet ambiant et reflet au survol — remis à niveau (audit du
+   2026-07-17 bis) sur le même mécanisme que `.hero-cta` : l'ancienne
+   version animait un `transform` (translate + rotate) sur un
+   pseudo-élément surdimensionné (`inset: -50%`) — exactement la
+   combinaison qui causait le bug de débordement documenté plus haut
+   (confirmé sur le bouton hero, jamais signalé ailleurs mais le même
+   risque existait partout où `.glass-sheen`/`.glass-sheen-hover` sont
+   utilisés : nav, panneaux CTA, chiffres clés, calculateur, cartes
+   modèles). Le reflet est maintenant piloté par `background-position`
+   sur un pseudo-élément calé exactement sur les bords de l'élément
+   (`inset: 0`, `border-radius: inherit` — plus besoin de le
+   surdimensionner ni d'un `overflow: hidden` pour le contenir puisqu'il
+   ne dépasse jamais ses propres bords). Un dégradé diffus à 5 arrêts
+   (pas une bande nette) pour rester discret plutôt que gadget. */
+@keyframes glass-sheen-idle {
+  0%,
+  12% {
+    background-position: -60% -60%;
+  }
+  60%,
+  100% {
+    background-position: 160% 160%;
+  }
+}
+
+@keyframes glass-sheen-hover-sweep {
+  0% {
+    background-position: -120% 0%;
+  }
+  100% {
+    background-position: 120% 0%;
+  }
+}
+
+.glass-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
+  );
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  background-position: -60% -60%;
+  animation: glass-sheen-idle 12s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Reflet au survol : pour les cartes interactives (gammes, tuiles). Un seul
+   passage net au hover plutôt qu'une boucle permanente — plus premium,
+   plus intentionnel, et il ne distrait pas pendant le scroll. */
+.glass-sheen-hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 80%
+  );
+  background-size: 220% 220%;
+  background-repeat: no-repeat;
+  background-position: -120% 0%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.glass-sheen-hover:hover::before,
+.glass-sheen-hover:focus-within::before {
+  opacity: 1;
+  animation: glass-sheen-hover-sweep 0.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-sheen::before,
+  .glass-sheen-hover::before {
+    animation: none;
+    transition: none;
+    opacity: 0;
+  }
+}
+
+/* La vague elle-même : un aplat plein, teinté brume comme le fond de la
+   section suivante (transition dans la continuité de la couleur plutôt que
+   par contraste) — le liquid glass est réservé au seul contour (`.wave-rim`),
+   pas à toute la forme. */
+.wave-fill {
+  fill: var(--brume);
+}
+
+/* Contour lumineux : juste le tracé de la courbe, sans remplissage — une
+   vraie ligne de lumière, pas juste un léger liseré. Coeur presque blanc,
+   halo chaud en laiton plus loin (touche liquid glass premium plutôt qu'un
+   blanc générique). Le glow passe par `filter: drop-shadow` (jamais coupé
+   par un clip-path) plutôt que `box-shadow`. `vector-effect:
+   non-scaling-stroke` garde une épaisseur de trait constante en pixels
+   écran quel que soit l'étirement du viewBox par le ratio du conteneur. */
+.wave-rim {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brume) 55%, white 45%);
+  stroke-width: 3.5px;
+  filter: drop-shadow(
+      0 0 6px color-mix(in srgb, var(--brume) 20%, white 80%)
+    )
+    drop-shadow(0 0 20px color-mix(in srgb, var(--brume) 40%, white 60%))
+    drop-shadow(0 0 44px color-mix(in srgb, var(--laiton) 55%, transparent));
+}
+
+/* La révélation de la vague est pilotée en JS via opacity/transform sur
+   chaque frame de scroll (cf. Hero.tsx) — sans motion, cette boucle ne
+   tourne jamais, donc on force ici l'état "pleinement révélée" en écrasant
+   l'opacité et le transform initiaux posés en inline style. */
+@media (prefers-reduced-motion: reduce) {
+  .wave-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
